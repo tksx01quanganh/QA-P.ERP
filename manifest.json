@@ -1,0 +1,16 @@
+{
+  "name": "Ghi nhận sản xuất",
+  "short_name": "CAT+TC",
+  "description": "Quét QR ghi nhận sản xuất cắt & thủ công",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f766e",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon.svg",     "sizes": "any",     "type": "image/svg+xml" }
+  ]
+}
