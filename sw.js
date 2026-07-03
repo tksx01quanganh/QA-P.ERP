@@ -1,4 +1,4 @@
-const CACHE = 'ghinhan-v5';
+const CACHE = 'qap-erp-v8';
 const ASSETS = [
   './',
   './index.html',

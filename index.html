@@ -7,9 +7,9 @@
 <link rel="manifest" href="manifest.json" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="CAT+TC" />
+<meta name="apple-mobile-web-app-title" content="QA-P.ERP" />
 <link rel="apple-touch-icon" href="icon-192.png" />
-<title>Ghi nhận sản xuất</title>
+<title>QA-P.ERP</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 :root{
@@ -115,19 +115,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 @keyframes sp{to{transform:rotate(360deg);}}
 .pad{padding:16px;}
 
-/* ── module picker ──────────────────────────── */
-.mod-group-header{font-size:15px;font-weight:700;color:var(--teal);padding:14px 4px 6px;display:flex;align-items:center;gap:6px;border-bottom:2px solid var(--border);margin-bottom:8px;}
-.mod-group-header:not(:first-child){margin-top:16px;}
-.mod-icon-sm{font-size:20px;}
-.mod-role-tag{font-size:11px;font-weight:600;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:8px;margin-left:auto;}
-.mod-btn{background:#fff;border:2px solid var(--border);border-radius:16px;padding:18px 16px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:14px;}
-.mod-btn.func-btn{padding:14px 16px;border-radius:12px;margin-bottom:6px;}
-.mod-btn:active{border-color:var(--teal);background:#ecfdf5;}
-.mod-icon{font-size:28px;flex-shrink:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#f0fdf4;border-radius:12px;}
-.mod-info{flex:1;min-width:0;}
-.mod-name{font-size:18px;font-weight:700;color:var(--txt);}
-.func-btn .mod-name{font-size:16px;font-weight:600;}
-.mod-role{font-size:13px;color:var(--muted);margin-top:2px;}
+/* ── module grid (home screen) ──────────────── */
+.mod-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:4px 0;}
+@media(max-width:400px){.mod-grid{grid-template-columns:repeat(2,1fr);}}
+.mod-card{background:#fff;border:2px solid var(--border);border-radius:16px;padding:16px 10px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:border-color .15s,opacity .15s;position:relative;}
+.mod-card:active:not(.locked){border-color:var(--teal);background:#ecfdf5;}
+.mod-card.locked{opacity:.45;cursor:not-allowed;background:#f8fafc;}
+.mod-card .mc-icon{font-size:32px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:#f0fdf4;border-radius:14px;}
+.mod-card.locked .mc-icon{background:#f1f5f9;}
+.mod-card .mc-name{font-size:13px;font-weight:700;color:var(--txt);line-height:1.2;}
+.mod-card.locked .mc-name{color:var(--muted);}
+.mod-card .mc-tag{font-size:11px;font-weight:600;color:var(--teal);background:#ecfdf5;padding:2px 8px;border-radius:8px;}
+.mod-card.locked .mc-tag{color:var(--muted);background:var(--bg);}
+.mc-lock{position:absolute;top:8px;right:8px;font-size:14px;opacity:.5;}
+
+/* ── module function sub-screen ────────────── */
+.func-list{display:flex;flex-direction:column;gap:8px;padding:4px 0;}
+.func-btn{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px 16px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:12px;}
+.func-btn:active{border-color:var(--teal);background:#ecfdf5;}
+.func-icon{font-size:22px;flex-shrink:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:#f0fdf4;border-radius:10px;}
+.func-info{flex:1;min-width:0;}
+.func-name{font-size:16px;font-weight:700;color:var(--txt);}
+.func-desc{font-size:12px;color:var(--muted);margin-top:2px;}
 </style>
 </head>
 <body>
@@ -136,7 +145,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
      SCREEN 1: Đăng nhập (Username + Mật khẩu)
 ════════════════════════════════════════════ -->
 <section id="screenLogin" class="screen active">
-  <div class="topbar"><div class="ttl">Ghi nhận sản xuất</div></div>
+  <div class="topbar"><div class="ttl">QA-P.ERP</div></div>
   <div class="picker-wrap">
     <p class="picker-sub">Đăng nhập để bắt đầu quét</p>
     <div class="field">
@@ -150,7 +159,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div id="loginErr" class="manual-err"></div>
     <button id="loginBtn" class="btn lg green" onclick="doLogin()" style="margin-top:6px">Đăng nhập</button>
     <div id="loginStatus" class="pick-status" style="display:none"></div>
-    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 10</div>
+    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 11</div>
   </div>
 </section>
 
@@ -163,11 +172,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <button class="icon-btn" onclick="logout()">Đăng xuất</button>
   </div>
   <div class="picker-wrap">
-    <p class="picker-sub">Chọn chức năng</p>
-    <div id="moduleList" class="pick-list"></div>
+    <p class="picker-sub" id="modSubtitle">Chọn module</p>
+    <div id="moduleGrid" class="mod-grid"></div>
     <div id="moduleNoAccess" class="pick-status" style="display:none;color:var(--red)">
       Tài khoản chưa được gán quyền module nào.<br>Liên hệ quản trị viên.
     </div>
+  </div>
+</section>
+
+<!-- SCREEN 1c: Chức năng trong module -->
+<section id="screenFuncs" class="screen">
+  <div class="topbar">
+    <div class="ttl"><span id="funcModIcon">📋</span> <span id="funcModName">—</span></div>
+    <button class="icon-btn" onclick="backToModules()">← Quay lại</button>
+  </div>
+  <div class="picker-wrap">
+    <p class="picker-sub" id="funcSubtitle">Chọn chức năng</p>
+    <div id="funcList" class="func-list"></div>
   </div>
 </section>
 
@@ -541,64 +562,110 @@ function goHome(){
 /* ══════════════════════════════════════════════════
    SCREEN 1b: Chọn Module
 ══════════════════════════════════════════════════ */
-const MODULE_ICONS = {
-  PD: "🏭", WH: "📦", PU: "🛒", SA: "💰",
-  QC: "✅", MA: "🔧", QT: "📊", AD: "⚙️", HR: "👥", PL: "📅", DL: "🚚"
-};
+/* ── Danh sách 11 module (hiển thị grid) ── */
+const ALL_MODULES = [
+  { ma: "PD", ten: "Sản xuất",     icon: "🏭" },
+  { ma: "WH", ten: "Kho",          icon: "📦" },
+  { ma: "PU", ten: "Mua hàng",     icon: "🛒" },
+  { ma: "SA", ten: "Bán hàng",     icon: "💰" },
+  { ma: "QC", ten: "Chất lượng",   icon: "✅" },
+  { ma: "MA", ten: "Bảo dưỡng",    icon: "🔧" },
+  { ma: "QT", ten: "Kế toán QT",   icon: "📊" },
+  { ma: "AD", ten: "Admin",        icon: "⚙️" },
+  { ma: "HR", ten: "Nhân sự",      icon: "👥" },
+  { ma: "PL", ten: "Kế hoạch",     icon: "📅" },
+  { ma: "DL", ten: "Giao hàng",    icon: "🚚" }
+];
+const MODULE_ICONS = {};
+ALL_MODULES.forEach(m => MODULE_ICONS[m.ma] = m.icon);
+
 const QUYEN_LABELS = {
   XemBaoCao: "Xem báo cáo", NhapLieu: "Nhập liệu",
   Lap: "Lập phiếu", XacNhan: "Xác nhận",
   PheDuyet: "Phê duyệt", Admin: "Quản trị"
 };
 
+/** Nhóm permissions theo module code */
+function groupPermsByModule(){
+  const g = {};
+  state.permissions.forEach(p => {
+    if(!g[p.module]) g[p.module] = { tenModule: p.tenModule, quyen: p.quyen, funcs: [] };
+    g[p.module].funcs.push(p);
+  });
+  return g;
+}
+
 function enterModuleScreen(){
   document.getElementById("modUser").textContent = state.user;
-  const wrap = document.getElementById("moduleList");
+  document.getElementById("modSubtitle").textContent = "Chọn module";
+  const grid = document.getElementById("moduleGrid");
   const noAccess = document.getElementById("moduleNoAccess");
-  wrap.innerHTML = "";
+  grid.innerHTML = "";
 
-  if(!state.permissions.length){
-    noAccess.style.display = "block";
-    show("screenModules");
-    return;
-  }
-  noAccess.style.display = "none";
+  const permGroups = groupPermsByModule();
+  const hasAny = state.permissions.length > 0;
+  noAccess.style.display = hasAny ? "none" : "block";
 
-  // Nhóm chức năng theo module
-  const groups = {};
-  state.permissions.forEach(p => {
-    if(!groups[p.module]) groups[p.module] = { tenModule: p.tenModule, quyen: p.quyen, funcs: [] };
-    groups[p.module].funcs.push(p);
-  });
+  ALL_MODULES.forEach(mod => {
+    const hasAccess = !!permGroups[mod.ma];
+    const quyen = hasAccess ? permGroups[mod.ma].quyen : null;
 
-  Object.keys(groups).forEach(modCode => {
-    const g = groups[modCode];
-    const icon = MODULE_ICONS[modCode] || "📋";
-    const quyenLabel = QUYEN_LABELS[g.quyen] || g.quyen;
+    const card = document.createElement("div");
+    card.className = "mod-card" + (hasAccess ? "" : " locked");
+    card.innerHTML =
+      '<div class="mc-icon">' + mod.icon + '</div>' +
+      '<div class="mc-name">' + esc(mod.ten) + '</div>' +
+      (hasAccess
+        ? '<div class="mc-tag">' + esc(QUYEN_LABELS[quyen] || quyen) + '</div>'
+        : '<div class="mc-lock">🔒</div>');
 
-    // Header module
-    const header = document.createElement("div");
-    header.className = "mod-group-header";
-    header.innerHTML = '<span class="mod-icon-sm">' + icon + '</span> ' +
-      esc(g.tenModule || modCode) +
-      ' <span class="mod-role-tag">' + esc(quyenLabel) + '</span>';
-    wrap.appendChild(header);
-
-    // Nút cho từng chức năng
-    g.funcs.forEach(p => {
-      const btn = document.createElement("button");
-      btn.className = "mod-btn func-btn";
-      btn.innerHTML =
-        '<div class="mod-info">' +
-          '<div class="mod-name">' + esc(p.chucNang || p.tenModule) + '</div>' +
-          '<div class="mod-role">Yêu cầu: ' + esc(QUYEN_LABELS[p.quyenMin] || p.quyenMin) + '</div>' +
-        '</div>';
-      btn.onclick = () => selectFunction(p);
-      wrap.appendChild(btn);
-    });
+    if(hasAccess){
+      card.onclick = () => openModuleFuncs(mod.ma, permGroups[mod.ma]);
+    } else {
+      card.onclick = () => showToast("Bạn chưa có quyền truy cập " + mod.ten, 2000);
+    }
+    grid.appendChild(card);
   });
 
   show("screenModules");
+}
+
+/** Mở sub-screen chức năng trong 1 module */
+function openModuleFuncs(modCode, group){
+  const mod = ALL_MODULES.find(m => m.ma === modCode) || {};
+
+  // Nếu module chỉ có 1 chức năng → vào thẳng, không hiện sub-screen
+  if(group.funcs.length === 1){
+    selectFunction(group.funcs[0]);
+    return;
+  }
+
+  document.getElementById("funcModIcon").textContent = mod.icon || "📋";
+  document.getElementById("funcModName").textContent = group.tenModule || mod.ten || modCode;
+  document.getElementById("funcSubtitle").textContent =
+    group.funcs.length + " chức năng · Quyền: " + (QUYEN_LABELS[group.quyen] || group.quyen);
+
+  const list = document.getElementById("funcList");
+  list.innerHTML = "";
+
+  group.funcs.forEach(p => {
+    const btn = document.createElement("button");
+    btn.className = "func-btn";
+    btn.innerHTML =
+      '<div class="func-icon">' + (mod.icon || "📋") + '</div>' +
+      '<div class="func-info">' +
+        '<div class="func-name">' + esc(p.chucNang || p.tenModule) + '</div>' +
+        '<div class="func-desc">Yêu cầu: ' + esc(QUYEN_LABELS[p.quyenMin] || p.quyenMin) + '</div>' +
+      '</div>';
+    btn.onclick = () => selectFunction(p);
+    list.appendChild(btn);
+  });
+
+  show("screenFuncs");
+}
+
+function backToModules(){
+  enterModuleScreen();
 }
 
 function selectFunction(p){

@@ -1,7 +1,7 @@
 {
-  "name": "Ghi nhận sản xuất",
-  "short_name": "CAT+TC",
-  "description": "Quét QR ghi nhận sản xuất cắt & thủ công",
+  "name": "QA-P.ERP",
+  "short_name": "QA-P.ERP",
+  "description": "Hệ thống quản lý doanh nghiệp QA-P",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
