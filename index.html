@@ -129,7 +129,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div id="loginStatus" class="pick-status">Đang tải danh sách...</div>
     <div id="loginList" class="pick-list"></div>
     <button id="loginRetry" class="btn ghost" style="margin-top:16px;display:none" onclick="loadEmployees()">Thử tải lại</button>
-    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 7</div>
+    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 8</div>
   </div>
 </section>
 
@@ -258,7 +258,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
     <div class="field">
       <label>KL thực tế (kg) <span style="color:var(--red)">*</span></label>
-      <input id="mKg" type="number" inputmode="decimal" step="0.1" min="0" placeholder="VD: 12.5" />
+      <input id="mKg" type="number" inputmode="decimal" step="0.1" min="0" placeholder="VD: 12.5" enterkeyhint="done" />
     </div>
     <div class="field">
       <label>Ghi chú (tùy chọn)</label>
@@ -299,7 +299,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div id="weightCtx" class="manual-ctx"></div>
     <div class="field">
       <label>KL thực tế (kg) <span style="color:var(--red)">*</span></label>
-      <input id="wKg" type="number" inputmode="decimal" step="0.1" min="0" placeholder="VD: 12.5" style="font-size:22px;text-align:center;font-weight:700;" />
+      <input id="wKg" type="number" inputmode="decimal" step="0.1" min="0" placeholder="VD: 12.5" enterkeyhint="done" style="font-size:22px;text-align:center;font-weight:700;" />
     </div>
     <div id="weightErr" class="manual-err"></div>
     <div class="row2" style="margin-top:8px;margin-bottom:10px">
@@ -1027,7 +1027,8 @@ function openWeightPopup(row){
 function cancelWeight(){
   document.getElementById("weightOverlay").classList.remove("active");
   pendingWeightRow = null;
-  setHint("info","Đã hủy — bấm Quét tiếp để quét mã khác");
+  resumeScanning();
+  setHint("info","Đã hủy — đưa mã QR vào khung để quét lại");
 }
 
 function confirmWeight(){
@@ -1045,7 +1046,22 @@ function confirmWeight(){
   FB.row();
   document.getElementById("weightOverlay").classList.remove("active");
   pendingWeightRow = null;
-  setHint("ok","✓ Đã ghi 1 bao "+val+" kg (tổng "+state.rows.length+")");
+  document.getElementById("wKg").blur();
+  const msg = "✓ Đã ghi 1 bao "+val+" kg (tổng "+state.rows.length+")";
+  resumeScanning(msg);
+}
+
+/* Tự động mở khóa quét sau khi nhập KL xong (không cần bấm "Quét tiếp") */
+function resumeScanning(okMsg){
+  lastText="";
+  if(scanning){
+    scanLocked=false;
+    document.getElementById("btnScanNext").textContent="Quét tiếp";
+    setHint("ok", okMsg || "Đưa mã QR sản phẩm vào khung để quét tiếp");
+  } else {
+    // Camera chưa/không còn chạy → vẫn cần bấm nút để bật lại
+    setHint("info", okMsg ? okMsg+" — Bấm \"Bắt đầu quét\" để tiếp tục" : "Bấm \"Bắt đầu quét\" để tiếp tục");
+  }
 }
 
 let manualPickerMode = ""; // "may" | "cn"
@@ -1100,6 +1116,18 @@ if("serviceWorker" in navigator){
 /* ══════════════════════════════════════════════════
    KHỞI ĐỘNG — luôn về màn hình chọn người phụ trách
 ══════════════════════════════════════════════════ */
+/* Enter (hoặc phím "→"/"Xong" trên bàn phím số) = xác nhận, khỏi cần chạm nút */
+function onEnterKey(fn){
+  return function(ev){
+    if(ev.key==="Enter"||ev.keyCode===13){
+      ev.preventDefault();
+      fn();
+    }
+  };
+}
+document.getElementById("wKg").addEventListener("keydown", onEnterKey(confirmWeight));
+document.getElementById("mKg").addEventListener("keydown", onEnterKey(submitManual));
+
 function boot(){
   state.rows=JSON.parse(localStorage.getItem(LS_ROWS)||"[]");
   // Preload lists in background
