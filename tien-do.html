@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0f766e" />
+<title>Tra cứu tiến độ đơn hàng</title>
+<style>
+:root{
+  --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
+  --amber:#d97706; --gray:#64748b; --bg:#f1f5f9; --card:#fff;
+  --txt:#0f172a; --muted:#64748b; --border:#e2e8f0;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:15px;line-height:1.4;}
+.topbar{background:var(--teal);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5;}
+.topbar h1{margin:0;font-size:18px;font-weight:700;}
+.topbar p{margin:4px 0 0;font-size:13px;opacity:.9;}
+.wrap{max-width:1000px;margin:0 auto;padding:14px;}
+
+.searchBar{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+.searchBar .field{flex:1;min-width:200px;}
+.searchBar label{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px;}
+.searchBar input{width:100%;padding:11px 12px;font-size:15px;border:2px solid var(--border);border-radius:10px;}
+.searchBar input:focus{outline:none;border-color:var(--teal);}
+.btnRow{display:flex;align-items:flex-end;gap:8px;}
+.btn{border:0;border-radius:10px;font-size:15px;font-weight:700;padding:11px 18px;cursor:pointer;color:#fff;background:var(--teal);white-space:nowrap;}
+.btn:active{transform:scale(.98);}
+.btn.gray{background:var(--gray);}
+
+.status{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px;}
+.status.err{color:var(--red);font-weight:600;}
+
+.summary{font-size:13px;color:var(--muted);margin:0 0 10px 2px;}
+
+.tableWrap{overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:14px;}
+table{border-collapse:collapse;width:100%;min-width:920px;}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:13.5px;vertical-align:top;}
+th{background:#f8fafc;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);position:sticky;top:0;}
+tr:last-child td{border-bottom:0;}
+tr:hover td{background:#f8fafc;}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:13px;}
+.muted{color:var(--muted);}
+.khach{font-weight:700;}
+
+.progWrap{min-width:150px;}
+.progBar{height:8px;border-radius:5px;background:#e2e8f0;overflow:hidden;margin-bottom:4px;}
+.progBar .fill{height:100%;border-radius:5px;}
+.progTxt{font-size:12px;font-weight:700;}
+.progTxt.low{color:var(--red);}
+.progTxt.mid{color:var(--amber);}
+.progTxt.done{color:var(--green);}
+
+.empty{text-align:center;color:var(--muted);padding:40px 20px;}
+.footer-note{text-align:center;color:var(--muted);font-size:12px;padding:18px 10px 30px;}
+
+@media (max-width:640px){
+  .searchBar{flex-direction:column;}
+  .btnRow{width:100%;}
+  .btnRow .btn{flex:1;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📊 Tra cứu tiến độ đơn hàng</h1>
+  <p>Tìm theo Khách hàng / LSX / Mã SP / Mô tả — đối chiếu số liệu đã ghi nhận sản xuất</p>
+</div>
+
+<div class="wrap">
+  <div class="searchBar">
+    <div class="field">
+      <label>Khách hàng</label>
+      <input id="fCustomer" list="customerList" type="text" placeholder="Gõ hoặc chọn khách hàng..." />
+      <datalist id="customerList"></datalist>
+    </div>
+    <div class="field">
+      <label>LSX / Mã SP / Mô tả</label>
+      <input id="fQuery" type="text" placeholder="VD: 26062919001, hoặc mô tả sản phẩm..." />
+    </div>
+    <div class="btnRow">
+      <button class="btn" onclick="runSearch()">🔍 Tìm kiếm</button>
+      <button class="btn gray" onclick="clearSearch()">Xóa</button>
+    </div>
+  </div>
+
+  <div id="summary" class="summary"></div>
+  <div id="statusBox" class="status">Nhập Khách hàng hoặc LSX / Mô tả rồi bấm "Tìm kiếm".<br>(Để trống cả hai và bấm Tìm kiếm sẽ hiện 50 đơn gần nhất)</div>
+
+  <div id="resultWrap" style="display:none" class="tableWrap">
+    <table>
+      <thead>
+        <tr>
+          <th>LSX</th>
+          <th>Mã SP</th>
+          <th>Mô tả sản phẩm</th>
+          <th>Khách hàng</th>
+          <th>SL đặt hàng</th>
+          <th>Ngày yêu cầu giao</th>
+          <th>Tiến độ sản xuất</th>
+        </tr>
+      </thead>
+      <tbody id="resultBody"></tbody>
+    </table>
+  </div>
+
+  <div class="footer-note">Dữ liệu Khách hàng lấy từ Order List, tự làm mới mỗi 10 phút. Tiến độ tính theo Số lượng đã ghi nhận trong tab KetQua so với Số lượng đặt hàng.</div>
+</div>
+
+<script>
+const CONFIG = {
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyazdJ_4ZI8jCC_Faxp45NRi-A9H2STN2V67c1FBSSLIgj8Yw88KNRegAdq5LYdnaK3/exec"
+};
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+async function apiFetch(action, params){
+  const sep = CONFIG.APPS_SCRIPT_URL.includes("?") ? "&" : "?";
+  let url = CONFIG.APPS_SCRIPT_URL + sep + "action=" + action + "&t=" + Date.now();
+  if(params){
+    Object.keys(params).forEach(k=>{ url += "&" + k + "=" + encodeURIComponent(params[k]||""); });
+  }
+  const res = await fetch(url, {method:"GET", redirect:"follow"});
+  return res.json();
+}
+
+async function loadCustomers(){
+  try{
+    const data = await apiFetch("orderCustomers");
+    const list = data.customers || [];
+    const dl = document.getElementById("customerList");
+    dl.innerHTML = list.map(c=>'<option value="'+esc(c)+'"></option>').join("");
+  }catch(e){ /* im lặng, không chặn trang nếu lỗi tải danh sách KH */ }
+}
+
+function setStatus(kind, msg){
+  const box = document.getElementById("statusBox");
+  box.style.display = "block";
+  box.className = "status" + (kind==="err" ? " err" : "");
+  box.innerHTML = msg;
+  document.getElementById("resultWrap").style.display = "none";
+}
+
+function progressClass(pct){
+  if(pct >= 100) return "done";
+  if(pct >= 50) return "mid";
+  return "low";
+}
+function progressColor(pct){
+  if(pct >= 100) return "var(--green)";
+  if(pct >= 50) return "var(--amber)";
+  return "var(--red)";
+}
+
+function renderRows(rows){
+  if(!rows.length){
+    setStatus("", '<div class="empty">Không tìm thấy đơn hàng phù hợp.</div>');
+    return;
+  }
+  document.getElementById("statusBox").style.display = "none";
+  document.getElementById("resultWrap").style.display = "block";
+  document.getElementById("summary").textContent = "Tìm thấy " + rows.length + " dòng LSX" + (rows.length>=300 ? " (đã giới hạn 300 dòng, thu hẹp tìm kiếm để chính xác hơn)" : "");
+
+  const tbody = document.getElementById("resultBody");
+  tbody.innerHTML = rows.map(r=>{
+    const soLuong = Number(r.soluong)||0;
+    const daCat   = Number(r.daCatSoLuong)||0;
+    const pct     = soLuong>0 ? Math.round((daCat/soLuong)*1000)/10 : 0;
+    const pctShow = Math.min(pct, 100);
+    const cls = progressClass(pct);
+    const color = progressColor(pct);
+    return '<tr>'+
+      '<td><div class="mono"><b>'+esc(r.lsxct)+'</b></div><div class="muted mono" style="font-size:11px">LSX cha: '+esc(r.lsx)+'</div></td>'+
+      '<td class="mono">'+esc(r.masp||"—")+'</td>'+
+      '<td>'+esc(r.mota||"—")+'</td>'+
+      '<td class="khach">'+esc(r.khachhang||"—")+'</td>'+
+      '<td>'+(soLuong?soLuong.toLocaleString("vi-VN"):"—")+' '+esc(r.dvt||"")+'</td>'+
+      '<td>'+esc(r.ngaygiao||"—")+'</td>'+
+      '<td class="progWrap">'+
+        '<div class="progBar"><div class="fill" style="width:'+pctShow+'%;background:'+color+'"></div></div>'+
+        '<div class="progTxt '+cls+'">'+daCat.toLocaleString("vi-VN")+' / '+soLuong.toLocaleString("vi-VN")+' ('+pct+'%)</div>'+
+        '<div class="muted" style="font-size:11px">'+(Number(r.daCatKg)||0).toLocaleString("vi-VN")+' kg · '+(r.soDongGhiNhan||0)+' lượt ghi nhận</div>'+
+      '</td>'+
+    '</tr>';
+  }).join("");
+}
+
+async function runSearch(){
+  const customer = document.getElementById("fCustomer").value.trim();
+  const q = document.getElementById("fQuery").value.trim();
+  setStatus("", '<span class="spin"></span> Đang tìm kiếm...');
+  try{
+    const data = await apiFetch("orderSearch", {customer, q});
+    if(data.result === "ok"){
+      renderRows(data.rows || []);
+    } else {
+      setStatus("err", "Lỗi: " + esc(data.error||"không xác định") + "<br><span class='muted' style='font-size:12px'>Kiểm tra đã cấu hình ORDERLIST_SHEET_ID trong Code.gs chưa.</span>");
+    }
+  }catch(e){
+    setStatus("err", "Không kết nối được máy chủ. Kiểm tra mạng và thử lại.");
+  }
+}
+
+function clearSearch(){
+  document.getElementById("fCustomer").value = "";
+  document.getElementById("fQuery").value = "";
+  setStatus("", "Nhập Khách hàng hoặc LSX / Mô tả rồi bấm \"Tìm kiếm\".");
+}
+
+document.getElementById("fQuery").addEventListener("keydown", e=>{ if(e.key==="Enter") runSearch(); });
+document.getElementById("fCustomer").addEventListener("keydown", e=>{ if(e.key==="Enter") runSearch(); });
+
+loadCustomers();
+</script>
+</body>
+</html>
