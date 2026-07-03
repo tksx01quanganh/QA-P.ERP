@@ -128,6 +128,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .mod-card .mc-tag{font-size:11px;font-weight:600;color:var(--teal);background:#ecfdf5;padding:2px 8px;border-radius:8px;}
 .mod-card.locked .mc-tag{color:var(--muted);background:var(--bg);}
 .mc-lock{position:absolute;top:8px;right:8px;font-size:14px;opacity:.5;}
+.q-tag{display:inline-block;font-size:11px;font-weight:600;color:#0f766e;background:#ecfdf5;border:1px solid #a7f3d0;padding:1px 7px;border-radius:6px;margin:1px;}
+.q-sm{font-size:10px;padding:0 5px;}
 
 /* ── module function sub-screen ────────────── */
 .func-list{display:flex;flex-direction:column;gap:8px;padding:4px 0;}
@@ -159,7 +161,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div id="loginErr" class="manual-err"></div>
     <button id="loginBtn" class="btn lg green" onclick="doLogin()" style="margin-top:6px">Đăng nhập</button>
     <div id="loginStatus" class="pick-status" style="display:none"></div>
-    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 11</div>
+    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 12</div>
   </div>
 </section>
 
@@ -580,19 +582,27 @@ const MODULE_ICONS = {};
 ALL_MODULES.forEach(m => MODULE_ICONS[m.ma] = m.icon);
 
 const QUYEN_LABELS = {
-  XemBaoCao: "Xem báo cáo", NhapLieu: "Nhập liệu",
-  Lap: "Lập phiếu", XacNhan: "Xác nhận",
-  PheDuyet: "Phê duyệt", Admin: "Quản trị"
+  Xem: "Xem", Tao: "Tạo", Sua: "Sửa",
+  KiemTra: "Kiểm tra", PheDuyet: "Phê duyệt", Xoa: "Xóa"
 };
 
-/** Nhóm permissions theo module code */
+/** Nhóm permissions theo module code. quyen giờ là array ["Xem","Tao",...] */
 function groupPermsByModule(){
   const g = {};
   state.permissions.forEach(p => {
-    if(!g[p.module]) g[p.module] = { tenModule: p.tenModule, quyen: p.quyen, funcs: [] };
+    if(!g[p.module]) g[p.module] = { tenModule: p.tenModule, allQuyen: {}, funcs: [] };
+    // Gộp tất cả quyền của module
+    const qa = Array.isArray(p.quyen) ? p.quyen : [p.quyen];
+    qa.forEach(q => { if(q) g[p.module].allQuyen[q] = true; });
     g[p.module].funcs.push(p);
   });
   return g;
+}
+
+/** Hiển thị quyền dạng tags */
+function quyenTags(quyenArr, small){
+  const arr = Array.isArray(quyenArr) ? quyenArr : [quyenArr];
+  return arr.map(q => '<span class="q-tag'+(small?' q-sm':'')+'">'+ esc(QUYEN_LABELS[q]||q) +'</span>').join(' ');
 }
 
 function enterModuleScreen(){
@@ -608,7 +618,6 @@ function enterModuleScreen(){
 
   ALL_MODULES.forEach(mod => {
     const hasAccess = !!permGroups[mod.ma];
-    const quyen = hasAccess ? permGroups[mod.ma].quyen : null;
 
     const card = document.createElement("div");
     card.className = "mod-card" + (hasAccess ? "" : " locked");
@@ -616,7 +625,7 @@ function enterModuleScreen(){
       '<div class="mc-icon">' + mod.icon + '</div>' +
       '<div class="mc-name">' + esc(mod.ten) + '</div>' +
       (hasAccess
-        ? '<div class="mc-tag">' + esc(QUYEN_LABELS[quyen] || quyen) + '</div>'
+        ? '<div style="text-align:center">' + quyenTags(Object.keys(permGroups[mod.ma].allQuyen), true) + '</div>'
         : '<div class="mc-lock">🔒</div>');
 
     if(hasAccess){
@@ -643,7 +652,7 @@ function openModuleFuncs(modCode, group){
   document.getElementById("funcModIcon").textContent = mod.icon || "📋";
   document.getElementById("funcModName").textContent = group.tenModule || mod.ten || modCode;
   document.getElementById("funcSubtitle").textContent =
-    group.funcs.length + " chức năng · Quyền: " + (QUYEN_LABELS[group.quyen] || group.quyen);
+    group.funcs.length + " chức năng";
 
   const list = document.getElementById("funcList");
   list.innerHTML = "";
@@ -655,7 +664,7 @@ function openModuleFuncs(modCode, group){
       '<div class="func-icon">' + (mod.icon || "📋") + '</div>' +
       '<div class="func-info">' +
         '<div class="func-name">' + esc(p.chucNang || p.tenModule) + '</div>' +
-        '<div class="func-desc">Yêu cầu: ' + esc(QUYEN_LABELS[p.quyenMin] || p.quyenMin) + '</div>' +
+        '<div class="func-desc">' + quyenTags(p.quyen, true) + '</div>' +
       '</div>';
     btn.onclick = () => selectFunction(p);
     list.appendChild(btn);
