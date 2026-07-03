@@ -119,17 +119,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <body>
 
 <!-- ════════════════════════════════════════════
-     SCREEN 1: Chọn người phụ trách scan
+     SCREEN 1: Đăng nhập (Username + Mật khẩu)
 ════════════════════════════════════════════ -->
 <section id="screenLogin" class="screen active">
   <div class="topbar"><div class="ttl">Ghi nhận sản xuất</div></div>
   <div class="picker-wrap">
-    <p class="picker-sub">Chọn người phụ trách scan</p>
-    <input id="searchLogin" class="search-box" type="text" placeholder="Tìm tên..." oninput="filterNames(this.value)" />
-    <div id="loginStatus" class="pick-status">Đang tải danh sách...</div>
-    <div id="loginList" class="pick-list"></div>
-    <button id="loginRetry" class="btn ghost" style="margin-top:16px;display:none" onclick="loadEmployees()">Thử tải lại</button>
-    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 8</div>
+    <p class="picker-sub">Đăng nhập để bắt đầu quét</p>
+    <div class="field">
+      <label>Username</label>
+      <input id="loginUser" type="text" autocapitalize="none" autocomplete="username" placeholder="VD: tuyenpv" />
+    </div>
+    <div class="field">
+      <label>Mật khẩu</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" />
+    </div>
+    <div id="loginErr" class="manual-err"></div>
+    <button id="loginBtn" class="btn lg green" onclick="doLogin()" style="margin-top:6px">Đăng nhập</button>
+    <div id="loginStatus" class="pick-status" style="display:none"></div>
+    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 9</div>
   </div>
 </section>
 
@@ -278,7 +285,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <h3 id="manualPickerTitle">Nhập thủ công</h3>
     <div class="field">
       <label id="manualPickerCodeLabel">Mã</label>
-      <input id="mpCode" type="text" placeholder="VD: MAY-001 hoặc CN-001" autocapitalize="characters" />
+      <input id="mpCode" type="text" placeholder="Nhập mã tuỳ ý" autocapitalize="characters" />
     </div>
     <div class="field">
       <label>Tên (tùy chọn)</label>
@@ -338,14 +345,13 @@ let scanLocked = true;
 let lastText  = "";
 let lastTextTime = 0;
 
-const LS_USER     = "ghinhan_user";
-const LS_ROWS     = "ghinhan_rows";
-const LS_NAMES    = "ghinhan_names";
-const LS_MACHINES = "ghinhan_machines";
-const LS_WORKERS  = "ghinhan_workers";
-const LS_QUEUE    = "ghinhan_queue";
+const LS_USER          = "ghinhan_user";
+const LS_ROWS          = "ghinhan_rows";
+const LS_MACHINES      = "ghinhan_machines";
+const LS_WORKERS       = "ghinhan_workers";
+const LS_QUEUE         = "ghinhan_queue";
+const LS_LAST_USERNAME = "ghinhan_last_username";
 
-let allNames    = [];
 let allMachines = [];
 let allWorkers  = [];
 
@@ -402,52 +408,56 @@ async function apiFetch(action){
 }
 
 /* ══════════════════════════════════════════════════
-   SCREEN 1: Đăng nhập / chọn người phụ trách
+   SCREEN 1: Đăng nhập (Username + Mật khẩu)
 ══════════════════════════════════════════════════ */
-async function loadEmployees(){
-  const statusEl = document.getElementById("loginStatus");
-  const retry    = document.getElementById("loginRetry");
-  retry.style.display="none";
-  statusEl.textContent="Đang tải danh sách...";
-  statusEl.style.display="block";
+function loginSetErr(msg){
+  const el=document.getElementById("loginErr");
+  if(msg){ el.textContent=msg; el.style.display="block"; }
+  else { el.textContent=""; el.style.display="none"; }
+}
 
-  const cached = JSON.parse(localStorage.getItem(LS_NAMES)||"null");
-  if(Array.isArray(cached)&&cached.length){
-    allNames=cached; renderPicker("loginList","searchLogin",allNames,selectUser,"loginStatus");
-    statusEl.style.display="none";
+async function doLogin(){
+  const username = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value;
+  loginSetErr("");
+
+  if(!username || !password){
+    loginSetErr("Vui lòng nhập đủ Username và Mật khẩu");
+    return;
   }
+
+  const btn = document.getElementById("loginBtn");
+  const oldTxt = btn.textContent;
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> Đang đăng nhập...';
 
   try{
-    const data = await apiFetch("names");
-    const names = data.names||[];
-    if(names.length){
-      allNames=names;
-      localStorage.setItem(LS_NAMES,JSON.stringify(names));
-      renderPicker("loginList","searchLogin",allNames,selectUser,"loginStatus");
-      statusEl.style.display="none";
-    } else if(!allNames.length){
-      statusEl.textContent="Danh sách trống. Kiểm tra tab DanhSachNhanVien.";
-      retry.style.display="block";
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"login", username, password}),
+      redirect:"follow"
+    });
+    const out = await res.json();
+    if(out.result==="ok"){
+      state.user = out.ten || username;
+      state.fromScan = false;
+      localStorage.setItem(LS_LAST_USERNAME, username); // chỉ nhớ username, không nhớ mật khẩu
+      document.getElementById("loginPass").value="";
+      btn.disabled=false; btn.textContent=oldTxt;
+      enterMayScreen();
+    } else {
+      loginSetErr(out.error || "Đăng nhập thất bại");
+      btn.disabled=false; btn.textContent=oldTxt;
     }
   }catch(e){
-    if(!allNames.length){
-      statusEl.textContent="Không tải được (mất mạng?). Đang dùng cache.";
-      retry.style.display="block";
-    } else {
-      statusEl.style.display="none";
-    }
+    loginSetErr("Không kết nối được máy chủ. Kiểm tra mạng và thử lại.");
+    btn.disabled=false; btn.textContent=oldTxt;
   }
 }
 
-function filterNames(q){
-  q=(q||"").toLowerCase();
-  renderPicker("loginList","searchLogin",allNames.filter(n=>n.toLowerCase().includes(q)),selectUser,"loginStatus",true);
-}
-
-function selectUser(name){
-  state.user=name;
-  state.fromScan=false;
-  enterMayScreen();
+function prefillLastUsername(){
+  const last = localStorage.getItem(LS_LAST_USERNAME);
+  if(last) document.getElementById("loginUser").value = last;
 }
 
 function logout(){
@@ -457,8 +467,10 @@ function logout(){
   state.fromScan=false;
   stopCamera();
   show("screenLogin");
-  document.getElementById("searchLogin").value="";
-  loadEmployees();
+  loginSetErr("");
+  document.getElementById("loginPass").value="";
+  prefillLastUsername();
+  setTimeout(()=>document.getElementById(document.getElementById("loginUser").value?"loginPass":"loginUser").focus(), 150);
 }
 
 /* ══════════════════════════════════════════════════
@@ -1074,7 +1086,7 @@ function openManualPicker(mode){
   document.getElementById("manualPickerCodeLabel").textContent =
     isMay ? "Mã Máy" : "Mã Công nhân";
   document.getElementById("mpCode").placeholder =
-    isMay ? "VD: MAY-001" : "VD: CN-001";
+    isMay ? "VD: 01, Máy cắt A..." : "VD: NV05, Tuyền...";
   document.getElementById("mpCode").value = "";
   document.getElementById("mpName").value = "";
   const errEl = document.getElementById("mpErr");
@@ -1127,6 +1139,8 @@ function onEnterKey(fn){
 }
 document.getElementById("wKg").addEventListener("keydown", onEnterKey(confirmWeight));
 document.getElementById("mKg").addEventListener("keydown", onEnterKey(submitManual));
+document.getElementById("loginUser").addEventListener("keydown", onEnterKey(()=>document.getElementById("loginPass").focus()));
+document.getElementById("loginPass").addEventListener("keydown", onEnterKey(doLogin));
 
 function boot(){
   state.rows=JSON.parse(localStorage.getItem(LS_ROWS)||"[]");
@@ -1135,7 +1149,7 @@ function boot(){
   loadWorkers();
   // Always start at login screen
   show("screenLogin");
-  loadEmployees();
+  prefillLastUsername();
   if(navigator.onLine) setTimeout(tryFlushQueue,3000);
 }
 boot();
