@@ -114,6 +114,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .spin{width:20px;height:20px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:-4px;}
 @keyframes sp{to{transform:rotate(360deg);}}
 .pad{padding:16px;}
+
+/* ── module picker ──────────────────────────── */
+.mod-group-header{font-size:15px;font-weight:700;color:var(--teal);padding:14px 4px 6px;display:flex;align-items:center;gap:6px;border-bottom:2px solid var(--border);margin-bottom:8px;}
+.mod-group-header:not(:first-child){margin-top:16px;}
+.mod-icon-sm{font-size:20px;}
+.mod-role-tag{font-size:11px;font-weight:600;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:8px;margin-left:auto;}
+.mod-btn{background:#fff;border:2px solid var(--border);border-radius:16px;padding:18px 16px;text-align:left;cursor:pointer;width:100%;display:flex;align-items:center;gap:14px;}
+.mod-btn.func-btn{padding:14px 16px;border-radius:12px;margin-bottom:6px;}
+.mod-btn:active{border-color:var(--teal);background:#ecfdf5;}
+.mod-icon{font-size:28px;flex-shrink:0;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:#f0fdf4;border-radius:12px;}
+.mod-info{flex:1;min-width:0;}
+.mod-name{font-size:18px;font-weight:700;color:var(--txt);}
+.func-btn .mod-name{font-size:16px;font-weight:600;}
+.mod-role{font-size:13px;color:var(--muted);margin-top:2px;}
 </style>
 </head>
 <body>
@@ -136,7 +150,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div id="loginErr" class="manual-err"></div>
     <button id="loginBtn" class="btn lg green" onclick="doLogin()" style="margin-top:6px">Đăng nhập</button>
     <div id="loginStatus" class="pick-status" style="display:none"></div>
-    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 9</div>
+    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 10</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 1b: Chọn Module (sau đăng nhập)
+════════════════════════════════════════════ -->
+<section id="screenModules" class="screen">
+  <div class="topbar">
+    <div class="ttl">👤 <span id="modUser">—</span></div>
+    <button class="icon-btn" onclick="logout()">Đăng xuất</button>
+  </div>
+  <div class="picker-wrap">
+    <p class="picker-sub">Chọn chức năng</p>
+    <div id="moduleList" class="pick-list"></div>
+    <div id="moduleNoAccess" class="pick-status" style="display:none;color:var(--red)">
+      Tài khoản chưa được gán quyền module nào.<br>Liên hệ quản trị viên.
+    </div>
   </div>
 </section>
 
@@ -186,7 +217,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="screenScan" class="screen">
   <div class="topbar">
     <div class="ttl">👤 <span id="curUser">—</span></div>
-    <button class="icon-btn" onclick="logout()">Đổi người</button>
+    <button class="icon-btn" onclick="goHome()">← Quay lại</button>
   </div>
 
   <div class="session">
@@ -324,19 +355,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
    CẤU HÌNH
 ══════════════════════════════════════════════════ */
 const CONFIG = {
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyazdJ_4ZI8jCC_Faxp45NRi-A9H2STN2V67c1FBSSLIgj8Yw88KNRegAdq5LYdnaK3/exec"
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzE1Xc5ffqr3Plnyy1Owsdc1vPg-ppY0znSjd27HeLmeZ-EcAYU1T4n7sVlMY9Y3SJN/exec"
 };
 
 /* ══════════════════════════════════════════════════
    TRẠNG THÁI
 ══════════════════════════════════════════════════ */
 let state = {
-  user:       null,   // tên người phụ trách (string)
-  currentMay: null,   // {ma, ten, ghiChu} hoặc null
-  currentCN:  null,   // {ma, ten, ghiChu} hoặc null
-  rows:       [],     // [{may, mayTen, cn, cnTen, sp, note, ts}]
+  user:        null,   // tên người phụ trách (string)
+  maNV:        null,   // mã nhân viên
+  username:    null,   // username đăng nhập
+  permissions: [],     // [{module, tenModule, url, quyen}]
+  currentMay:  null,   // {ma, ten, ghiChu} hoặc null
+  currentCN:   null,   // {ma, ten, ghiChu} hoặc null
+  rows:        [],     // [{may, mayTen, cn, cnTen, sp, note, ts}]
   editingIndex: -1,
-  fromScan:   false,  // true nếu vào screenMay từ "Chuyển máy/CN"
+  fromScan:    false,  // true nếu vào screenMay từ "Chuyển máy/CN"
 };
 
 let qr = null;
@@ -440,11 +474,27 @@ async function doLogin(){
     const out = await res.json();
     if(out.result==="ok"){
       state.user = out.ten || username;
+      state.maNV = out.maNV || "";
+      state.username = out.username || username;
+      state.permissions = out.permissions || [];
       state.fromScan = false;
-      localStorage.setItem(LS_LAST_USERNAME, username); // chỉ nhớ username, không nhớ mật khẩu
+      localStorage.setItem(LS_LAST_USERNAME, username);
       document.getElementById("loginPass").value="";
       btn.disabled=false; btn.textContent=oldTxt;
-      enterMayScreen();
+
+      // Lưu session vào sessionStorage (để tien-do.html dùng chung)
+      sessionStorage.setItem("ghinhan_session", JSON.stringify({
+        user: state.user, maNV: state.maNV, username: state.username,
+        permissions: state.permissions, ts: Date.now()
+      }));
+
+      // Nếu có phân quyền → hiện màn hình chọn module
+      // Nếu không (chưa cấu hình Master Sheet) → vào thẳng SX như cũ
+      if(state.permissions.length > 0){
+        enterModuleScreen();
+      } else {
+        enterMayScreen();
+      }
     } else {
       loginSetErr(out.error || "Đăng nhập thất bại");
       btn.disabled=false; btn.textContent=oldTxt;
@@ -462,15 +512,106 @@ function prefillLastUsername(){
 
 function logout(){
   state.user=null;
+  state.maNV=null;
+  state.username=null;
+  state.permissions=[];
   state.currentMay=null;
   state.currentCN=null;
   state.fromScan=false;
+  sessionStorage.removeItem("ghinhan_session");
   stopCamera();
   show("screenLogin");
   loginSetErr("");
   document.getElementById("loginPass").value="";
   prefillLastUsername();
   setTimeout(()=>document.getElementById(document.getElementById("loginUser").value?"loginPass":"loginUser").focus(), 150);
+}
+
+/** Quay về module screen (nếu có phân quyền) hoặc logout. Dùng cho nút "Quay lại" trên screenScan. */
+function goHome(){
+  stopCamera();
+  if(state.permissions.length > 0){
+    state.currentMay=null; state.currentCN=null;
+    enterModuleScreen();
+  } else {
+    logout();
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   SCREEN 1b: Chọn Module
+══════════════════════════════════════════════════ */
+const MODULE_ICONS = {
+  PD: "🏭", WH: "📦", PU: "🛒", SA: "💰",
+  QC: "✅", MA: "🔧", QT: "📊", AD: "⚙️", HR: "👥", PL: "📅", DL: "🚚"
+};
+const QUYEN_LABELS = {
+  XemBaoCao: "Xem báo cáo", NhapLieu: "Nhập liệu",
+  Lap: "Lập phiếu", XacNhan: "Xác nhận",
+  PheDuyet: "Phê duyệt", Admin: "Quản trị"
+};
+
+function enterModuleScreen(){
+  document.getElementById("modUser").textContent = state.user;
+  const wrap = document.getElementById("moduleList");
+  const noAccess = document.getElementById("moduleNoAccess");
+  wrap.innerHTML = "";
+
+  if(!state.permissions.length){
+    noAccess.style.display = "block";
+    show("screenModules");
+    return;
+  }
+  noAccess.style.display = "none";
+
+  // Nhóm chức năng theo module
+  const groups = {};
+  state.permissions.forEach(p => {
+    if(!groups[p.module]) groups[p.module] = { tenModule: p.tenModule, quyen: p.quyen, funcs: [] };
+    groups[p.module].funcs.push(p);
+  });
+
+  Object.keys(groups).forEach(modCode => {
+    const g = groups[modCode];
+    const icon = MODULE_ICONS[modCode] || "📋";
+    const quyenLabel = QUYEN_LABELS[g.quyen] || g.quyen;
+
+    // Header module
+    const header = document.createElement("div");
+    header.className = "mod-group-header";
+    header.innerHTML = '<span class="mod-icon-sm">' + icon + '</span> ' +
+      esc(g.tenModule || modCode) +
+      ' <span class="mod-role-tag">' + esc(quyenLabel) + '</span>';
+    wrap.appendChild(header);
+
+    // Nút cho từng chức năng
+    g.funcs.forEach(p => {
+      const btn = document.createElement("button");
+      btn.className = "mod-btn func-btn";
+      btn.innerHTML =
+        '<div class="mod-info">' +
+          '<div class="mod-name">' + esc(p.chucNang || p.tenModule) + '</div>' +
+          '<div class="mod-role">Yêu cầu: ' + esc(QUYEN_LABELS[p.quyenMin] || p.quyenMin) + '</div>' +
+        '</div>';
+      btn.onclick = () => selectFunction(p);
+      wrap.appendChild(btn);
+    });
+  });
+
+  show("screenModules");
+}
+
+function selectFunction(p){
+  const url = (p.url || "").trim().toLowerCase();
+  if(url === "index.html"){
+    enterMayScreen();
+  } else if(url === "tien-do.html"){
+    window.location.href = "tien-do.html";
+  } else if(url){
+    window.location.href = p.url;
+  } else {
+    showToast("Chức năng \"" + esc(p.chucNang || p.tenModule) + "\" chưa được phát triển", 3000);
+  }
 }
 
 /* ══════════════════════════════════════════════════
@@ -536,11 +677,13 @@ function selectMachine(item){
 
 function backFromMay(){
   if(state.fromScan){
-    // Quay về scan (có thể rows đang có dữ liệu)
     state.currentMay=null; state.currentCN=null;
     refreshSession(); refreshCount();
     show("screenScan");
     setHint("info","Chọn Máy và Công nhân để tiếp tục quét");
+  } else if(state.permissions.length > 0){
+    // Quay về màn hình chọn module
+    enterModuleScreen();
   } else {
     logout();
   }
@@ -990,7 +1133,10 @@ async function sendAll(){
       state.currentMay=null; state.currentCN=null;
       btn.disabled=false; btn.textContent="Gửi tất cả lên Google Sheet";
       showToast("✓ Gửi thành công "+n+" bao!",2500);
-      setTimeout(()=>logout(),1400);
+      setTimeout(()=>{
+        if(state.permissions.length > 0) enterModuleScreen();
+        else logout();
+      },1400);
     } else {
       FB.sendFail();
       banner("bad","Lỗi server: "+(out.error||"unknown")+". Dữ liệu đã giữ lại.");
@@ -1003,8 +1149,11 @@ async function sendAll(){
     state.currentMay=null; state.currentCN=null;
     stopCamera();
     btn.disabled=false; btn.textContent="Gửi tất cả lên Google Sheet";
-    setTimeout(()=>logout(),400);
-    showToast("📵 Mất mạng — đã lưu offline. Sẽ tự gửi khi có mạng.",5000);
+    setTimeout(()=>{
+      if(state.permissions.length > 0) enterModuleScreen();
+      else logout();
+    },400);
+    showToast("Mất mạng — đã lưu offline. Sẽ tự gửi khi có mạng.",5000);
   }
 }
 
