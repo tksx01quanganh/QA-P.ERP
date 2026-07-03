@@ -1,4 +1,4 @@
-const CACHE = 'ghinhan-v3';
+const CACHE = 'ghinhan-v5';
 const ASSETS = [
   './',
   './index.html',
