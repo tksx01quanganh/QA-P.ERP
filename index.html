@@ -185,8 +185,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <!-- SCREEN 1c: Chức năng trong module -->
 <section id="screenFuncs" class="screen">
   <div class="topbar">
+    <button class="icon-btn" onclick="backToModules()">←</button>
     <div class="ttl"><span id="funcModIcon">📋</span> <span id="funcModName">—</span></div>
-    <button class="icon-btn" onclick="backToModules()">← Quay lại</button>
+    <button class="icon-btn" onclick="enterModuleScreen()">🏠</button>
   </div>
   <div class="picker-wrap">
     <p class="picker-sub" id="funcSubtitle">Chọn chức năng</p>
@@ -199,8 +200,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 ════════════════════════════════════════════ -->
 <section id="screenMay" class="screen">
   <div class="topbar">
+    <button class="icon-btn" onclick="backFromMay()">←</button>
     <div class="ttl">🏭 Chọn Máy</div>
-    <button class="icon-btn" onclick="backFromMay()">← Quay lại</button>
+    <button class="icon-btn" onclick="enterModuleScreen()">🏠</button>
   </div>
   <div class="picker-wrap">
     <p class="picker-sub" id="mayContextLabel"></p>
@@ -219,8 +221,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 ════════════════════════════════════════════ -->
 <section id="screenCN" class="screen">
   <div class="topbar">
+    <button class="icon-btn" onclick="show('screenMay')">←</button>
     <div class="ttl">👷 Chọn Công nhân</div>
-    <button class="icon-btn" onclick="show('screenMay')">← Quay lại</button>
+    <button class="icon-btn" onclick="enterModuleScreen()">🏠</button>
   </div>
   <div class="picker-wrap">
     <p class="picker-sub" id="cnContextLabel"></p>
@@ -239,8 +242,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 ════════════════════════════════════════════ -->
 <section id="screenScan" class="screen">
   <div class="topbar">
+    <button class="icon-btn" onclick="goHome()">←</button>
     <div class="ttl">👤 <span id="curUser">—</span></div>
-    <button class="icon-btn" onclick="goHome()">← Quay lại</button>
+    <button class="icon-btn" onclick="enterModuleScreen()">🏠</button>
   </div>
 
   <div class="session">
@@ -277,8 +281,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 ════════════════════════════════════════════ -->
 <section id="screenList" class="screen">
   <div class="topbar">
+    <button class="icon-btn" onclick="backToScan()">←</button>
     <div class="ttl">Danh sách kết quả</div>
-    <button class="icon-btn" onclick="backToScan()">← Quay lại quét</button>
+    <button class="icon-btn" onclick="enterModuleScreen()">🏠</button>
   </div>
   <div id="sendBanner" class="banner"></div>
   <div class="listWrap" id="listWrap"></div>
