@@ -1380,7 +1380,30 @@ function boot(){
   // Preload lists in background
   loadMachines();
   loadWorkers();
-  // Always start at login screen
+
+  // Khôi phục session nếu có (quay lại từ tien-do.html hoặc trang khác)
+  var saved = sessionStorage.getItem("ghinhan_session");
+  if(saved){
+    try{
+      var s = JSON.parse(saved);
+      // Session hợp lệ nếu có username và chưa quá 8 giờ
+      if(s.username && s.ts && (Date.now() - s.ts < 8*3600*1000)){
+        state.user = s.user;
+        state.maNV = s.maNV;
+        state.username = s.username;
+        state.permissions = s.permissions || [];
+        if(state.permissions.length > 0){
+          enterModuleScreen();
+        } else {
+          enterMayScreen();
+        }
+        if(navigator.onLine) setTimeout(tryFlushQueue,3000);
+        return; // không hiện login
+      }
+    }catch(e){}
+  }
+
+  // Không có session → hiện login
   show("screenLogin");
   prefillLastUsername();
   if(navigator.onLine) setTimeout(tryFlushQueue,3000);
