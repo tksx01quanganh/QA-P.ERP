@@ -687,9 +687,17 @@ function backToModules(){
 
 function selectFunction(p){
   const url = (p.url || "").trim().toLowerCase();
+  const quyen = Array.isArray(p.quyen) ? p.quyen : [p.quyen];
+
   if(url === "index.html"){
+    // Nhập liệu SX cần quyền "C" (Create)
+    if(!quyen.includes("C")){
+      showToast("Bạn chỉ có quyền Xem, không có quyền Tạo dữ liệu", 3000);
+      return;
+    }
     enterMayScreen();
   } else if(url === "tien-do.html"){
+    // Tra cứu tiến độ chỉ cần quyền "V" (View)
     window.location.href = "tien-do.html";
   } else if(url){
     window.location.href = p.url;
