@@ -301,7 +301,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="field"><label>Mã Máy</label><input id="eMay" type="text" /></div>
     <div class="field"><label>Mã Công nhân</label><input id="eCN" type="text" /></div>
     <div class="field"><label>Mã Sản phẩm</label><input id="eSP" type="text" /></div>
-    <div class="field"><label>KL thực tế (kg)</label><input id="eKg" type="number" inputmode="decimal" step="0.1" min="0" /></div>
+    <div class="field"><label>KL thực tế (kg)</label><input id="eKg" type="text" inputmode="decimal" /></div>
     <div class="field"><label>Ghi chú</label><input id="eNote" type="text" placeholder="Ví dụ: hàng lỗi..." /></div>
     <div class="row2" style="margin-bottom:10px">
       <button class="btn red" onclick="deleteEditing()">Xóa dòng</button>
@@ -324,7 +324,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
     <div class="field">
       <label>KL thực tế (kg) <span style="color:var(--red)">*</span></label>
-      <input id="mKg" type="number" inputmode="decimal" step="0.1" min="0" placeholder="VD: 12.5" enterkeyhint="done" />
+      <input id="mKg" type="text" inputmode="decimal" placeholder="VD: 12,5" enterkeyhint="done" />
     </div>
     <div class="field">
       <label>Ghi chú (tùy chọn)</label>
@@ -365,7 +365,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div id="weightCtx" class="manual-ctx"></div>
     <div class="field">
       <label>KL thực tế (kg) <span style="color:var(--red)">*</span></label>
-      <input id="wKg" type="number" inputmode="decimal" step="0.1" min="0" placeholder="VD: 12.5" enterkeyhint="done" style="font-size:22px;text-align:center;font-weight:700;" />
+      <input id="wKg" type="text" inputmode="decimal" placeholder="VD: 12,5" enterkeyhint="done" style="font-size:22px;text-align:center;font-weight:700;" />
     </div>
     <div id="weightErr" class="manual-err"></div>
     <div class="row2" style="margin-top:8px;margin-bottom:10px">
@@ -1051,7 +1051,7 @@ function submitManual(){
     showManualErr("Mã Sản phẩm cần đúng 3 dấu / (4 phần, không để trống)");
     return;
   }
-  if(!klVal || isNaN(parseFloat(klVal)) || parseFloat(klVal) <= 0){
+  if(!klVal || isNaN(numVN(klVal)) || numVN(klVal) <= 0){
     showManualErr("Vui lòng nhập khối lượng hợp lệ (> 0)");
     return;
   }
@@ -1060,7 +1060,7 @@ function submitManual(){
     mayTen: state.currentMay.ten||"",
     cn:     state.currentCN.ma,
     cnTen:  state.currentCN.ten||"",
-    sp, kl: parseFloat(klVal), note,
+    sp, kl: numVN(klVal), note,
     ts: new Date().toISOString()
   };
   state.rows.push(row);
@@ -1125,6 +1125,8 @@ function renderList(){
 }
 
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+/* Đọc số kiểu Việt lẫn Mỹ: "8,1" và "8.1" đều ra 8.1 */
+function numVN(v){return parseFloat(String(v==null?"":v).trim().replace(",","."));}
 
 function deleteRow(i){
   if(!confirm("Xóa bao #"+(i+1)+"?")) return;
@@ -1145,7 +1147,7 @@ function saveEditing(){
   const i=state.editingIndex; if(i<0)return;
   const r=state.rows[i];
   r.may=eMay.value.trim(); r.cn=eCN.value.trim();
-  r.sp=eSP.value.trim(); r.kl=parseFloat(eKg.value)||""; r.note=eNote.value.trim();
+  r.sp=eSP.value.trim(); r.kl=numVN(eKg.value)||""; r.note=eNote.value.trim();
   saveRows(); renderList(); refreshCount(); closeEdit();
 }
 function deleteEditing(){
@@ -1287,12 +1289,12 @@ function cancelWeight(){
 function confirmWeight(){
   const val = document.getElementById("wKg").value.trim();
   const errEl = document.getElementById("weightErr");
-  if(!val || isNaN(parseFloat(val)) || parseFloat(val) <= 0){
+  if(!val || isNaN(numVN(val)) || numVN(val) <= 0){
     errEl.textContent="Vui lòng nhập khối lượng hợp lệ (> 0)";
     errEl.style.display="block";
     return;
   }
-  pendingWeightRow.kl = parseFloat(val);
+  pendingWeightRow.kl = numVN(val);
   state.rows.push(pendingWeightRow);
   saveRows();
   refreshCount();
