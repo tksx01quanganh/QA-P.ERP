@@ -161,7 +161,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div id="loginErr" class="manual-err"></div>
     <button id="loginBtn" class="btn lg green" onclick="doLogin()" style="margin-top:6px">Đăng nhập</button>
     <div id="loginStatus" class="pick-status" style="display:none"></div>
-    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 13</div>
+    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 14</div>
   </div>
 </section>
 
@@ -431,6 +431,17 @@ let state = {
 };
 
 const BRANCH_LABEL = { CT: "Cắt / Thủ công", GTB: "Giấy / Thùng / Bìa" };
+// Nhánh → các tổ được phép. Máy/CN CHƯA gán tổ (ws trống) hiện ở mọi nhánh (không chặn nhầm).
+const BRANCH_WS = { CT: ["CAT","TCO"], GTB: ["GTB"] };
+
+function byBranch(list){
+  const allow = BRANCH_WS[state.branch];
+  if(!allow) return list;
+  return list.filter(it => {
+    const ws = String((it && it.ws) || "").toUpperCase();
+    return !ws || allow.includes(ws);
+  });
+}
 
 let qr = null;
 let scanning  = false;
@@ -748,7 +759,7 @@ async function loadMachines(force){
   const cached = JSON.parse(localStorage.getItem(LS_MACHINES)||"null");
   if(Array.isArray(cached)&&cached.length&&!force){
     allMachines=cached;
-    renderPicker("mayList","searchMay",allMachines,selectMachine,"mayStatus");
+    renderPicker("mayList","searchMay",byBranch(allMachines),selectMachine,"mayStatus");
     statusEl.style.display="none";
   } else {
     statusEl.style.display="block";
@@ -761,7 +772,7 @@ async function loadMachines(force){
     if(list.length){
       allMachines=list;
       localStorage.setItem(LS_MACHINES,JSON.stringify(list));
-      renderPicker("mayList","searchMay",allMachines,selectMachine,"mayStatus");
+      renderPicker("mayList","searchMay",byBranch(allMachines),selectMachine,"mayStatus");
       statusEl.style.display="none";
     } else if(!allMachines.length){
       statusEl.textContent="Danh sách máy trống. Kiểm tra tab MA_MAY.";
@@ -780,7 +791,7 @@ async function loadMachines(force){
 function filterMachines(q){
   q=(q||"").toLowerCase();
   renderPicker("mayList","searchMay",
-    allMachines.filter(m=>(m.ma+m.ten).toLowerCase().includes(q)),
+    byBranch(allMachines).filter(m=>(m.ma+m.ten).toLowerCase().includes(q)),
     selectMachine,"mayStatus",true);
 }
 
@@ -829,7 +840,7 @@ async function loadWorkers(force){
   const cached = JSON.parse(localStorage.getItem(LS_WORKERS)||"null");
   if(Array.isArray(cached)&&cached.length&&!force){
     allWorkers=cached;
-    renderPicker("cnList","searchCN",allWorkers,selectWorker,"cnStatus");
+    renderPicker("cnList","searchCN",byBranch(allWorkers),selectWorker,"cnStatus");
     statusEl.style.display="none";
   } else {
     statusEl.style.display="block";
@@ -842,7 +853,7 @@ async function loadWorkers(force){
     if(list.length){
       allWorkers=list;
       localStorage.setItem(LS_WORKERS,JSON.stringify(list));
-      renderPicker("cnList","searchCN",allWorkers,selectWorker,"cnStatus");
+      renderPicker("cnList","searchCN",byBranch(allWorkers),selectWorker,"cnStatus");
       statusEl.style.display="none";
     } else if(!allWorkers.length){
       statusEl.textContent="Danh sách công nhân trống. Kiểm tra tab MA_CN.";
@@ -861,7 +872,7 @@ async function loadWorkers(force){
 function filterWorkers(q){
   q=(q||"").toLowerCase();
   renderPicker("cnList","searchCN",
-    allWorkers.filter(w=>(w.ma+w.ten).toLowerCase().includes(q)),
+    byBranch(allWorkers).filter(w=>(w.ma+w.ten).toLowerCase().includes(q)),
     selectWorker,"cnStatus",true);
 }
 
