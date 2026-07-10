@@ -1049,7 +1049,8 @@ function handleSP(text){
   FB.single();
   lockAfterScan();
 
-  // Nhánh GTB (Giấy/Thùng/Bìa): KL thực tế = KL(QR), không cần nhập tay
+  // Nhánh GTB (Giấy/Thùng/Bìa): KL thực tế = KL(QR), không cần nhập tay.
+  // Sau mỗi lần quét GIỮ KHÓA — phải bấm "Quét tiếp" mới nhận QR mới (tránh quét liên tục ngoài ý muốn)
   if(state.branch === "GTB"){
     const klQR = numVN(parts[3]);
     if(!isNaN(klQR) && klQR > 0){
@@ -1058,8 +1059,8 @@ function handleSP(text){
       saveRows();
       refreshCount();
       FB.row();
-      resumeScanning("✓ Đã ghi 1 bao "+klQR+" kg — KL tự động theo QR (tổng "+state.rows.length+")");
-      return;
+      setHint("ok","✓ Đã ghi 1 bao "+klQR+" kg — KL tự động theo QR (tổng "+state.rows.length+"). Bấm \"Quét tiếp\" để quét bao kế");
+      return; // scanLocked vẫn = true (đã khóa ở lockAfterScan)
     }
     // QR không có KL hợp lệ → fallback nhập tay
     setHint("err","QR không có KL hợp lệ — vui lòng nhập tay");
