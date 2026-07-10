@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0f766e" />
-<title>Tra cứu tiến độ đơn hàng — QA-P.ERP</title>
+<title>Tra cứu tiến độ — QA-P.ERP</title>
 <style>
 :root{
   --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
@@ -81,8 +81,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .footer-note{text-align:center;color:var(--muted);font-size:11px;padding:12px 10px 20px;}
 .no-access{text-align:center;color:var(--red);font-weight:600;padding:40px 20px;font-size:16px;}
 
+/* ── tab bar ─────────────────────────────── */
+.tabbar{display:flex;flex-shrink:0;background:var(--teal-d);}
+.tabbar button{flex:1;border:0;background:transparent;color:rgba(255,255,255,.65);font-size:14px;font-weight:700;padding:11px 6px;cursor:pointer;border-bottom:3px solid transparent;}
+.tabbar button.active{color:#fff;border-bottom-color:#fff;}
+.tabwrap{display:flex;flex-direction:column;flex:1;min-height:0;}
+
+/* ── tổ / ngày ───────────────────────────── */
+.presetRow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.chip{border:1px solid var(--border);background:var(--card);color:var(--txt);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;}
+.chip:active{transform:scale(.97);}
+.day-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+.day-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;background:#ecfdf5;border-bottom:1px solid var(--border);}
+.day-date{font-weight:800;color:var(--teal-d);font-size:14px;}
+.day-tot{font-size:12px;color:var(--txt);text-align:right;}
+.day-tot b{color:var(--teal-d);}
+details.team-block{border-top:1px solid var(--border);}
+details.team-block:first-of-type{border-top:0;}
+details.team-block summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;}
+details.team-block summary::-webkit-details-marker{display:none;}
+details.team-block[open] .caret{transform:rotate(90deg);}
+.team-name{font-weight:700;font-size:13px;display:flex;align-items:center;}
+.caret{color:var(--muted);font-size:11px;margin-right:6px;display:inline-block;transition:transform .15s;}
+.team-num{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;}
+.team-num b{color:var(--txt);}
+.lsx-table{width:100%;border-collapse:collapse;font-size:12px;}
+.lsx-table th{color:var(--muted);text-transform:uppercase;font-size:10px;text-align:left;padding:4px 12px;border-top:1px solid var(--border);background:var(--bg);}
+.lsx-table td{padding:5px 12px;border-top:1px solid var(--border);}
+.lsx-table td.num,.lsx-table th.num{text-align:right;font-variant-numeric:tabular-nums;}
+.lsx-code{font-family:ui-monospace,Consolas,monospace;font-weight:600;word-break:break-all;}
+
 @media (max-width:500px){
   .searchBar{flex-direction:column;}
+  .searchBar .field{width:100%;}
   .btnRow{width:100%;}
   .btnRow .btn-sm{flex:1;}
 }
@@ -120,35 +151,73 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <!-- Topbar — fixed -->
   <div class="topbar">
     <button class="icon-btn" onclick="goBack()">←</button>
-    <div class="info"><h1>📊 Tiến độ đơn hàng</h1></div>
+    <div class="info"><h1>📊 Tra cứu tiến độ</h1></div>
     <button class="icon-btn" onclick="goHome()">🏠</button>
   </div>
 
-  <!-- Search area — fixed -->
-  <div class="searchArea">
-    <div class="searchBar">
-      <div class="field">
-        <label>Khách hàng</label>
-        <input id="fCustomer" list="customerList" type="text" placeholder="Gõ hoặc chọn..." />
-        <datalist id="customerList"></datalist>
-      </div>
-      <div class="field">
-        <label>LSX / Mã SP / Mô tả</label>
-        <input id="fQuery" type="text" placeholder="VD: 26062919001..." />
-      </div>
-      <div class="btnRow">
-        <button class="btn-sm" onclick="runSearch()">Tìm kiếm</button>
-        <button class="btn-sm gray" onclick="clearSearch()">Xóa</button>
-      </div>
-    </div>
-    <div id="summary" class="summary"></div>
+  <!-- Tab bar -->
+  <div class="tabbar">
+    <button id="tabBtnOrder" class="active" onclick="switchTab('order')">📦 Đơn hàng</button>
+    <button id="tabBtnTeam" onclick="switchTab('team')">🏭 Tổ / Ngày</button>
   </div>
 
-  <!-- Results — scrollable -->
-  <div class="resultArea" id="resultArea">
-    <div id="statusBox" class="status">Nhập Khách hàng hoặc LSX rồi bấm "Tìm kiếm"</div>
-    <div id="resultList"></div>
-    <div class="footer-note">Dữ liệu KH lấy từ Order List (cache 30 phút). Tiến độ = SL ghi nhận / SL đặt hàng.</div>
+  <!-- ── TAB A: Theo đơn hàng / khách hàng / mã SP ── -->
+  <div id="tabOrder" class="tabwrap">
+    <div class="searchArea">
+      <div class="searchBar">
+        <div class="field">
+          <label>Khách hàng</label>
+          <input id="fCustomer" list="customerList" type="text" placeholder="Gõ hoặc chọn..." />
+          <datalist id="customerList"></datalist>
+        </div>
+        <div class="field">
+          <label>LSX / Mã SP / Mô tả</label>
+          <input id="fQuery" type="text" placeholder="VD: 26062919001..." />
+        </div>
+        <div class="btnRow">
+          <button class="btn-sm" onclick="runSearch()">Tìm kiếm</button>
+          <button class="btn-sm gray" onclick="clearSearch()">Xóa</button>
+        </div>
+      </div>
+      <div id="summary" class="summary"></div>
+    </div>
+
+    <div class="resultArea" id="resultArea">
+      <div id="statusBox" class="status">Nhập Khách hàng hoặc LSX rồi bấm "Tìm kiếm"</div>
+      <div id="resultList"></div>
+      <div class="footer-note">Dữ liệu KH lấy từ Order List (cache 30 phút). Tiến độ = SL ghi nhận / SL đặt hàng.</div>
+    </div>
+  </div>
+
+  <!-- ── TAB B: Theo Tổ / Ngày ── -->
+  <div id="tabTeam" class="tabwrap" style="display:none;">
+    <div class="searchArea">
+      <div class="searchBar">
+        <div class="field">
+          <label>Từ ngày</label>
+          <input id="tdFrom" type="date" />
+        </div>
+        <div class="field">
+          <label>Đến ngày</label>
+          <input id="tdTo" type="date" />
+        </div>
+        <div class="btnRow">
+          <button class="btn-sm" onclick="runTeamSearch()">Xem</button>
+        </div>
+      </div>
+      <div class="presetRow">
+        <button class="chip" onclick="setPreset(0)">Hôm nay</button>
+        <button class="chip" onclick="setPreset(6)">7 ngày</button>
+        <button class="chip" onclick="setPreset(29)">30 ngày</button>
+      </div>
+      <div id="tdSummary" class="summary"></div>
+    </div>
+
+    <div class="resultArea" id="tdResultArea">
+      <div id="tdStatusBox" class="status">Chọn khoảng ngày rồi bấm "Xem"</div>
+      <div id="tdResultList"></div>
+      <div class="footer-note">Tổ suy từ Mã máy (MA_MAY cột D: CAT / TCO / GTB). SL = cột Số lượng, KL = KL (QR). Dữ liệu cache 5 phút.</div>
+    </div>
   </div>
 </section>
 
@@ -382,6 +451,124 @@ function clearSearch(){
 }
 
 /* ══════════════════════════════════════════════
+   TAB TỔ / NGÀY
+══════════════════════════════════════════════ */
+const WS_LABEL = { CAT:"Tổ Cắt", TCO:"Tổ Thủ công", GTB:"Tổ Giấy/Thùng/Bìa", KHAC:"Khác (máy ngoài danh mục)" };
+
+function switchTab(t){
+  const isOrder = t === "order";
+  document.getElementById("tabOrder").style.display = isOrder ? "flex" : "none";
+  document.getElementById("tabTeam").style.display  = isOrder ? "none" : "flex";
+  document.getElementById("tabBtnOrder").classList.toggle("active", isOrder);
+  document.getElementById("tabBtnTeam").classList.toggle("active", !isOrder);
+}
+
+function dstr(d){
+  const p = n => String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
+}
+
+function initTeamDates(){
+  const to = new Date(), from = new Date();
+  from.setDate(to.getDate()-6);
+  document.getElementById("tdFrom").value = dstr(from);
+  document.getElementById("tdTo").value   = dstr(to);
+}
+
+function setPreset(daysBack){
+  const to = new Date(), from = new Date();
+  from.setDate(to.getDate()-daysBack);
+  document.getElementById("tdFrom").value = dstr(from);
+  document.getElementById("tdTo").value   = dstr(to);
+  runTeamSearch();
+}
+
+function fmtN(x){ return (Number(x)||0).toLocaleString("vi-VN"); }
+
+function fmtDateVN(iso){
+  const p = iso.split("-");
+  const dt = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+  const thu = ["CN","Thứ 2","Thứ 3","Thứ 4","Thứ 5","Thứ 6","Thứ 7"][dt.getDay()];
+  return thu+" · "+p[2]+"/"+p[1]+"/"+p[0];
+}
+
+function tdStatus(kind, msg){
+  const box = document.getElementById("tdStatusBox");
+  box.style.display = "block";
+  box.className = "status" + (kind==="err" ? " err" : "");
+  box.innerHTML = msg;
+  document.getElementById("tdResultList").innerHTML = "";
+}
+
+async function runTeamSearch(){
+  const from = document.getElementById("tdFrom").value;
+  const to   = document.getElementById("tdTo").value;
+  if(!from || !to){ tdStatus("err","Vui lòng chọn đủ Từ ngày và Đến ngày"); return; }
+  tdStatus("", '<span class="spin"></span> Đang tổng hợp...');
+  document.getElementById("tdSummary").textContent = "";
+
+  try{
+    const data = await apiFetch("teamDaily", {from, to});
+    if(data.result === "ok"){
+      renderTeamDays(data.days || []);
+    } else {
+      tdStatus("err", "Lỗi: " + esc(data.error||"không xác định"));
+    }
+  }catch(e){
+    if(e.name === "AbortError") return;
+    tdStatus("err", "Không kết nối được. Kiểm tra mạng và thử lại.");
+  }
+}
+
+function renderTeamDays(days){
+  if(!days.length){
+    tdStatus("", '<div class="empty">Không có dữ liệu sản xuất trong khoảng ngày này.</div>');
+    document.getElementById("tdSummary").textContent = "";
+    return;
+  }
+  document.getElementById("tdStatusBox").style.display = "none";
+
+  let totSl = 0, totKg = 0;
+  days.forEach(d => { totSl += Number(d.sl)||0; totKg += Number(d.kg)||0; });
+  document.getElementById("tdSummary").textContent =
+    days.length+" ngày · Tổng SL: "+fmtN(totSl)+" · Tổng KL: "+fmtN(Math.round(totKg*1000)/1000)+" kg";
+
+  const parts = [];
+  for(const d of days){
+    parts.push(
+      '<div class="day-card">'+
+        '<div class="day-head">'+
+          '<div class="day-date">📅 '+fmtDateVN(d.ngay)+'</div>'+
+          '<div class="day-tot">SL: <b>'+fmtN(d.sl)+'</b> · KL: <b>'+fmtN(d.kg)+' kg</b> · '+(d.rows||0)+' lượt</div>'+
+        '</div>'
+    );
+    for(const t of (d.to||[])){
+      const lbl = WS_LABEL[t.ws] || ("Tổ "+t.ws);
+      parts.push(
+        '<details class="team-block">'+
+          '<summary>'+
+            '<div class="team-name"><span class="caret">▶</span>'+esc(lbl)+'</div>'+
+            '<div class="team-num">SL <b>'+fmtN(t.sl)+'</b> · KL <b>'+fmtN(t.kg)+' kg</b> · '+(t.lsx||[]).length+' LSX</div>'+
+          '</summary>'+
+          '<table class="lsx-table">'+
+            '<tr><th>LSX</th><th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
+            (t.lsx||[]).map(l =>
+              '<tr><td class="lsx-code">'+esc(l.lsx)+'</td>'+
+              '<td class="num">'+fmtN(l.sl)+'</td>'+
+              '<td class="num">'+fmtN(l.kg)+'</td>'+
+              '<td class="num">'+(l.rows||0)+'</td></tr>'
+            ).join("")+
+          '</table>'+
+        '</details>'
+      );
+    }
+    parts.push('</div>');
+  }
+  document.getElementById("tdResultList").innerHTML = parts.join("");
+  document.getElementById("tdResultArea").scrollTop = 0;
+}
+
+/* ══════════════════════════════════════════════
    KHỞI ĐỘNG
 ══════════════════════════════════════════════ */
 document.getElementById("loginUser").addEventListener("keydown", e=>{
@@ -407,6 +594,7 @@ function checkExistingSession(){
 
 function boot(){
   prefillLastUsername();
+  initTeamDates();
   if(checkExistingSession()){
     enterMain();
   } else {

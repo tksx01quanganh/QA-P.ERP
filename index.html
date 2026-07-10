@@ -860,7 +860,9 @@ function renderPicker(listId, searchId, items, onSelect, statusId, skipSearch){
     const isObj = typeof item === "object";
     const ma   = isObj ? item.ma   : null;
     const ten  = isObj ? item.ten  : item;   // string for names
-    const note = isObj ? item.ghiChu : "";
+    const ws   = isObj ? String(item.ws||"").toUpperCase() : "";
+    let note = isObj ? (item.ghiChu||"") : "";
+    if(ws) note = "Tổ: "+ws+(note ? " · "+note : "");
 
     const btn = document.createElement("button");
     btn.className="pick-btn";
@@ -1006,6 +1008,24 @@ function handleSP(text){
   };
   FB.single();
   lockAfterScan();
+
+  // Tổ GTB (Giấy/Thùng/Bìa): KL thực tế = KL(QR), không cần nhập tay
+  const ws = String(state.currentMay.ws||"").toUpperCase();
+  if(ws === "GTB"){
+    const klQR = numVN(parts[3]);
+    if(!isNaN(klQR) && klQR > 0){
+      row.kl = klQR;
+      state.rows.push(row);
+      saveRows();
+      refreshCount();
+      FB.row();
+      resumeScanning("✓ Đã ghi 1 bao "+klQR+" kg — KL tự động theo QR (tổng "+state.rows.length+")");
+      return;
+    }
+    // QR không có KL hợp lệ → fallback nhập tay
+    setHint("err","QR không có KL hợp lệ — vui lòng nhập tay");
+  }
+
   openWeightPopup(row);
 }
 
