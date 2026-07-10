@@ -161,7 +161,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div id="loginErr" class="manual-err"></div>
     <button id="loginBtn" class="btn lg green" onclick="doLogin()" style="margin-top:6px">Đăng nhập</button>
     <div id="loginStatus" class="pick-status" style="display:none"></div>
-    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 12</div>
+    <div style="text-align:center;color:var(--muted);margin-top:28px;font-size:13px">phiên bản 13</div>
   </div>
 </section>
 
@@ -192,6 +192,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="picker-wrap">
     <p class="picker-sub" id="funcSubtitle">Chọn chức năng</p>
     <div id="funcList" class="func-list"></div>
+  </div>
+</section>
+
+<!-- SCREEN 1d: Chọn nhánh ghi nhận SX -->
+<section id="screenBranch" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="enterModuleScreen()">←</button>
+    <div class="ttl">📋 Ghi nhận sản xuất</div>
+    <button class="icon-btn" onclick="enterModuleScreen()">🏠</button>
+  </div>
+  <div class="picker-wrap">
+    <p class="picker-sub">Chọn nhánh sản xuất</p>
+    <div class="func-list">
+      <button class="func-btn" onclick="selectBranch('CT')">
+        <div class="func-icon">✂️</div>
+        <div class="func-info">
+          <div class="func-name">Cắt / Thủ công</div>
+          <div class="func-desc">Quét QR → nhập Khối lượng thực tế (kg)</div>
+        </div>
+      </button>
+      <button class="func-btn" onclick="selectBranch('GTB')">
+        <div class="func-icon">📦</div>
+        <div class="func-info">
+          <div class="func-name">Giấy / Thùng / Bìa</div>
+          <div class="func-desc">Chỉ quét QR — KL thực tế tự động = KL (QR)</div>
+        </div>
+      </button>
+    </div>
   </div>
 </section>
 
@@ -399,7 +427,10 @@ let state = {
   rows:        [],     // [{may, mayTen, cn, cnTen, sp, note, ts}]
   editingIndex: -1,
   fromScan:    false,  // true nếu vào screenMay từ "Chuyển máy/CN"
+  branch:      "CT",   // nhánh ghi nhận: "CT" (Cắt/Thủ công — nhập KL tay) | "GTB" (Giấy/Thùng/Bìa — KL tự = KL QR)
 };
+
+const BRANCH_LABEL = { CT: "Cắt / Thủ công", GTB: "Giấy / Thùng / Bìa" };
 
 let qr = null;
 let scanning  = false;
@@ -695,7 +726,7 @@ function selectFunction(p){
       showToast("Bạn chỉ có quyền Xem, không có quyền Tạo dữ liệu", 3000);
       return;
     }
-    enterMayScreen();
+    show("screenBranch"); // chọn nhánh: Cắt/Thủ công hoặc Giấy/Thùng/Bìa
   } else if(url === "tien-do.html"){
     // Tra cứu tiến độ chỉ cần quyền "V" (View)
     window.location.href = "tien-do.html";
@@ -753,9 +784,15 @@ function filterMachines(q){
     selectMachine,"mayStatus",true);
 }
 
+function selectBranch(b){
+  state.branch = b;
+  enterMayScreen();
+}
+
 function enterMayScreen(){
   document.getElementById("mayContextLabel").textContent =
-    state.user ? "Người phụ trách: "+state.user : "Chạm vào máy để chọn";
+    "Nhánh: " + (BRANCH_LABEL[state.branch] || state.branch) +
+    (state.user ? " · " + state.user : "");
   document.getElementById("searchMay").value="";
   show("screenMay");
   loadMachines();
@@ -774,8 +811,8 @@ function backFromMay(){
     show("screenScan");
     setHint("info","Chọn Máy và Công nhân để tiếp tục quét");
   } else if(state.permissions.length > 0){
-    // Quay về màn hình chọn module
-    enterModuleScreen();
+    // Quay về màn hình chọn nhánh
+    show("screenBranch");
   } else {
     logout();
   }
@@ -887,12 +924,15 @@ function renderPicker(listId, searchId, items, onSelect, statusId, skipSearch){
    SCREEN 4: Quét Sản phẩm
 ══════════════════════════════════════════════════ */
 function enterScan(){
-  document.getElementById("curUser").textContent = state.user;
+  document.getElementById("curUser").textContent =
+    state.user + " · " + (BRANCH_LABEL[state.branch] || state.branch);
   state.fromScan = false;
   refreshSession();
   refreshCount();
   show("screenScan");
-  setHint("info","Bấm \"Bắt đầu quét\" để mở camera");
+  setHint("info", state.branch === "GTB"
+    ? "Bấm \"Bắt đầu quét\" — KL thực tế sẽ tự lấy theo QR, không cần nhập tay"
+    : "Bấm \"Bắt đầu quét\" để mở camera");
   document.getElementById("btnScanNext").textContent="Bắt đầu quét";
 }
 
@@ -1009,9 +1049,8 @@ function handleSP(text){
   FB.single();
   lockAfterScan();
 
-  // Tổ GTB (Giấy/Thùng/Bìa): KL thực tế = KL(QR), không cần nhập tay
-  const ws = String(state.currentMay.ws||"").toUpperCase();
-  if(ws === "GTB"){
+  // Nhánh GTB (Giấy/Thùng/Bìa): KL thực tế = KL(QR), không cần nhập tay
+  if(state.branch === "GTB"){
     const klQR = numVN(parts[3]);
     if(!isNaN(klQR) && klQR > 0){
       row.kl = klQR;
@@ -1063,13 +1102,18 @@ function showManualErr(msg){
 }
 function submitManual(){
   const sp   = document.getElementById("mSP").value.trim().toUpperCase();
-  const klVal= document.getElementById("mKg").value.trim();
+  let klVal  = document.getElementById("mKg").value.trim();
   const note = document.getElementById("mNote").value.trim();
   if(!sp){ showManualErr("Vui lòng nhập Mã Sản phẩm"); return; }
   const parts=sp.split("/");
   if(parts.length!==4||parts.some(p=>!p.trim())){
     showManualErr("Mã Sản phẩm cần đúng 3 dấu / (4 phần, không để trống)");
     return;
+  }
+  // Nhánh GTB: nếu bỏ trống KL → tự lấy KL(QR) từ phần 4 của mã SP
+  if(state.branch === "GTB" && !klVal){
+    const klQR = numVN(parts[3]);
+    if(!isNaN(klQR) && klQR > 0) klVal = String(klQR);
   }
   if(!klVal || isNaN(numVN(klVal)) || numVN(klVal) <= 0){
     showManualErr("Vui lòng nhập khối lượng hợp lệ (> 0)");
