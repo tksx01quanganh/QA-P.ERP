@@ -119,16 +119,24 @@ details.team-block[open] .caret{transform:rotate(90deg);}
 .team-num{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;}
 .team-num b{color:var(--txt);}
 .lsx-table{width:100%;border-collapse:collapse;font-size:12px;}
-.lsx-table th{color:var(--muted);text-transform:uppercase;font-size:10px;text-align:left;padding:4px 12px;border-top:1px solid var(--border);background:var(--bg);}
+.lsx-table th{color:var(--muted);text-transform:uppercase;font-size:10px;text-align:left;padding:4px 12px;border-top:1px solid var(--border);background:var(--bg);
+  position:sticky;top:0;z-index:2;box-shadow:0 1px 0 var(--border);} /* đóng băng hàng tiêu đề khi cuộn */
 .lsx-table td{padding:5px 12px;border-top:1px solid var(--border);}
 .lsx-table td.num,.lsx-table th.num{text-align:right;font-variant-numeric:tabular-nums;}
 .lsx-code{font-family:ui-monospace,Consolas,monospace;font-weight:600;word-break:break-all;}
+.sub-title{font-size:11px;font-weight:800;color:var(--teal-d);text-transform:uppercase;padding:8px 12px 2px;background:#f8fafc;border-top:1px solid var(--border);}
+.dateRow{display:flex;gap:8px;width:100%;}
+.dateRow .field{flex:1;min-width:0;margin-bottom:0;}
+.dateRow .btnRow{flex-shrink:0;}
 
 @media (max-width:500px){
   .searchBar{flex-direction:column;}
   .searchBar .field{width:100%;}
   .btnRow{width:100%;}
   .btnRow .btn-sm{flex:1;}
+  /* Từ ngày + Đến ngày (và Tổ + nút Xem) vẫn nằm chung 1 hàng trên điện thoại */
+  .dateRow .field{width:auto;}
+  .dateRow .btnRow{width:auto;}
 }
 </style>
 </head>
@@ -236,26 +244,30 @@ details.team-block[open] .caret{transform:rotate(90deg);}
   <div id="tabTeam" class="tabwrap" style="display:none;">
     <div class="searchArea">
       <div class="searchBar">
-        <div class="field">
-          <label>Từ ngày</label>
-          <input id="tdFrom" type="date" />
+        <div class="dateRow">
+          <div class="field">
+            <label>Từ ngày</label>
+            <input id="tdFrom" type="date" />
+          </div>
+          <div class="field">
+            <label>Đến ngày</label>
+            <input id="tdTo" type="date" />
+          </div>
         </div>
-        <div class="field">
-          <label>Đến ngày</label>
-          <input id="tdTo" type="date" />
-        </div>
-        <div class="field">
-          <label>Tổ</label>
-          <select id="tdWs" onchange="reRenderTeam()">
-            <option value="">Tất cả các tổ</option>
-            <option value="CAT">Tổ Cắt</option>
-            <option value="TCO">Tổ Thủ công</option>
-            <option value="GTB">Tổ Giấy/Thùng/Bìa</option>
-            <option value="KHAC">Khác</option>
-          </select>
-        </div>
-        <div class="btnRow">
-          <button class="btn-sm" onclick="runTeamSearch()">Xem</button>
+        <div class="dateRow">
+          <div class="field">
+            <label>Tổ</label>
+            <select id="tdWs" onchange="reRenderTeam()">
+              <option value="">Tất cả các tổ</option>
+              <option value="CAT">Tổ Cắt</option>
+              <option value="TCO">Tổ Thủ công</option>
+              <option value="GTB">Tổ Giấy/Thùng/Bìa</option>
+              <option value="KHAC">Khác</option>
+            </select>
+          </div>
+          <div class="btnRow">
+            <button class="btn-sm" onclick="runTeamSearch()">Xem</button>
+          </div>
         </div>
       </div>
       <div class="presetRow">
@@ -626,12 +638,25 @@ function renderTeamDays(days){
     );
     for(const t of (d.to||[])){
       const lbl = WS_LABEL[t.ws] || ("Tổ "+t.ws);
+      const mayList = t.may || []; // backend cũ chưa có → tự ẩn phần máy
       parts.push(
         '<details class="team-block">'+
           '<summary>'+
             '<div class="team-name"><span class="caret">▶</span>'+esc(lbl)+'</div>'+
             '<div class="team-num">SL <b>'+fmtN(t.sl)+'</b> · KL <b>'+fmtN(t.kg)+' kg</b> · '+(t.lsx||[]).length+' LSX</div>'+
           '</summary>'+
+          (mayList.length ?
+            '<div class="sub-title">🔩 Theo máy ('+mayList.length+')</div>'+
+            '<table class="lsx-table">'+
+              '<tr><th>Máy</th><th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
+              mayList.map(m =>
+                '<tr><td class="lsx-code">'+esc(m.may)+(m.ten?' <span style="font-family:inherit;font-weight:400;color:var(--muted)">'+esc(m.ten)+'</span>':'')+'</td>'+
+                '<td class="num">'+fmtN(m.sl)+'</td>'+
+                '<td class="num">'+fmtN(m.kg)+'</td>'+
+                '<td class="num">'+(m.rows||0)+'</td></tr>'
+              ).join("")+
+            '</table>' : '')+
+          '<div class="sub-title">📋 Theo LSX ('+(t.lsx||[]).length+')</div>'+
           '<table class="lsx-table">'+
             '<tr><th>LSX</th><th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
             (t.lsx||[]).map(l =>
