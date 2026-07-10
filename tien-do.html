@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0f766e" />
-<title>Tra cứu tiến độ — QA-P.ERP</title>
+<title>Tra cứu tiến độ Sản xuất — QA-P.ERP</title>
 <style>
 :root{
   --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
@@ -81,6 +81,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .footer-note{text-align:center;color:var(--muted);font-size:11px;padding:12px 10px 20px;}
 .no-access{text-align:center;color:var(--red);font-weight:600;padding:40px 20px;font-size:16px;}
 
+/* ── màn hình chọn kiểu tra cứu ──────────── */
+.choose-wrap{max-width:440px;margin:40px auto;padding:20px;}
+.choose-sub{text-align:center;color:var(--muted);font-size:14px;margin:0 0 18px;}
+.choose-btn{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--card);border:2px solid var(--border);border-radius:14px;padding:16px 14px;margin-bottom:12px;cursor:pointer;font-family:inherit;}
+.choose-btn:active{transform:scale(.98);border-color:var(--teal);}
+.cb-icon{font-size:30px;flex-shrink:0;}
+.cb-name{font-size:15px;font-weight:800;color:var(--txt);margin-bottom:3px;}
+.cb-desc{font-size:12px;color:var(--muted);line-height:1.35;}
+
+/* ── select (lọc Tổ) ─────────────────────── */
+.field select{width:100%;padding:10px 11px;font-size:15px;border:2px solid var(--border);border-radius:10px;background:#fff;font-family:inherit;color:var(--txt);}
+.field select:focus{outline:none;border-color:var(--teal);}
+
 /* ── tab bar ─────────────────────────────── */
 .tabbar{display:flex;flex-shrink:0;background:var(--teal-d);}
 .tabbar button{flex:1;border:0;background:transparent;color:rgba(255,255,255,.65);font-size:14px;font-weight:700;padding:11px 6px;cursor:pointer;border-bottom:3px solid transparent;}
@@ -125,11 +138,11 @@ details.team-block[open] .caret{transform:rotate(90deg);}
      SCREEN: Đăng nhập
 ════════════════════════════════════════════ -->
 <section id="screenLogin" class="screen active">
-  <div class="topbar"><div class="info"><h1>📊 Tiến độ đơn hàng</h1></div></div>
+  <div class="topbar"><div class="info"><h1>📊 Tra cứu tiến độ Sản xuất</h1></div></div>
   <div class="login-scroll">
     <div class="login-wrap">
       <h2>Đăng nhập</h2>
-      <p class="sub">Đăng nhập để xem tiến độ đơn hàng</p>
+      <p class="sub">Đăng nhập để tra cứu tiến độ sản xuất</p>
       <div class="field">
         <label>Username</label>
         <input id="loginUser" type="text" autocapitalize="none" autocomplete="username" placeholder="VD: tuyenpv" />
@@ -145,13 +158,43 @@ details.team-block[open] .caret{transform:rotate(90deg);}
 </section>
 
 <!-- ════════════════════════════════════════════
+     SCREEN: Chọn kiểu tra cứu
+════════════════════════════════════════════ -->
+<section id="screenChoose" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goHome()">←</button>
+    <div class="info"><h1>📊 Tra cứu tiến độ Sản xuất</h1></div>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+  </div>
+  <div class="login-scroll">
+    <div class="choose-wrap">
+      <p class="choose-sub">Chọn kiểu tra cứu</p>
+      <button class="choose-btn" onclick="chooseOption('order')">
+        <div class="cb-icon">📦</div>
+        <div class="cb-info">
+          <div class="cb-name">Theo LSX / Khách hàng / Mã hàng</div>
+          <div class="cb-desc">Tiến độ từng đơn hàng: % hoàn thành so với SL đặt</div>
+        </div>
+      </button>
+      <button class="choose-btn" onclick="chooseOption('team')">
+        <div class="cb-icon">🏭</div>
+        <div class="cb-info">
+          <div class="cb-name">Theo Tổ / Ngày</div>
+          <div class="cb-desc">Tổng SL + KL sản xuất mỗi ngày theo tổ, chi tiết từng LSX</div>
+        </div>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
      SCREEN: Nội dung tra cứu
 ════════════════════════════════════════════ -->
 <section id="screenMain" class="screen">
   <!-- Topbar — fixed -->
   <div class="topbar">
-    <button class="icon-btn" onclick="goBack()">←</button>
-    <div class="info"><h1>📊 Tra cứu tiến độ</h1></div>
+    <button class="icon-btn" onclick="showScreen('screenChoose')">←</button>
+    <div class="info"><h1>📊 Tra cứu tiến độ Sản xuất</h1></div>
     <button class="icon-btn" onclick="goHome()">🏠</button>
   </div>
 
@@ -200,6 +243,16 @@ details.team-block[open] .caret{transform:rotate(90deg);}
         <div class="field">
           <label>Đến ngày</label>
           <input id="tdTo" type="date" />
+        </div>
+        <div class="field">
+          <label>Tổ</label>
+          <select id="tdWs" onchange="reRenderTeam()">
+            <option value="">Tất cả các tổ</option>
+            <option value="CAT">Tổ Cắt</option>
+            <option value="TCO">Tổ Thủ công</option>
+            <option value="GTB">Tổ Giấy/Thùng/Bìa</option>
+            <option value="KHAC">Khác</option>
+          </select>
         </div>
         <div class="btnRow">
           <button class="btn-sm" onclick="runTeamSearch()">Xem</button>
@@ -310,8 +363,13 @@ function prefillLastUsername(){
 }
 
 function enterMain(){
+  showScreen("screenChoose");
+}
+
+function chooseOption(t){
+  switchTab(t);
   showScreen("screenMain");
-  loadCustomers();
+  if(t === "order") loadCustomers();
 }
 
 /* ══════════════════════════════════════════════
@@ -500,6 +558,8 @@ function tdStatus(kind, msg){
   document.getElementById("tdResultList").innerHTML = "";
 }
 
+let lastTeamDays = null; // dữ liệu lần tải gần nhất — để lọc Tổ không cần gọi lại server
+
 async function runTeamSearch(){
   const from = document.getElementById("tdFrom").value;
   const to   = document.getElementById("tdTo").value;
@@ -510,7 +570,8 @@ async function runTeamSearch(){
   try{
     const data = await apiFetch("teamDaily", {from, to});
     if(data.result === "ok"){
-      renderTeamDays(data.days || []);
+      lastTeamDays = data.days || [];
+      reRenderTeam();
     } else {
       tdStatus("err", "Lỗi: " + esc(data.error||"không xác định"));
     }
@@ -518,6 +579,27 @@ async function runTeamSearch(){
     if(e.name === "AbortError") return;
     tdStatus("err", "Không kết nối được. Kiểm tra mạng và thử lại.");
   }
+}
+
+/** Lọc theo Tổ (client-side) rồi vẽ lại — đổi Tổ không cần tải lại dữ liệu */
+function reRenderTeam(){
+  if(lastTeamDays === null) return; // chưa tải lần nào
+  const ws = document.getElementById("tdWs").value;
+  renderTeamDays(filterDaysByWs(lastTeamDays, ws));
+}
+
+function filterDaysByWs(days, ws){
+  if(!ws) return days;
+  const r3 = x => Math.round((Number(x)||0)*1000)/1000;
+  const out = [];
+  for(const d of days){
+    const teams = (d.to||[]).filter(t => t.ws === ws);
+    if(!teams.length) continue;
+    let sl=0, kg=0, rows=0;
+    teams.forEach(t => { sl+=Number(t.sl)||0; kg+=Number(t.kg)||0; rows+=Number(t.rows)||0; });
+    out.push({ ngay:d.ngay, sl:r3(sl), kg:r3(kg), rows:rows, to:teams });
+  }
+  return out;
 }
 
 function renderTeamDays(days){
