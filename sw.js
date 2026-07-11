@@ -1,4 +1,4 @@
-const CACHE = 'qap-erp-v19';
+const CACHE = 'qap-erp-v20';
 const ASSETS = [
   './',
   './index.html',
