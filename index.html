@@ -729,41 +729,32 @@ function backToModules(){
 }
 
 function selectFunction(p){
-  try{
-    const url = (p.url || "").trim().toLowerCase();
-    const quyen = Array.isArray(p.quyen) ? p.quyen : [p.quyen];
+  const url = (p.url || "").trim().toLowerCase();
+  const quyen = Array.isArray(p.quyen) ? p.quyen : [p.quyen];
 
-    // DEBUG — hiện toast chi tiết để tìm lỗi (xóa sau khi fix xong)
-    console.log("[DEBUG selectFunction]", JSON.stringify({url: p.url, quyen: p.quyen, chucNang: p.chucNang}));
-
-    if(url === "index.html" || url.startsWith("index.html?")){
-      // Nhập liệu SX cần quyền "C" (Create) hoặc "Tao" (format cũ)
-      const hasCreate = quyen.includes("C") || quyen.includes("Tao") || quyen.includes("Tạo");
-      if(!hasCreate){
-        showToast("Bạn chỉ có quyền Xem [" + quyen.join(",") + "], không có quyền Tạo dữ liệu", 4000);
-        return;
-      }
-      // Chức năng có ?branch=CT|GTB (VD: PD_A01 → index.html?branch=CT) → vào thẳng nhánh đó.
-      // URL không có branch (kiểu cũ PD_GNSX) → hiện màn hình chọn nhánh.
-      const m = /[?&]branch=(CT|GTB)\b/i.exec(url);
-      if(m){
-        state.branchLocked = true;   // nhánh do phân quyền quyết định → nút ← về menu, không về màn chọn nhánh
-        selectBranch(m[1].toUpperCase());
-      } else {
-        state.branchLocked = false;
-        show("screenBranch"); // chọn nhánh: Cắt/Thủ công hoặc Giấy/Thùng/Bìa
-      }
-    } else if(url === "tien-do.html"){
-      // Tra cứu tiến độ chỉ cần quyền "V" (View)
-      window.location.href = "tien-do.html";
-    } else if(url){
-      window.location.href = p.url;
-    } else {
-      showToast("DEBUG: url trống — chức năng \"" + esc(p.chucNang || p.tenModule) + "\" chưa có URL", 4000);
+  if(url === "index.html" || url.startsWith("index.html?")){
+    // Nhập liệu SX cần quyền "C" (Create)
+    if(!quyen.includes("C")){
+      showToast("Bạn chỉ có quyền Xem, không có quyền Tạo dữ liệu", 3000);
+      return;
     }
-  }catch(err){
-    showToast("LỖI selectFunction: " + err.message, 5000);
-    console.error("[selectFunction error]", err);
+    // Chức năng có ?branch=CT|GTB (VD: PD_A01 → index.html?branch=CT) → vào thẳng nhánh đó.
+    // URL không có branch (kiểu cũ PD_GNSX) → hiện màn hình chọn nhánh.
+    const m = /[?&]branch=(CT|GTB)\b/i.exec(url);
+    if(m){
+      state.branchLocked = true;   // nhánh do phân quyền quyết định → nút ← về menu, không về màn chọn nhánh
+      selectBranch(m[1].toUpperCase());
+    } else {
+      state.branchLocked = false;
+      show("screenBranch"); // chọn nhánh: Cắt/Thủ công hoặc Giấy/Thùng/Bìa
+    }
+  } else if(url === "tien-do.html"){
+    // Tra cứu tiến độ chỉ cần quyền "V" (View)
+    window.location.href = "tien-do.html";
+  } else if(url){
+    window.location.href = p.url;
+  } else {
+    showToast("Chức năng \"" + esc(p.chucNang || p.tenModule) + "\" chưa được phát triển", 3000);
   }
 }
 
