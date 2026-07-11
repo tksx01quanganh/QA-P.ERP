@@ -113,7 +113,7 @@ details.team-block{border-top:1px solid var(--border);}
 details.team-block:first-of-type{border-top:0;}
 details.team-block summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;}
 details.team-block summary::-webkit-details-marker{display:none;}
-details.team-block[open] .caret{transform:rotate(90deg);}
+details.team-block[open] > summary .caret{transform:rotate(90deg);}
 .team-name{font-weight:700;font-size:13px;display:flex;align-items:center;}
 .caret{color:var(--muted);font-size:11px;margin-right:6px;display:inline-block;transition:transform .15s;}
 .team-num{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;}
@@ -125,18 +125,32 @@ details.team-block[open] .caret{transform:rotate(90deg);}
 .lsx-table td.num,.lsx-table th.num{text-align:right;font-variant-numeric:tabular-nums;}
 .lsx-code{font-family:ui-monospace,Consolas,monospace;font-weight:600;word-break:break-all;}
 .sub-title{font-size:11px;font-weight:800;color:var(--teal-d);text-transform:uppercase;padding:8px 12px 2px;background:#f8fafc;border-top:1px solid var(--border);}
-.dateRow{display:flex;gap:8px;width:100%;}
-.dateRow .field{flex:1;min-width:0;margin-bottom:0;}
-.dateRow .btnRow{flex-shrink:0;}
+
+/* ── hàng lọc inline (nhãn + ô cùng dòng) ── */
+.inlineRow{display:flex;align-items:center;gap:6px;width:100%;}
+.il{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;white-space:nowrap;flex-shrink:0;}
+.ind{flex:1;min-width:0;padding:8px 6px;font-size:14px;border:2px solid var(--border);border-radius:10px;background:#fff;font-family:inherit;color:var(--txt);}
+.ind:focus{outline:none;border-color:var(--teal);}
+.wsChips{display:flex;gap:4px;flex:1;min-width:0;flex-wrap:wrap;}
+.wchip{border:1.5px solid var(--border);background:#fff;color:var(--muted);border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.wchip.active{background:var(--teal);border-color:var(--teal);color:#fff;}
+.inlineRow .btn-sm{flex-shrink:0;}
+
+/* ── cấp Máy trong cây Tổ → Máy → LSX ── */
+details.may-block{border-top:1px solid var(--border);background:#fbfdff;}
+details.may-block summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px 8px 22px;cursor:pointer;}
+details.may-block summary::-webkit-details-marker{display:none;}
+details.may-block[open] > summary .caret{transform:rotate(90deg);}
+.may-name{font-size:12.5px;font-weight:700;display:flex;align-items:center;min-width:0;}
+.may-name .mn-ten{font-weight:400;color:var(--muted);margin-left:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+details.may-block .lsx-table td:first-child,details.may-block .lsx-table th:first-child{padding-left:22px;}
 
 @media (max-width:500px){
   .searchBar{flex-direction:column;}
   .searchBar .field{width:100%;}
   .btnRow{width:100%;}
   .btnRow .btn-sm{flex:1;}
-  /* Từ ngày + Đến ngày (và Tổ + nút Xem) vẫn nằm chung 1 hàng trên điện thoại */
-  .dateRow .field{width:auto;}
-  .dateRow .btnRow{width:auto;}
+  /* .inlineRow tự co giãn — không cần override trên điện thoại */
 }
 </style>
 </head>
@@ -243,31 +257,22 @@ details.team-block[open] .caret{transform:rotate(90deg);}
   <!-- ── TAB B: Theo Tổ / Ngày ── -->
   <div id="tabTeam" class="tabwrap" style="display:none;">
     <div class="searchArea">
-      <div class="searchBar">
-        <div class="dateRow">
-          <div class="field">
-            <label>Từ ngày</label>
-            <input id="tdFrom" type="date" />
-          </div>
-          <div class="field">
-            <label>Đến ngày</label>
-            <input id="tdTo" type="date" />
-          </div>
+      <div class="searchBar" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <!-- Hàng 1: Từ ngày + Đến ngày (nhãn và ô cùng dòng) -->
+        <div class="inlineRow">
+          <label class="il">Từ ngày</label><input id="tdFrom" type="date" class="ind" />
+          <label class="il">Đến ngày</label><input id="tdTo" type="date" class="ind" />
         </div>
-        <div class="dateRow">
-          <div class="field">
-            <label>Tổ</label>
-            <select id="tdWs" onchange="reRenderTeam()">
-              <option value="">Tất cả các tổ</option>
-              <option value="CAT">Tổ Cắt</option>
-              <option value="TCO">Tổ Thủ công</option>
-              <option value="GTB">Tổ Giấy/Thùng/Bìa</option>
-              <option value="KHAC">Khác</option>
-            </select>
+        <!-- Hàng 2: Tổ (đa chọn) + nút Xem -->
+        <div class="inlineRow">
+          <label class="il">Tổ</label>
+          <div class="wsChips" id="wsChips">
+            <button type="button" class="wchip active" data-ws="CAT"  onclick="toggleWs(this)">Cắt</button>
+            <button type="button" class="wchip active" data-ws="TCO"  onclick="toggleWs(this)">Thủ công</button>
+            <button type="button" class="wchip active" data-ws="GTB"  onclick="toggleWs(this)">GTB</button>
+            <button type="button" class="wchip active" data-ws="KHAC" onclick="toggleWs(this)">Khác</button>
           </div>
-          <div class="btnRow">
-            <button class="btn-sm" onclick="runTeamSearch()">Xem</button>
-          </div>
+          <button class="btn-sm" onclick="runTeamSearch()">Xem</button>
         </div>
       </div>
       <div class="presetRow">
@@ -593,19 +598,35 @@ async function runTeamSearch(){
   }
 }
 
-/** Lọc theo Tổ (client-side) rồi vẽ lại — đổi Tổ không cần tải lại dữ liệu */
-function reRenderTeam(){
-  if(lastTeamDays === null) return; // chưa tải lần nào
-  const ws = document.getElementById("tdWs").value;
-  renderTeamDays(filterDaysByWs(lastTeamDays, ws));
+/** Bật/tắt chip tổ (đa chọn) rồi vẽ lại — không cần tải lại dữ liệu */
+function toggleWs(btn){
+  btn.classList.toggle("active");
+  reRenderTeam();
 }
 
-function filterDaysByWs(days, ws){
-  if(!ws) return days;
+/** Danh sách tổ đang chọn (mảng mã ws) */
+function selectedWs(){
+  return Array.from(document.querySelectorAll("#wsChips .wchip.active")).map(b => b.dataset.ws);
+}
+
+function reRenderTeam(){
+  if(lastTeamDays === null) return; // chưa tải lần nào
+  const sel = selectedWs();
+  if(!sel.length){
+    tdStatus("", '<div class="empty">Chọn ít nhất 1 tổ để xem.</div>');
+    document.getElementById("tdSummary").textContent = "";
+    return;
+  }
+  renderTeamDays(filterDaysByWs(lastTeamDays, sel));
+}
+
+/** Lọc theo NHIỀU tổ; chọn đủ 4 tổ = xem tất cả. Tính lại tổng ngày theo các tổ được chọn */
+function filterDaysByWs(days, wsArr){
+  if(!wsArr || wsArr.length >= 4) return days;
   const r3 = x => Math.round((Number(x)||0)*1000)/1000;
   const out = [];
   for(const d of days){
-    const teams = (d.to||[]).filter(t => t.ws === ws);
+    const teams = (d.to||[]).filter(t => wsArr.includes(t.ws));
     if(!teams.length) continue;
     let sl=0, kg=0, rows=0;
     teams.forEach(t => { sl+=Number(t.sl)||0; kg+=Number(t.kg)||0; rows+=Number(t.rows)||0; });
@@ -638,36 +659,36 @@ function renderTeamDays(days){
     );
     for(const t of (d.to||[])){
       const lbl = WS_LABEL[t.ws] || ("Tổ "+t.ws);
-      const mayList = t.may || []; // backend cũ chưa có → tự ẩn phần máy
+      const mayList = t.may || [];
+      const nLsx = t.lsxCount != null ? t.lsxCount : (t.lsx||[]).length;
+      // Cây Tổ → Máy → LSX: mặc định MỞ hết, bấm vào dòng (▶) để đóng/mở tiết kiệm không gian
       parts.push(
-        '<details class="team-block">'+
+        '<details class="team-block" open>'+
           '<summary>'+
             '<div class="team-name"><span class="caret">▶</span>'+esc(lbl)+'</div>'+
-            '<div class="team-num">SL <b>'+fmtN(t.sl)+'</b> · KL <b>'+fmtN(t.kg)+' kg</b> · '+(t.lsx||[]).length+' LSX</div>'+
-          '</summary>'+
-          (mayList.length ?
-            '<div class="sub-title">🔩 Theo máy ('+mayList.length+')</div>'+
-            '<table class="lsx-table">'+
-              '<tr><th>Máy</th><th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
-              mayList.map(m =>
-                '<tr><td class="lsx-code">'+esc(m.may)+(m.ten?' <span style="font-family:inherit;font-weight:400;color:var(--muted)">'+esc(m.ten)+'</span>':'')+'</td>'+
-                '<td class="num">'+fmtN(m.sl)+'</td>'+
-                '<td class="num">'+fmtN(m.kg)+'</td>'+
-                '<td class="num">'+(m.rows||0)+'</td></tr>'
-              ).join("")+
-            '</table>' : '')+
-          '<div class="sub-title">📋 Theo LSX ('+(t.lsx||[]).length+')</div>'+
-          '<table class="lsx-table">'+
-            '<tr><th>LSX</th><th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
-            (t.lsx||[]).map(l =>
-              '<tr><td class="lsx-code">'+esc(l.lsx)+'</td>'+
-              '<td class="num">'+fmtN(l.sl)+'</td>'+
-              '<td class="num">'+fmtN(l.kg)+'</td>'+
-              '<td class="num">'+(l.rows||0)+'</td></tr>'
-            ).join("")+
-          '</table>'+
-        '</details>'
+            '<div class="team-num">SL <b>'+fmtN(t.sl)+'</b> · KL <b>'+fmtN(t.kg)+' kg</b> · '+mayList.length+' máy · '+nLsx+' LSX</div>'+
+          '</summary>'
       );
+      for(const m of mayList){
+        parts.push(
+          '<details class="may-block" open>'+
+            '<summary>'+
+              '<div class="may-name"><span class="caret">▶</span>🔩 '+esc(m.may)+(m.ten?'<span class="mn-ten">'+esc(m.ten)+'</span>':'')+'</div>'+
+              '<div class="team-num">SL <b>'+fmtN(m.sl)+'</b> · KL <b>'+fmtN(m.kg)+' kg</b> · '+(m.rows||0)+' lượt</div>'+
+            '</summary>'+
+            '<table class="lsx-table">'+
+              '<tr><th>LSX</th><th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
+              (m.lsx||[]).map(l =>
+                '<tr><td class="lsx-code">'+esc(l.lsx)+'</td>'+
+                '<td class="num">'+fmtN(l.sl)+'</td>'+
+                '<td class="num">'+fmtN(l.kg)+'</td>'+
+                '<td class="num">'+(l.rows||0)+'</td></tr>'
+              ).join("")+
+            '</table>'+
+          '</details>'
+        );
+      }
+      parts.push('</details>');
     }
     parts.push('</div>');
   }
