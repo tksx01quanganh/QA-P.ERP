@@ -193,7 +193,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
    CẤU HÌNH
 ══════════════════════════════════════════════════ */
 const CONFIG = {
-  XUAT_HANG_URL: "https://script.google.com/macros/s/AKfycbyUaJIBrUi-ZevW-9XKBy0vOY9ROVlo82J2UccukAkIY4Z36o-uQr_p8zZH9OcxHyr3mw/exec"
+  XUAT_HANG_URL: "https://script.google.com/macros/s/AKfycbyJA2oQGzUJjTmaGonL8iN5gA0HMJIY-FFqfI10Fpj_oXPKcHF_ezw3J787ph-pGrenSA/exec"
 };
 
 /* ══════════════════════════════════════════════════
@@ -535,10 +535,12 @@ function addScanItem(lsx, sl, qrRaw){
   const sessionSL = state.scanList.filter(s=>s.lsx===lsx).reduce((a,s)=>a+s.sl, 0);
   const totalAfter = item.slDone + sessionSL + sl;
 
-  // Cảnh báo vượt (nhưng vẫn cho thêm)
+  // Chặn vượt SL
   if(totalAfter > item.slYC){
-    FB.warn();
-    setHint("warn","⚠ VƯỢT SL! Tổng: "+fmt(totalAfter)+" > YC: "+fmt(item.slYC)+". Đã thêm vào danh sách.");
+    FB.err();
+    setHint("err","⚠ VƯỢT SL! Tổng sẽ là "+fmt(totalAfter)+" > YC: "+fmt(item.slYC)+". Không thể thêm.");
+    document.getElementById("btnScan").textContent="Quét tiếp";
+    return;
   } else {
     const isDone = totalAfter >= item.slYC;
     if(isDone){
