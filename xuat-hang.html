@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Đối chiếu Xuất hàng</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{--teal:#0f766e;--bg:#f8fafc;--txt:#1e293b;--muted:#64748b;--border:#e2e8f0;--red:#dc2626;--green:#16a34a;--amber:#d97706;--blue:#2563eb;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);-webkit-tap-highlight-color:transparent;}
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* topbar */
+.topbar{display:flex;align-items:center;padding:10px 12px;background:#fff;border-bottom:1px solid var(--border);gap:8px;position:sticky;top:0;z-index:10;}
+.topbar .ttl{flex:1;font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.icon-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:4px 8px;border-radius:8px;}
+.icon-btn:active{background:#f1f5f9;}
+
+/* card / list */
+.wrap{padding:12px;flex:1;}
+.search-box{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:12px;font-size:16px;outline:none;margin-bottom:10px;}
+.search-box:focus{border-color:var(--teal);}
+
+.dn-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:8px;cursor:pointer;}
+.dn-card:active{border-color:var(--teal);background:#ecfdf5;}
+.dn-code{font-size:18px;font-weight:700;}
+.dn-kh{font-size:13px;color:var(--muted);margin-top:2px;}
+.dn-count{font-size:12px;color:var(--teal);font-weight:600;margin-top:4px;}
+
+/* progress items */
+.lsx-item{background:#fff;border:2px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;}
+.lsx-item.done{border-color:var(--green);background:#f0fdf4;}
+.lsx-item.over{border-color:var(--red);background:#fef2f2;}
+.lsx-head{display:flex;justify-content:space-between;align-items:center;}
+.lsx-code{font-size:16px;font-weight:700;}
+.lsx-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;}
+.badge-ok{background:#dcfce7;color:var(--green);}
+.badge-done{background:#bbf7d0;color:#15803d;}
+.badge-over{background:#fecaca;color:var(--red);}
+.lsx-bars{margin-top:8px;}
+.bar-row{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:13px;}
+.bar-label{width:28px;font-weight:600;color:var(--muted);flex-shrink:0;}
+.bar-track{flex:1;height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:5px;transition:width .3s;}
+.fill-ok{background:var(--green);}
+.fill-over{background:var(--red);}
+.bar-text{font-size:12px;color:var(--muted);white-space:nowrap;min-width:90px;text-align:right;}
+
+/* buttons */
+.btn{border:none;padding:12px 20px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%;}
+.btn:active{opacity:.85;}
+.btn.lg{padding:14px;font-size:18px;}
+.btn.green{background:var(--green);color:#fff;}
+.btn.amber{background:var(--amber);color:#fff;}
+.btn.gray{background:#e2e8f0;color:var(--txt);}
+.btn.ghost{background:none;border:2px solid var(--border);color:var(--txt);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.controls{padding:12px;display:flex;flex-direction:column;gap:8px;background:#fff;border-top:1px solid var(--border);}
+.row2{display:flex;gap:8px;}
+.row2 .btn{flex:1;}
+
+/* hint */
+.hint{padding:10px 14px;border-radius:10px;font-size:14px;text-align:center;margin:8px 0;}
+.hint.info{background:#e0f2fe;color:#0369a1;}
+.hint.ok{background:#dcfce7;color:#15803d;}
+.hint.err{background:#fef2f2;color:var(--red);}
+.hint.warn{background:#fef3c7;color:#92400e;}
+
+/* scan */
+#reader{width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;}
+#reader video{border-radius:12px;}
+
+/* overlay */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center;}
+.overlay.active{display:flex;}
+.sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 28px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;}
+.sheet h3{font-size:18px;margin-bottom:12px;}
+.field{margin-bottom:12px;}
+.field label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;}
+.field input{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:16px;outline:none;}
+.field input:focus{border-color:var(--teal);}
+.manual-err{color:var(--red);font-size:13px;margin-top:4px;display:none;}
+
+/* toast */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:12px;font-size:14px;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;}
+
+/* summary bar */
+.summary{background:#fff;border-bottom:1px solid var(--border);padding:10px 14px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.sum-chip{font-size:13px;font-weight:600;padding:4px 10px;border-radius:8px;}
+.chip-total{background:#e0f2fe;color:#0369a1;}
+.chip-done{background:#dcfce7;color:#15803d;}
+.chip-remain{background:#fef3c7;color:#92400e;}
+
+/* empty */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:15px;}
+
+/* spin */
+.spin{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle;}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 1: Chọn DN
+════════════════════════════════════════════ -->
+<section id="screenDN" class="screen active">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goBack()">←</button>
+    <div class="ttl">📦 Đối chiếu Xuất hàng</div>
+  </div>
+  <div class="wrap">
+    <input id="searchDN" class="search-box" type="text" placeholder="Tìm hoặc nhập mã DN..." oninput="filterDN(this.value)" />
+    <div id="dnStatus" class="hint info" style="display:none">Đang tải danh sách DN...</div>
+    <div id="dnList"></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 2: Chi tiết DN + Quét
+════════════════════════════════════════════ -->
+<section id="screenScan" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="backToDN()">←</button>
+    <div class="ttl">📋 <span id="dnTitle">—</span></div>
+  </div>
+  <div class="summary" id="summaryBar"></div>
+  <div class="wrap" id="lsxWrap">
+    <!-- LSX items rendered here -->
+  </div>
+  <div id="reader"></div>
+  <div id="hint" class="hint info" style="margin:0 12px">Bấm "Bắt đầu quét" để mở camera</div>
+  <div class="controls">
+    <button id="btnScan" class="btn lg green" onclick="startOrNext()">Bắt đầu quét</button>
+    <button class="btn ghost" onclick="openManual()">✏️ Nhập thủ công</button>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     OVERLAY: Nhập thủ công
+════════════════════════════════════════════ -->
+<div id="manualOverlay" class="overlay">
+  <div class="sheet">
+    <h3>✏️ Nhập thủ công</h3>
+    <div class="field">
+      <label>Nội dung QR (LSX/SL/ĐVT/KL)</label>
+      <input id="mQR" type="text" placeholder="VD: LSX001/500/BAO/12.5" autocapitalize="characters" />
+    </div>
+    <div id="manualErr" class="manual-err"></div>
+    <div class="row2" style="margin-top:12px">
+      <button class="btn gray" onclick="closeManual()">Hủy</button>
+      <button class="btn green" onclick="submitManual()">✓ Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   CẤU HÌNH
+══════════════════════════════════════════════════ */
+const CONFIG = {
+  // URL Web App của Code_XuatHang.gs — thay bằng URL thật sau khi deploy
+  XUAT_HANG_URL: "https://script.google.com/macros/s/AKfycby7dvGCfn-bNafRnxfwW9XeC6XUYTur4PPIvmmJIB1lLD3iWHPlLnvtlpFu-pFYqhSUYA/exec"
+};
+
+/* ══════════════════════════════════════════════════
+   TRẠNG THÁI
+══════════════════════════════════════════════════ */
+let state = {
+  user: null,
+  maNV: null,
+  currentDN: null,   // {dn, kh, items:[{lsx, slYC, klYC, slDone, klDone}]}
+  sessionId: "",
+  allDN: []          // [{dn, kh, soLSX}]
+};
+
+let qr = null;
+let scanning = false;
+let scanLocked = true;
+let lastText = "";
+
+/* ══════════════════════════════════════════════════
+   SESSION — đọc từ sessionStorage (chia sẻ với QA-P.ERP)
+══════════════════════════════════════════════════ */
+function checkSession(){
+  const saved = sessionStorage.getItem("ghinhan_session");
+  if(!saved) return false;
+  try{
+    const s = JSON.parse(saved);
+    if(s.username && s.ts && (Date.now() - s.ts < 8*3600*1000)){
+      state.user = s.user;
+      state.maNV = s.maNV;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+/* ══════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════ */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function goBack(){
+  // Về QA-P.ERP index
+  window.location.href = "index.html";
+}
+
+function backToDN(){
+  stopCamera();
+  state.currentDN = null;
+  show("screenDN");
+}
+
+/* ══════════════════════════════════════════════════
+   TOAST + HINT
+══════════════════════════════════════════════════ */
+function showToast(msg, dur){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"), dur||3000);
+}
+
+function setHint(cls, msg){
+  const h=document.getElementById("hint");
+  h.className="hint "+cls; h.textContent=msg; h.style.margin="0 12px";
+}
+
+/* ══════════════════════════════════════════════════
+   ÂM THANH + RUNG
+══════════════════════════════════════════════════ */
+let audioCtx=null;
+function ac(){if(!audioCtx){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}} return audioCtx;}
+function tone(freq,dur,when){const c=ac();if(!c)return;const o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;o.connect(g);g.connect(c.destination);const t=c.currentTime+(when||0);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.start(t);o.stop(t+dur+.02);}
+function buzz(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
+const FB={
+  ok(){tone(1175,.12,0);tone(1568,.14,.13);buzz([60,40,90]);},
+  err(){tone(200,.16,0);tone(200,.16,.22);buzz([40,40,40]);},
+  warn(){tone(440,.2,0);buzz(200);}
+};
+
+/* ══════════════════════════════════════════════════
+   SCREEN 1: Danh sách DN
+══════════════════════════════════════════════════ */
+async function loadDnList(){
+  const statusEl=document.getElementById("dnStatus");
+  statusEl.style.display="block";
+  statusEl.textContent="Đang tải danh sách DN...";
+  statusEl.className="hint info";
+  try{
+    const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dnlist&t="+Date.now());
+    const out = await res.json();
+    if(out.result==="ok"){
+      state.allDN = out.list||[];
+      renderDnList(state.allDN);
+      statusEl.style.display="none";
+    } else {
+      statusEl.textContent = out.error||"Lỗi tải danh sách";
+      statusEl.className="hint err";
+    }
+  }catch(e){
+    statusEl.textContent="Không kết nối được. Kiểm tra mạng.";
+    statusEl.className="hint err";
+  }
+}
+
+function renderDnList(list){
+  const wrap=document.getElementById("dnList");
+  if(!list.length){
+    wrap.innerHTML='<div class="empty">Chưa có DN nào trong sheet.<br>Paste dữ liệu vào tab DN_LSX.</div>';
+    return;
+  }
+  wrap.innerHTML="";
+  list.forEach(d=>{
+    const card=document.createElement("div");
+    card.className="dn-card";
+    card.innerHTML='<div class="dn-code">'+esc(d.dn)+'</div>'+
+      '<div class="dn-kh">Khách: '+esc(d.kh)+'</div>'+
+      '<div class="dn-count">'+d.soLSX+' LSX</div>';
+    card.onclick=()=>openDN(d.dn);
+    wrap.appendChild(card);
+  });
+}
+
+function filterDN(q){
+  q=(q||"").toLowerCase();
+  const filtered=state.allDN.filter(d=>(d.dn+d.kh).toLowerCase().includes(q));
+  renderDnList(filtered);
+}
+
+/* ══════════════════════════════════════════════════
+   SCREEN 2: Chi tiết DN + Quét
+══════════════════════════════════════════════════ */
+async function openDN(dnCode){
+  show("screenScan");
+  document.getElementById("dnTitle").textContent=dnCode;
+  document.getElementById("lsxWrap").innerHTML='<div class="hint info">Đang tải...</div>';
+  document.getElementById("summaryBar").innerHTML="";
+  setHint("info","Đang tải dữ liệu DN...");
+
+  state.sessionId = dnCode+"_"+Date.now();
+
+  try{
+    const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dndetail&dn="+encodeURIComponent(dnCode)+"&t="+Date.now());
+    const out = await res.json();
+    if(out.result==="ok"){
+      state.currentDN = out;
+      renderProgress();
+      setHint("info","Bấm \"Bắt đầu quét\" để mở camera");
+    } else {
+      document.getElementById("lsxWrap").innerHTML='<div class="hint err">'+esc(out.error)+'</div>';
+      setHint("err", out.error);
+    }
+  }catch(e){
+    document.getElementById("lsxWrap").innerHTML='<div class="hint err">Không kết nối được. Kiểm tra mạng.</div>';
+    setHint("err","Lỗi mạng");
+  }
+}
+
+function renderProgress(){
+  const dn = state.currentDN;
+  if(!dn) return;
+  const wrap=document.getElementById("lsxWrap");
+  wrap.innerHTML="";
+
+  let totalLSX=dn.items.length, doneLSX=0;
+
+  dn.items.forEach(it=>{
+    const slPct = it.slYC>0 ? Math.min(it.slDone/it.slYC*100, 100) : 0;
+    const klPct = it.klYC>0 ? Math.min(it.klDone/it.klYC*100, 100) : 0;
+    const isDone = it.slDone>=it.slYC && it.klDone>=it.klYC;
+    const isOver = it.slDone>it.slYC || it.klDone>it.klYC;
+    if(isDone) doneLSX++;
+
+    const cls = isOver?"lsx-item over":(isDone?"lsx-item done":"lsx-item");
+    const badge = isOver?'<span class="lsx-badge badge-over">VƯỢT</span>'
+                : isDone?'<span class="lsx-badge badge-done">ĐỦ</span>'
+                : '<span class="lsx-badge badge-ok">'+Math.round(slPct)+'%</span>';
+
+    const div=document.createElement("div");
+    div.className=cls;
+    div.innerHTML=
+      '<div class="lsx-head"><span class="lsx-code">'+esc(it.lsx)+'</span>'+badge+'</div>'+
+      '<div class="lsx-bars">'+
+        '<div class="bar-row"><span class="bar-label">SL</span>'+
+          '<div class="bar-track"><div class="bar-fill '+(isOver?"fill-over":"fill-ok")+'" style="width:'+Math.min(slPct,100)+'%"></div></div>'+
+          '<span class="bar-text">'+fmt(it.slDone)+' / '+fmt(it.slYC)+'</span></div>'+
+        '<div class="bar-row"><span class="bar-label">KL</span>'+
+          '<div class="bar-track"><div class="bar-fill '+(isOver?"fill-over":"fill-ok")+'" style="width:'+Math.min(klPct,100)+'%"></div></div>'+
+          '<span class="bar-text">'+fmt(it.klDone)+' / '+fmt(it.klYC)+' kg</span></div>'+
+      '</div>';
+    wrap.appendChild(div);
+  });
+
+  // Summary bar
+  document.getElementById("summaryBar").innerHTML=
+    '<span class="sum-chip chip-total">'+totalLSX+' LSX</span>'+
+    '<span class="sum-chip chip-done">'+doneLSX+' đủ</span>'+
+    '<span class="sum-chip chip-remain">'+(totalLSX-doneLSX)+' còn thiếu</span>';
+}
+
+/* ══════════════════════════════════════════════════
+   QUÉT QR
+══════════════════════════════════════════════════ */
+async function startOrNext(){
+  if(scanning){
+    // Mở khóa quét tiếp
+    scanLocked=false; lastText="";
+    document.getElementById("btnScan").textContent="Đang quét...";
+    setHint("info","Đưa QR vào khung để quét");
+    return;
+  }
+  // Bắt đầu camera
+  await startCamera();
+}
+
+async function startCamera(){
+  try{
+    qr=new Html5Qrcode("reader",{verbose:false});
+    const cfg={fps:10,qrbox:{width:240,height:240},aspectRatio:1.0};
+    await qr.start({facingMode:"environment"},cfg,onScan,()=>{});
+    scanning=true; scanLocked=false; lastText="";
+    document.getElementById("btnScan").textContent="Đang quét...";
+    setHint("info","Đưa QR vào khung để quét");
+  }catch(e){
+    setHint("err","Không mở được camera. Cấp quyền camera rồi thử lại.");
+  }
+}
+
+function stopCamera(){
+  if(qr&&scanning){qr.stop().then(()=>{try{qr.clear();}catch(e){}}).catch(()=>{});}
+  scanning=false; scanLocked=true;
+}
+
+function onScan(text){
+  if(scanLocked) return;
+  text=(text||"").trim().toUpperCase();
+  if(!text||text===lastText) return;
+  lastText=text;
+  scanLocked=true; // khóa ngay — phải bấm "Quét tiếp"
+  processQR(text);
+}
+
+/* ══════════════════════════════════════════════════
+   XỬ LÝ QR → ĐỐI CHIẾU → GHI NHẬN
+══════════════════════════════════════════════════ */
+function parseQR(text){
+  const parts=text.split("/");
+  if(parts.length!==4||parts.some(p=>!p.trim())) return null;
+  const sl=parseFloat(String(parts[1]).replace(",","."));
+  const kl=parseFloat(String(parts[3]).replace(",","."));
+  return { raw:text, lsx:parts[0].trim(), sl:isNaN(sl)?0:sl, dvt:parts[2].trim(), kl:isNaN(kl)?0:kl };
+}
+
+function processQR(text){
+  const parsed=parseQR(text);
+  if(!parsed){
+    FB.err();
+    setHint("err","QR không hợp lệ — cần đúng 4 phần: LSX/SL/ĐVT/KL");
+    document.getElementById("btnScan").textContent="Quét tiếp";
+    return;
+  }
+
+  const dn=state.currentDN;
+  if(!dn){ FB.err(); setHint("err","Chưa tải được dữ liệu DN"); return; }
+
+  // Tìm LSX trong DN
+  const item = dn.items.find(it=>it.lsx===parsed.lsx);
+  if(!item){
+    FB.err();
+    setHint("err","⚠ LSX "+esc(parsed.lsx)+" không có trong DN này!");
+    document.getElementById("btnScan").textContent="Quét tiếp";
+    return;
+  }
+
+  // Kiểm tra vượt SL
+  if(item.slDone + parsed.sl > item.slYC){
+    FB.warn();
+    setHint("warn","⚠ VƯỢT SL! Đã: "+fmt(item.slDone)+" + "+fmt(parsed.sl)+" = "+fmt(item.slDone+parsed.sl)+" > YC: "+fmt(item.slYC));
+    document.getElementById("btnScan").textContent="Quét tiếp";
+    return;
+  }
+
+  // Kiểm tra vượt KL
+  if(item.klYC > 0 && item.klDone + parsed.kl > item.klYC * 1.05){
+    // Cho phép dung sai 5% KL (vì KL thực tế có thể chênh nhẹ)
+    FB.warn();
+    setHint("warn","⚠ VƯỢT KL! Đã: "+fmt(item.klDone)+"kg + "+fmt(parsed.kl)+"kg > YC: "+fmt(item.klYC)+"kg");
+    document.getElementById("btnScan").textContent="Quét tiếp";
+    return;
+  }
+
+  // OK → ghi nhận
+  item.slDone += parsed.sl;
+  item.klDone += parsed.kl;
+  renderProgress();
+
+  // Gửi lên Sheet
+  sendScanLog(parsed);
+
+  FB.ok();
+  const isDone = item.slDone>=item.slYC;
+  if(isDone){
+    setHint("ok","✓ "+parsed.lsx+" — ĐÃ ĐỦ SL! ("+fmt(item.slDone)+"/"+fmt(item.slYC)+")");
+  } else {
+    setHint("ok","✓ Ghi nhận "+parsed.lsx+" +"+fmt(parsed.sl)+" (tổng: "+fmt(item.slDone)+"/"+fmt(item.slYC)+")");
+  }
+  document.getElementById("btnScan").textContent="Quét tiếp";
+}
+
+/* ══════════════════════════════════════════════════
+   GỬI SCAN LOG LÊN SHEET
+══════════════════════════════════════════════════ */
+async function sendScanLog(parsed){
+  if(!CONFIG.XUAT_HANG_URL) return;
+  const payload={
+    action:"scan",
+    rows:[{
+      sessionId: state.sessionId,
+      dn: state.currentDN.dn,
+      lsx: parsed.lsx,
+      qr: parsed.raw,
+      sl: parsed.sl,
+      kl: parsed.kl,
+      time: nowStr(),
+      user: state.user||""
+    }]
+  };
+  try{
+    await fetch(CONFIG.XUAT_HANG_URL,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(payload),
+      redirect:"follow"
+    });
+  }catch(e){
+    // Offline → lưu vào localStorage queue
+    const q=JSON.parse(localStorage.getItem("xh_queue")||"[]");
+    q.push(payload);
+    localStorage.setItem("xh_queue",JSON.stringify(q));
+    showToast("Mất mạng — đã lưu offline",3000);
+  }
+}
+
+async function flushQueue(){
+  const q=JSON.parse(localStorage.getItem("xh_queue")||"[]");
+  if(!q.length||!CONFIG.XUAT_HANG_URL) return;
+  const remain=[];
+  for(const p of q){
+    try{
+      const res=await fetch(CONFIG.XUAT_HANG_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(p),redirect:"follow"});
+      const out=await res.json().catch(()=>({result:"ok"}));
+      if(out.result!=="ok") remain.push(p);
+    }catch(e){ remain.push(p); }
+  }
+  localStorage.setItem("xh_queue",JSON.stringify(remain));
+  if(remain.length<q.length) showToast("✓ Đã gửi dữ liệu offline lên Sheet",3000);
+}
+
+/* ══════════════════════════════════════════════════
+   NHẬP THỦ CÔNG
+══════════════════════════════════════════════════ */
+function openManual(){
+  document.getElementById("mQR").value="";
+  const err=document.getElementById("manualErr");
+  err.style.display="none"; err.textContent="";
+  document.getElementById("manualOverlay").classList.add("active");
+  setTimeout(()=>document.getElementById("mQR").focus(),200);
+}
+function closeManual(){
+  document.getElementById("manualOverlay").classList.remove("active");
+}
+function submitManual(){
+  const text=document.getElementById("mQR").value.trim().toUpperCase();
+  if(!text){
+    const err=document.getElementById("manualErr");
+    err.textContent="Vui lòng nhập nội dung QR"; err.style.display="block";
+    return;
+  }
+  closeManual();
+  processQR(text);
+}
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function fmt(n){return n%1===0?String(n):n.toFixed(1);}
+function nowStr(){
+  const d=new Date();
+  const dd=("0"+d.getDate()).slice(-2), mm=("0"+(d.getMonth()+1)).slice(-2), yy=d.getFullYear();
+  const hh=("0"+d.getHours()).slice(-2), mi=("0"+d.getMinutes()).slice(-2), ss=("0"+d.getSeconds()).slice(-2);
+  return dd+"/"+mm+"/"+yy+" "+hh+":"+mi+":"+ss;
+}
+function numVN(s){return parseFloat(String(s).replace(",","."));}
+
+/* ══════════════════════════════════════════════════
+   KHỞI ĐỘNG
+══════════════════════════════════════════════════ */
+document.getElementById("mQR").addEventListener("keydown",function(ev){
+  if(ev.key==="Enter"){ev.preventDefault();submitManual();}
+});
+
+function boot(){
+  if(!checkSession()){
+    // Chưa đăng nhập → về trang chính
+    window.location.href="index.html";
+    return;
+  }
+  loadDnList();
+  if(navigator.onLine) setTimeout(flushQueue,2000);
+}
+boot();
+
+window.addEventListener("online",()=>{
+  showToast("Có mạng — đang gửi dữ liệu offline...",3000);
+  setTimeout(flushQueue,1000);
+});
+</script>
+</body>
+</html>

@@ -1,7 +1,9 @@
-const CACHE = 'qap-erp-v20';
+const CACHE = 'qap-erp-v21';
 const ASSETS = [
   './',
   './index.html',
+  './tien-do.html',
+  './xuat-hang.html',
   './manifest.json',
   './icon.svg',
   './icon-192.png',
