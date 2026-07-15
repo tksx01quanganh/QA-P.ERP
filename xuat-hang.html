@@ -19,7 +19,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .icon-btn:active{background:#f1f5f9;}
 
 /* card / list */
-.wrap{padding:12px;flex:1;}
+.wrap{padding:12px;flex:1;overflow-y:auto;}
 .search-box{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:12px;font-size:16px;outline:none;margin-bottom:10px;}
 .search-box:focus{border-color:var(--teal);}
 
@@ -36,7 +36,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .lsx-head{display:flex;justify-content:space-between;align-items:center;}
 .lsx-code{font-size:16px;font-weight:700;}
 .lsx-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;}
-.badge-ok{background:#dcfce7;color:var(--green);}
+.badge-ok{background:#e0f2fe;color:#0369a1;}
 .badge-done{background:#bbf7d0;color:#15803d;}
 .badge-over{background:#fecaca;color:var(--red);}
 .lsx-bars{margin-top:8px;}
@@ -46,14 +46,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .bar-fill{height:100%;border-radius:5px;transition:width .3s;}
 .fill-ok{background:var(--green);}
 .fill-over{background:var(--red);}
-.bar-text{font-size:12px;color:var(--muted);white-space:nowrap;min-width:90px;text-align:right;}
+.bar-text{font-size:12px;color:var(--muted);white-space:nowrap;min-width:80px;text-align:right;}
 
 /* buttons */
 .btn{border:none;padding:12px 20px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%;}
 .btn:active{opacity:.85;}
 .btn.lg{padding:14px;font-size:18px;}
 .btn.green{background:var(--green);color:#fff;}
+.btn.teal{background:var(--teal);color:#fff;}
 .btn.amber{background:var(--amber);color:#fff;}
+.btn.red{background:var(--red);color:#fff;}
 .btn.gray{background:#e2e8f0;color:var(--txt);}
 .btn.ghost{background:none;border:2px solid var(--border);color:var(--txt);}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
@@ -72,6 +74,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 #reader{width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;}
 #reader video{border-radius:12px;}
 
+/* scan list */
+.scan-section{margin-top:12px;border-top:2px solid var(--border);padding-top:10px;}
+.scan-section h4{font-size:14px;font-weight:700;color:var(--muted);margin-bottom:8px;}
+.scan-row{display:flex;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:4px;gap:8px;}
+.scan-row .sr-lsx{font-weight:700;flex:1;}
+.scan-row .sr-sl{font-size:14px;color:var(--teal);font-weight:600;min-width:50px;text-align:right;}
+.scan-row .sr-del{background:none;border:none;font-size:16px;cursor:pointer;padding:2px 6px;color:var(--red);border-radius:6px;}
+.scan-row .sr-del:active{background:#fef2f2;}
+.scan-empty{text-align:center;color:var(--muted);font-size:13px;padding:12px;}
+
 /* overlay */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center;}
 .overlay.active{display:flex;}
@@ -79,8 +91,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .sheet h3{font-size:18px;margin-bottom:12px;}
 .field{margin-bottom:12px;}
 .field label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;}
-.field input{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:16px;outline:none;}
-.field input:focus{border-color:var(--teal);}
+.field input,.field select{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:16px;outline:none;}
+.field input:focus,.field select:focus{border-color:var(--teal);}
 .manual-err{color:var(--red);font-size:13px;margin-top:4px;display:none;}
 
 /* toast */
@@ -128,14 +140,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="ttl">📋 <span id="dnTitle">—</span></div>
   </div>
   <div class="summary" id="summaryBar"></div>
-  <div class="wrap" id="lsxWrap">
-    <!-- LSX items rendered here -->
+  <div class="wrap" id="mainWrap">
+    <!-- LSX progress -->
+    <div id="lsxWrap"></div>
+
+    <!-- Danh sách đã scan trong phiên này -->
+    <div id="scanSection" class="scan-section" style="display:none">
+      <h4>📝 Đã scan/nhập trong phiên này (<span id="scanCount">0</span>)</h4>
+      <div id="scanListEl"></div>
+    </div>
   </div>
   <div id="reader"></div>
   <div id="hint" class="hint info" style="margin:0 12px">Bấm "Bắt đầu quét" để mở camera</div>
   <div class="controls">
     <button id="btnScan" class="btn lg green" onclick="startOrNext()">Bắt đầu quét</button>
-    <button class="btn ghost" onclick="openManual()">✏️ Nhập thủ công</button>
+    <div class="row2">
+      <button class="btn ghost" onclick="openManual()">✏️ Nhập thủ công</button>
+      <button id="btnSubmit" class="btn teal" onclick="submitAll()" style="display:none">📤 Gửi kết quả</button>
+    </div>
   </div>
 </section>
 
@@ -146,8 +168,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="sheet">
     <h3>✏️ Nhập thủ công</h3>
     <div class="field">
-      <label>Nội dung QR (LSX/SL/ĐVT/KL)</label>
-      <input id="mQR" type="text" placeholder="VD: LSX001/500/BAO/12.5" autocapitalize="characters" />
+      <label>Mã LSX</label>
+      <select id="mLSX">
+        <option value="">— Chọn LSX —</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Số lượng</label>
+      <input id="mSL" type="number" inputmode="numeric" placeholder="VD: 500" min="1" />
     </div>
     <div id="manualErr" class="manual-err"></div>
     <div class="row2" style="margin-top:12px">
@@ -165,8 +193,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
    CẤU HÌNH
 ══════════════════════════════════════════════════ */
 const CONFIG = {
-  // URL Web App của Code_XuatHang.gs — thay bằng URL thật sau khi deploy
-  XUAT_HANG_URL: "https://script.google.com/macros/s/AKfycby7dvGCfn-bNafRnxfwW9XeC6XUYTur4PPIvmmJIB1lLD3iWHPlLnvtlpFu-pFYqhSUYA/exec"
+  XUAT_HANG_URL: "https://script.google.com/macros/s/AKfycbyUaJIBrUi-ZevW-9XKBy0vOY9ROVlo82J2UccukAkIY4Z36o-uQr_p8zZH9OcxHyr3mw/exec"
 };
 
 /* ══════════════════════════════════════════════════
@@ -175,9 +202,10 @@ const CONFIG = {
 let state = {
   user: null,
   maNV: null,
-  currentDN: null,   // {dn, kh, items:[{lsx, slYC, klYC, slDone, klDone}]}
+  currentDN: null,   // {dn, kh, items:[{lsx, slYC, slDone}]}
   sessionId: "",
-  allDN: []          // [{dn, kh, soLSX}]
+  allDN: [],         // [{dn, kh, soLSX}]
+  scanList: []       // [{lsx, sl, qr, time}] — danh sách scan trong phiên
 };
 
 let qr = null;
@@ -211,13 +239,18 @@ function show(id){
 }
 
 function goBack(){
-  // Về QA-P.ERP index
   window.location.href = "index.html";
 }
 
 function backToDN(){
+  if(state.scanList.length > 0){
+    if(!confirm("Bạn có "+state.scanList.length+" mục chưa gửi. Quay lại sẽ mất dữ liệu. Tiếp tục?")){
+      return;
+    }
+  }
   stopCamera();
   state.currentDN = null;
+  state.scanList = [];
   show("screenDN");
 }
 
@@ -308,13 +341,14 @@ async function openDN(dnCode){
   setHint("info","Đang tải dữ liệu DN...");
 
   state.sessionId = dnCode+"_"+Date.now();
+  state.scanList = [];
 
   try{
     const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dndetail&dn="+encodeURIComponent(dnCode)+"&t="+Date.now());
     const out = await res.json();
     if(out.result==="ok"){
       state.currentDN = out;
-      renderProgress();
+      renderAll();
       setHint("info","Bấm \"Bắt đầu quét\" để mở camera");
     } else {
       document.getElementById("lsxWrap").innerHTML='<div class="hint err">'+esc(out.error)+'</div>';
@@ -326,6 +360,14 @@ async function openDN(dnCode){
   }
 }
 
+/** Render progress + scan list + show/hide submit button */
+function renderAll(){
+  renderProgress();
+  renderScanList();
+  // Hiện nút Gửi nếu có ít nhất 1 scan
+  document.getElementById("btnSubmit").style.display = state.scanList.length > 0 ? "" : "none";
+}
+
 function renderProgress(){
   const dn = state.currentDN;
   if(!dn) return;
@@ -335,16 +377,19 @@ function renderProgress(){
   let totalLSX=dn.items.length, doneLSX=0;
 
   dn.items.forEach(it=>{
-    const slPct = it.slYC>0 ? Math.min(it.slDone/it.slYC*100, 100) : 0;
-    const klPct = it.klYC>0 ? Math.min(it.klDone/it.klYC*100, 100) : 0;
-    const isDone = it.slDone>=it.slYC && it.klDone>=it.klYC;
-    const isOver = it.slDone>it.slYC || it.klDone>it.klYC;
+    // Tổng SL = đã gửi trước đó (slDone) + scan trong phiên này
+    const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl,0);
+    const totalDone = it.slDone + sessionSL;
+
+    const pct = it.slYC>0 ? Math.min(totalDone/it.slYC*100, 100) : 0;
+    const isDone = totalDone >= it.slYC;
+    const isOver = totalDone > it.slYC;
     if(isDone) doneLSX++;
 
     const cls = isOver?"lsx-item over":(isDone?"lsx-item done":"lsx-item");
     const badge = isOver?'<span class="lsx-badge badge-over">VƯỢT</span>'
                 : isDone?'<span class="lsx-badge badge-done">ĐỦ</span>'
-                : '<span class="lsx-badge badge-ok">'+Math.round(slPct)+'%</span>';
+                : '<span class="lsx-badge badge-ok">'+Math.round(pct)+'%</span>';
 
     const div=document.createElement("div");
     div.className=cls;
@@ -352,11 +397,8 @@ function renderProgress(){
       '<div class="lsx-head"><span class="lsx-code">'+esc(it.lsx)+'</span>'+badge+'</div>'+
       '<div class="lsx-bars">'+
         '<div class="bar-row"><span class="bar-label">SL</span>'+
-          '<div class="bar-track"><div class="bar-fill '+(isOver?"fill-over":"fill-ok")+'" style="width:'+Math.min(slPct,100)+'%"></div></div>'+
-          '<span class="bar-text">'+fmt(it.slDone)+' / '+fmt(it.slYC)+'</span></div>'+
-        '<div class="bar-row"><span class="bar-label">KL</span>'+
-          '<div class="bar-track"><div class="bar-fill '+(isOver?"fill-over":"fill-ok")+'" style="width:'+Math.min(klPct,100)+'%"></div></div>'+
-          '<span class="bar-text">'+fmt(it.klDone)+' / '+fmt(it.klYC)+' kg</span></div>'+
+          '<div class="bar-track"><div class="bar-fill '+(isOver?"fill-over":"fill-ok")+'" style="width:'+Math.min(pct,100)+'%"></div></div>'+
+          '<span class="bar-text">'+fmt(totalDone)+' / '+fmt(it.slYC)+'</span></div>'+
       '</div>';
     wrap.appendChild(div);
   });
@@ -369,17 +411,56 @@ function renderProgress(){
 }
 
 /* ══════════════════════════════════════════════════
+   DANH SÁCH ĐÃ SCAN TRONG PHIÊN
+══════════════════════════════════════════════════ */
+function renderScanList(){
+  const section = document.getElementById("scanSection");
+  const listEl = document.getElementById("scanListEl");
+  const countEl = document.getElementById("scanCount");
+
+  if(state.scanList.length === 0){
+    section.style.display = "none";
+    return;
+  }
+
+  section.style.display = "";
+  countEl.textContent = state.scanList.length;
+  listEl.innerHTML = "";
+
+  // Hiển thị từ mới → cũ
+  for(let i = state.scanList.length - 1; i >= 0; i--){
+    const s = state.scanList[i];
+    const row = document.createElement("div");
+    row.className = "scan-row";
+    row.innerHTML =
+      '<span class="sr-lsx">'+esc(s.lsx)+'</span>'+
+      '<span class="sr-sl">'+fmt(s.sl)+'</span>'+
+      '<button class="sr-del" data-idx="'+i+'" title="Xóa">✕</button>';
+    listEl.appendChild(row);
+  }
+
+  // Gắn event xóa
+  listEl.querySelectorAll(".sr-del").forEach(btn=>{
+    btn.onclick=function(){
+      const idx = parseInt(this.getAttribute("data-idx"));
+      if(confirm("Xóa dòng "+state.scanList[idx].lsx+" (SL: "+fmt(state.scanList[idx].sl)+")?")){
+        state.scanList.splice(idx, 1);
+        renderAll();
+      }
+    };
+  });
+}
+
+/* ══════════════════════════════════════════════════
    QUÉT QR
 ══════════════════════════════════════════════════ */
 async function startOrNext(){
   if(scanning){
-    // Mở khóa quét tiếp
     scanLocked=false; lastText="";
     document.getElementById("btnScan").textContent="Đang quét...";
     setHint("info","Đưa QR vào khung để quét");
     return;
   }
-  // Bắt đầu camera
   await startCamera();
 }
 
@@ -406,148 +487,200 @@ function onScan(text){
   text=(text||"").trim().toUpperCase();
   if(!text||text===lastText) return;
   lastText=text;
-  scanLocked=true; // khóa ngay — phải bấm "Quét tiếp"
+  scanLocked=true;
   processQR(text);
 }
 
 /* ══════════════════════════════════════════════════
-   XỬ LÝ QR → ĐỐI CHIẾU → GHI NHẬN
+   XỬ LÝ QR → ĐỐI CHIẾU → GHI NHẬN VÀO DANH SÁCH
 ══════════════════════════════════════════════════ */
+
+/** Parse QR: chấp nhận 2-4 phần, chỉ lấy LSX và SL */
 function parseQR(text){
   const parts=text.split("/");
-  if(parts.length!==4||parts.some(p=>!p.trim())) return null;
-  const sl=parseFloat(String(parts[1]).replace(",","."));
-  const kl=parseFloat(String(parts[3]).replace(",","."));
-  return { raw:text, lsx:parts[0].trim(), sl:isNaN(sl)?0:sl, dvt:parts[2].trim(), kl:isNaN(kl)?0:kl };
+  if(parts.length < 2) return null;
+  const lsx = parts[0].trim();
+  const sl  = parseFloat(String(parts[1]).replace(",","."));
+  if(!lsx || isNaN(sl) || sl <= 0) return null;
+  return { raw: text, lsx: lsx, sl: sl };
 }
 
 function processQR(text){
   const parsed=parseQR(text);
   if(!parsed){
     FB.err();
-    setHint("err","QR không hợp lệ — cần đúng 4 phần: LSX/SL/ĐVT/KL");
+    setHint("err","QR không hợp lệ — cần ít nhất: LSX/SL");
     document.getElementById("btnScan").textContent="Quét tiếp";
     return;
   }
 
+  addScanItem(parsed.lsx, parsed.sl, parsed.raw);
+}
+
+/** Thêm 1 item vào danh sách scan (dùng chung cho QR và nhập tay) */
+function addScanItem(lsx, sl, qrRaw){
   const dn=state.currentDN;
   if(!dn){ FB.err(); setHint("err","Chưa tải được dữ liệu DN"); return; }
 
   // Tìm LSX trong DN
-  const item = dn.items.find(it=>it.lsx===parsed.lsx);
+  const item = dn.items.find(it=>it.lsx===lsx);
   if(!item){
     FB.err();
-    setHint("err","⚠ LSX "+esc(parsed.lsx)+" không có trong DN này!");
+    setHint("err","⚠ LSX "+esc(lsx)+" không có trong DN này!");
     document.getElementById("btnScan").textContent="Quét tiếp";
     return;
   }
 
-  // Kiểm tra vượt SL
-  if(item.slDone + parsed.sl > item.slYC){
+  // Tính SL hiện tại (đã gửi trước + đã scan trong phiên)
+  const sessionSL = state.scanList.filter(s=>s.lsx===lsx).reduce((a,s)=>a+s.sl, 0);
+  const totalAfter = item.slDone + sessionSL + sl;
+
+  // Cảnh báo vượt (nhưng vẫn cho thêm)
+  if(totalAfter > item.slYC){
     FB.warn();
-    setHint("warn","⚠ VƯỢT SL! Đã: "+fmt(item.slDone)+" + "+fmt(parsed.sl)+" = "+fmt(item.slDone+parsed.sl)+" > YC: "+fmt(item.slYC));
-    document.getElementById("btnScan").textContent="Quét tiếp";
-    return;
-  }
-
-  // Kiểm tra vượt KL
-  if(item.klYC > 0 && item.klDone + parsed.kl > item.klYC * 1.05){
-    // Cho phép dung sai 5% KL (vì KL thực tế có thể chênh nhẹ)
-    FB.warn();
-    setHint("warn","⚠ VƯỢT KL! Đã: "+fmt(item.klDone)+"kg + "+fmt(parsed.kl)+"kg > YC: "+fmt(item.klYC)+"kg");
-    document.getElementById("btnScan").textContent="Quét tiếp";
-    return;
-  }
-
-  // OK → ghi nhận
-  item.slDone += parsed.sl;
-  item.klDone += parsed.kl;
-  renderProgress();
-
-  // Gửi lên Sheet
-  sendScanLog(parsed);
-
-  FB.ok();
-  const isDone = item.slDone>=item.slYC;
-  if(isDone){
-    setHint("ok","✓ "+parsed.lsx+" — ĐÃ ĐỦ SL! ("+fmt(item.slDone)+"/"+fmt(item.slYC)+")");
+    setHint("warn","⚠ VƯỢT SL! Tổng: "+fmt(totalAfter)+" > YC: "+fmt(item.slYC)+". Đã thêm vào danh sách.");
   } else {
-    setHint("ok","✓ Ghi nhận "+parsed.lsx+" +"+fmt(parsed.sl)+" (tổng: "+fmt(item.slDone)+"/"+fmt(item.slYC)+")");
+    const isDone = totalAfter >= item.slYC;
+    if(isDone){
+      FB.ok();
+      setHint("ok","✓ "+lsx+" — ĐÃ ĐỦ SL! ("+fmt(totalAfter)+"/"+fmt(item.slYC)+")");
+    } else {
+      FB.ok();
+      setHint("ok","✓ Ghi nhận "+lsx+" +"+fmt(sl)+" (tổng: "+fmt(totalAfter)+"/"+fmt(item.slYC)+")");
+    }
   }
+
+  // Thêm vào danh sách scan
+  state.scanList.push({
+    lsx: lsx,
+    sl: sl,
+    qr: qrRaw || (lsx+"/"+sl),
+    time: nowStr()
+  });
+
+  renderAll();
   document.getElementById("btnScan").textContent="Quét tiếp";
 }
 
 /* ══════════════════════════════════════════════════
-   GỬI SCAN LOG LÊN SHEET
+   GỬI KẾT QUẢ LÊN SHEET
 ══════════════════════════════════════════════════ */
-async function sendScanLog(parsed){
-  if(!CONFIG.XUAT_HANG_URL) return;
-  const payload={
-    action:"scan",
-    rows:[{
-      sessionId: state.sessionId,
-      dn: state.currentDN.dn,
-      lsx: parsed.lsx,
-      qr: parsed.raw,
-      sl: parsed.sl,
-      kl: parsed.kl,
-      time: nowStr(),
-      user: state.user||""
-    }]
-  };
-  try{
-    await fetch(CONFIG.XUAT_HANG_URL,{
-      method:"POST",
-      headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify(payload),
-      redirect:"follow"
-    });
-  }catch(e){
-    // Offline → lưu vào localStorage queue
-    const q=JSON.parse(localStorage.getItem("xh_queue")||"[]");
-    q.push(payload);
-    localStorage.setItem("xh_queue",JSON.stringify(q));
-    showToast("Mất mạng — đã lưu offline",3000);
+async function submitAll(){
+  if(state.scanList.length === 0){
+    showToast("Chưa có dữ liệu để gửi", 2000);
+    return;
   }
-}
 
-async function flushQueue(){
-  const q=JSON.parse(localStorage.getItem("xh_queue")||"[]");
-  if(!q.length||!CONFIG.XUAT_HANG_URL) return;
-  const remain=[];
-  for(const p of q){
-    try{
-      const res=await fetch(CONFIG.XUAT_HANG_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(p),redirect:"follow"});
-      const out=await res.json().catch(()=>({result:"ok"}));
-      if(out.result!=="ok") remain.push(p);
-    }catch(e){ remain.push(p); }
+  if(!confirm("Gửi "+state.scanList.length+" mục lên Google Sheet?")){
+    return;
   }
-  localStorage.setItem("xh_queue",JSON.stringify(remain));
-  if(remain.length<q.length) showToast("✓ Đã gửi dữ liệu offline lên Sheet",3000);
+
+  const dn = state.currentDN;
+  const btnSubmit = document.getElementById("btnSubmit");
+  btnSubmit.disabled = true;
+  btnSubmit.innerHTML = '<span class="spin"></span> Đang gửi...';
+
+  // Tổng hợp theo LSX
+  const summaryMap = {};
+  dn.items.forEach(it=>{
+    const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
+    summaryMap[it.lsx] = {
+      lsx: it.lsx,
+      slYC: it.slYC,
+      slThucTe: it.slDone + sessionSL   // tổng = đã gửi trước + phiên này
+    };
+  });
+
+  const payload = {
+    action: "submit",
+    dn: dn.dn,
+    sessionId: state.sessionId,
+    user: state.user || "",
+    time: nowStr(),
+    scanRows: state.scanList.map(s=>({ lsx: s.lsx, qr: s.qr, sl: s.sl, time: s.time })),
+    summary: Object.values(summaryMap)
+  };
+
+  try{
+    const res = await fetch(CONFIG.XUAT_HANG_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+      redirect: "follow"
+    });
+    const out = await res.json();
+    if(out.result === "ok"){
+      FB.ok();
+      showToast("✓ Đã gửi "+out.scans+" scan + "+out.summaries+" kết quả!", 4000);
+
+      // Cập nhật slDone trong state (cộng dồn session vào)
+      dn.items.forEach(it=>{
+        const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
+        it.slDone += sessionSL;
+      });
+
+      // Reset scan list
+      state.scanList = [];
+      renderAll();
+      setHint("ok","✓ Đã gửi kết quả thành công!");
+    } else {
+      FB.err();
+      showToast("Lỗi: "+(out.error||"Không rõ"), 4000);
+    }
+  }catch(e){
+    FB.err();
+    showToast("Mất mạng — chưa gửi được. Thử lại sau.", 4000);
+  }
+
+  btnSubmit.disabled = false;
+  btnSubmit.innerHTML = '📤 Gửi kết quả';
 }
 
 /* ══════════════════════════════════════════════════
    NHẬP THỦ CÔNG
 ══════════════════════════════════════════════════ */
 function openManual(){
-  document.getElementById("mQR").value="";
+  // Populate LSX dropdown
+  const sel = document.getElementById("mLSX");
+  sel.innerHTML = '<option value="">— Chọn LSX —</option>';
+  if(state.currentDN){
+    state.currentDN.items.forEach(it=>{
+      const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
+      const totalDone = it.slDone + sessionSL;
+      const opt = document.createElement("option");
+      opt.value = it.lsx;
+      opt.textContent = it.lsx + " ("+fmt(totalDone)+"/"+fmt(it.slYC)+")";
+      sel.appendChild(opt);
+    });
+  }
+  document.getElementById("mSL").value = "";
   const err=document.getElementById("manualErr");
   err.style.display="none"; err.textContent="";
   document.getElementById("manualOverlay").classList.add("active");
-  setTimeout(()=>document.getElementById("mQR").focus(),200);
+  setTimeout(()=>document.getElementById("mSL").focus(),200);
 }
+
 function closeManual(){
   document.getElementById("manualOverlay").classList.remove("active");
 }
+
 function submitManual(){
-  const text=document.getElementById("mQR").value.trim().toUpperCase();
-  if(!text){
-    const err=document.getElementById("manualErr");
-    err.textContent="Vui lòng nhập nội dung QR"; err.style.display="block";
+  const lsx = document.getElementById("mLSX").value.trim();
+  const slStr = document.getElementById("mSL").value.trim();
+  const err = document.getElementById("manualErr");
+
+  if(!lsx){
+    err.textContent="Vui lòng chọn LSX"; err.style.display="block";
     return;
   }
+  const sl = parseFloat(slStr.replace(",","."));
+  if(isNaN(sl) || sl <= 0){
+    err.textContent="Số lượng phải > 0"; err.style.display="block";
+    return;
+  }
+
   closeManual();
-  processQR(text);
+  addScanItem(lsx, sl, "MANUAL/"+lsx+"/"+sl);
 }
 
 /* ══════════════════════════════════════════════════
@@ -561,30 +694,22 @@ function nowStr(){
   const hh=("0"+d.getHours()).slice(-2), mi=("0"+d.getMinutes()).slice(-2), ss=("0"+d.getSeconds()).slice(-2);
   return dd+"/"+mm+"/"+yy+" "+hh+":"+mi+":"+ss;
 }
-function numVN(s){return parseFloat(String(s).replace(",","."));}
 
 /* ══════════════════════════════════════════════════
    KHỞI ĐỘNG
 ══════════════════════════════════════════════════ */
-document.getElementById("mQR").addEventListener("keydown",function(ev){
+document.getElementById("mSL").addEventListener("keydown",function(ev){
   if(ev.key==="Enter"){ev.preventDefault();submitManual();}
 });
 
 function boot(){
   if(!checkSession()){
-    // Chưa đăng nhập → về trang chính
     window.location.href="index.html";
     return;
   }
   loadDnList();
-  if(navigator.onLine) setTimeout(flushQueue,2000);
 }
 boot();
-
-window.addEventListener("online",()=>{
-  showToast("Có mạng — đang gửi dữ liệu offline...",3000);
-  setTimeout(flushQueue,1000);
-});
 </script>
 </body>
 </html>
