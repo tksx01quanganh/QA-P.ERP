@@ -11,25 +11,27 @@
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);-webkit-tap-highlight-color:transparent;}
 .screen{display:none;min-height:100vh;flex-direction:column;}
 .screen.active{display:flex;}
-
-/* topbar */
 .topbar{display:flex;align-items:center;padding:10px 12px;background:#fff;border-bottom:1px solid var(--border);gap:8px;position:sticky;top:0;z-index:10;}
 .topbar .ttl{flex:1;font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .icon-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:4px 8px;border-radius:8px;}
 .icon-btn:active{background:#f1f5f9;}
-
-/* card / list */
 .wrap{padding:12px;flex:1;overflow-y:auto;}
 .search-box{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:12px;font-size:16px;outline:none;margin-bottom:10px;}
 .search-box:focus{border-color:var(--teal);}
-
-.dn-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:8px;cursor:pointer;}
+.dn-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:8px;cursor:pointer;position:relative;}
 .dn-card:active{border-color:var(--teal);background:#ecfdf5;}
+.dn-card.completed{opacity:.65;border-color:#bbf7d0;}
 .dn-code{font-size:18px;font-weight:700;}
 .dn-kh{font-size:13px;color:var(--muted);margin-top:2px;}
-.dn-count{font-size:12px;color:var(--teal);font-weight:600;margin-top:4px;}
-
-/* progress items */
+.dn-meta{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap;}
+.dn-count{font-size:12px;color:var(--teal);font-weight:600;}
+.dn-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;}
+.st-done{background:#dcfce7;color:#15803d;}
+.st-partial{background:#fef3c7;color:#92400e;}
+.st-new{background:#e0f2fe;color:#0369a1;}
+.filter-bar{display:flex;gap:8px;margin-bottom:10px;align-items:center;}
+.filter-bar label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer;}
+.filter-bar input[type=checkbox]{width:16px;height:16px;}
 .lsx-item{background:#fff;border:2px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;}
 .lsx-item.done{border-color:var(--green);background:#f0fdf4;}
 .lsx-item.over{border-color:var(--red);background:#fef2f2;}
@@ -47,8 +49,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .fill-ok{background:var(--green);}
 .fill-over{background:var(--red);}
 .bar-text{font-size:12px;color:var(--muted);white-space:nowrap;min-width:80px;text-align:right;}
-
-/* buttons */
 .btn{border:none;padding:12px 20px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%;}
 .btn:active{opacity:.85;}
 .btn.lg{padding:14px;font-size:18px;}
@@ -62,19 +62,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .controls{padding:12px;display:flex;flex-direction:column;gap:8px;background:#fff;border-top:1px solid var(--border);}
 .row2{display:flex;gap:8px;}
 .row2 .btn{flex:1;}
-
-/* hint */
 .hint{padding:10px 14px;border-radius:10px;font-size:14px;text-align:center;margin:8px 0;}
 .hint.info{background:#e0f2fe;color:#0369a1;}
 .hint.ok{background:#dcfce7;color:#15803d;}
 .hint.err{background:#fef2f2;color:var(--red);}
 .hint.warn{background:#fef3c7;color:#92400e;}
-
-/* scan */
 #reader{width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;}
 #reader video{border-radius:12px;}
-
-/* scan list */
 .scan-section{margin-top:12px;border-top:2px solid var(--border);padding-top:10px;}
 .scan-section h4{font-size:14px;font-weight:700;color:var(--muted);margin-bottom:8px;}
 .scan-row{display:flex;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:4px;gap:8px;}
@@ -82,9 +76,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .scan-row .sr-sl{font-size:14px;color:var(--teal);font-weight:600;min-width:50px;text-align:right;}
 .scan-row .sr-del{background:none;border:none;font-size:16px;cursor:pointer;padding:2px 6px;color:var(--red);border-radius:6px;}
 .scan-row .sr-del:active{background:#fef2f2;}
-.scan-empty{text-align:center;color:var(--muted);font-size:13px;padding:12px;}
-
-/* overlay */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center;}
 .overlay.active{display:flex;}
 .sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 28px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;}
@@ -94,183 +85,143 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .field input,.field select{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:16px;outline:none;}
 .field input:focus,.field select:focus{border-color:var(--teal);}
 .manual-err{color:var(--red);font-size:13px;margin-top:4px;display:none;}
-
-/* toast */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:12px;font-size:14px;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap;max-width:90vw;text-align:center;}
 .toast.show{opacity:1;}
-
-/* summary bar */
 .summary{background:#fff;border-bottom:1px solid var(--border);padding:10px 14px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
 .sum-chip{font-size:13px;font-weight:600;padding:4px 10px;border-radius:8px;}
 .chip-total{background:#e0f2fe;color:#0369a1;}
 .chip-done{background:#dcfce7;color:#15803d;}
 .chip-remain{background:#fef3c7;color:#92400e;}
-
-/* empty */
 .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:15px;}
-
-/* spin */
 .spin{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle;}
 @keyframes sp{to{transform:rotate(360deg)}}
+/* history */
+.hist-row{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;}
+.hist-lsx{font-weight:700;font-size:15px;}
+.hist-detail{font-size:13px;color:var(--muted);margin-top:2px;}
+.hist-empty{text-align:center;color:var(--muted);font-size:14px;padding:20px;}
 </style>
 </head>
 <body>
 
-<!-- ════════════════════════════════════════════
-     SCREEN 1: Chọn DN
-════════════════════════════════════════════ -->
+<!-- SCREEN 1: Chon DN -->
 <section id="screenDN" class="screen active">
   <div class="topbar">
-    <button class="icon-btn" onclick="goBack()">←</button>
-    <div class="ttl">📦 Đối chiếu Xuất hàng</div>
+    <button class="icon-btn" onclick="goBack()">&#8592;</button>
+    <div class="ttl">&#128230; Doi chieu Xuat hang</div>
   </div>
   <div class="wrap">
-    <input id="searchDN" class="search-box" type="text" placeholder="Tìm hoặc nhập mã DN..." oninput="filterDN(this.value)" />
-    <div id="dnStatus" class="hint info" style="display:none">Đang tải danh sách DN...</div>
+    <input id="searchDN" class="search-box" type="text" placeholder="Tim hoac nhap ma DN..." oninput="filterDN(this.value)" />
+    <div class="filter-bar">
+      <label><input type="checkbox" id="chkHideDone" onchange="filterDN(document.getElementById('searchDN').value)"> An DN da hoan thanh</label>
+    </div>
+    <div id="dnStatus" class="hint info" style="display:none">Dang tai danh sach DN...</div>
     <div id="dnList"></div>
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════
-     SCREEN 2: Chi tiết DN + Quét
-════════════════════════════════════════════ -->
+<!-- SCREEN 2: Chi tiet DN + Quet -->
 <section id="screenScan" class="screen">
   <div class="topbar">
-    <button class="icon-btn" onclick="backToDN()">←</button>
-    <div class="ttl">📋 <span id="dnTitle">—</span></div>
+    <button class="icon-btn" onclick="backToDN()">&#8592;</button>
+    <div class="ttl">&#128203; <span id="dnTitle">-</span></div>
+    <button class="icon-btn" onclick="refreshDN()" title="Tai lai">&#128260;</button>
+    <button class="icon-btn" onclick="openHistory()" title="Lich su">&#128337;</button>
   </div>
   <div class="summary" id="summaryBar"></div>
   <div class="wrap" id="mainWrap">
-    <!-- LSX progress -->
     <div id="lsxWrap"></div>
-
-    <!-- Danh sách đã scan trong phiên này -->
     <div id="scanSection" class="scan-section" style="display:none">
-      <h4>📝 Đã scan/nhập trong phiên này (<span id="scanCount">0</span>)</h4>
+      <h4>&#128221; Da scan/nhap trong phien nay (<span id="scanCount">0</span>)</h4>
       <div id="scanListEl"></div>
     </div>
   </div>
   <div id="reader"></div>
-  <div id="hint" class="hint info" style="margin:0 12px">Bấm "Bắt đầu quét" để mở camera</div>
+  <div id="hint" class="hint info" style="margin:0 12px">Bam "Bat dau quet" de mo camera</div>
   <div class="controls">
-    <button id="btnScan" class="btn lg green" onclick="startOrNext()">Bắt đầu quét</button>
+    <button id="btnScan" class="btn lg green" onclick="startOrNext()">Bat dau quet</button>
     <div class="row2">
-      <button class="btn ghost" onclick="openManual()">✏️ Nhập thủ công</button>
-      <button id="btnSubmit" class="btn teal" onclick="submitAll()" style="display:none">📤 Gửi kết quả</button>
+      <button class="btn ghost" onclick="openManual()">&#9999;&#65039; Nhap thu cong</button>
+      <button id="btnSubmit" class="btn teal" onclick="submitAll()" style="display:none">&#128228; Gui ket qua</button>
     </div>
   </div>
 </section>
 
-<!-- ════════════════════════════════════════════
-     OVERLAY: Nhập thủ công
-════════════════════════════════════════════ -->
+<!-- SCREEN 3: Lich su DN -->
+<section id="screenHistory" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="backFromHistory()">&#8592;</button>
+    <div class="ttl">&#128337; Lich su <span id="histTitle">-</span></div>
+  </div>
+  <div class="wrap">
+    <div id="histContent"></div>
+  </div>
+</section>
+
+<!-- OVERLAY: Nhap thu cong -->
 <div id="manualOverlay" class="overlay">
   <div class="sheet">
-    <h3>✏️ Nhập thủ công</h3>
+    <h3>&#9999;&#65039; Nhap thu cong</h3>
     <div class="field">
-      <label>Mã LSX</label>
-      <select id="mLSX">
-        <option value="">— Chọn LSX —</option>
-      </select>
+      <label>Ma LSX</label>
+      <select id="mLSX"><option value="">- Chon LSX -</option></select>
     </div>
     <div class="field">
-      <label>Số lượng</label>
+      <label>So luong</label>
       <input id="mSL" type="number" inputmode="numeric" placeholder="VD: 500" min="1" />
     </div>
     <div id="manualErr" class="manual-err"></div>
     <div class="row2" style="margin-top:12px">
-      <button class="btn gray" onclick="closeManual()">Hủy</button>
-      <button class="btn green" onclick="submitManual()">✓ Xác nhận</button>
+      <button class="btn gray" onclick="closeManual()">Huy</button>
+      <button class="btn green" onclick="submitManual()">&#10003; Xac nhan</button>
     </div>
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast" class="toast"></div>
 
 <script>
-/* ══════════════════════════════════════════════════
-   CẤU HÌNH
-══════════════════════════════════════════════════ */
 const CONFIG = {
-  XUAT_HANG_URL: "https://script.google.com/macros/s/AKfycbyJA2oQGzUJjTmaGonL8iN5gA0HMJIY-FFqfI10Fpj_oXPKcHF_ezw3J787ph-pGrenSA/exec"
+  XUAT_HANG_URL: "https://script.google.com/macros/s/AKfycbw0ILLVOhQGGjrtr4gpAAr1NBB44fHKpvP248rnddJvqHctfHj_85plkz3pCmXtGp1G-Q/exec"
 };
 
-/* ══════════════════════════════════════════════════
-   TRẠNG THÁI
-══════════════════════════════════════════════════ */
 let state = {
-  user: null,
-  maNV: null,
-  currentDN: null,   // {dn, kh, items:[{lsx, slYC, slDone}]}
-  sessionId: "",
-  allDN: [],         // [{dn, kh, soLSX}]
-  scanList: []       // [{lsx, sl, qr, time}] — danh sách scan trong phiên
+  user: null, maNV: null, currentDN: null, sessionId: "",
+  allDN: [], scanList: [], historyFrom: "scan"
 };
+let qr = null, scanning = false, scanLocked = true, lastText = "";
 
-let qr = null;
-let scanning = false;
-let scanLocked = true;
-let lastText = "";
-
-/* ══════════════════════════════════════════════════
-   SESSION — đọc từ sessionStorage (chia sẻ với QA-P.ERP)
-══════════════════════════════════════════════════ */
 function checkSession(){
   const saved = sessionStorage.getItem("ghinhan_session");
   if(!saved) return false;
   try{
     const s = JSON.parse(saved);
     if(s.username && s.ts && (Date.now() - s.ts < 8*3600*1000)){
-      state.user = s.user;
-      state.maNV = s.maNV;
-      return true;
+      state.user = s.user; state.maNV = s.maNV; return true;
     }
   }catch(e){}
   return false;
 }
 
-/* ══════════════════════════════════════════════════
-   NAVIGATION
-══════════════════════════════════════════════════ */
 function show(id){
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 }
-
-function goBack(){
-  window.location.href = "index.html";
-}
-
+function goBack(){ window.location.href = "index.html"; }
 function backToDN(){
-  if(state.scanList.length > 0){
-    if(!confirm("Bạn có "+state.scanList.length+" mục chưa gửi. Quay lại sẽ mất dữ liệu. Tiếp tục?")){
-      return;
-    }
-  }
-  stopCamera();
-  state.currentDN = null;
-  state.scanList = [];
-  show("screenDN");
+  if(state.scanList.length > 0 && !confirm("Ban co "+state.scanList.length+" muc chua gui. Quay lai se mat du lieu. Tiep tuc?")) return;
+  stopCamera(); state.currentDN = null; state.scanList = []; show("screenDN");
 }
-
-/* ══════════════════════════════════════════════════
-   TOAST + HINT
-══════════════════════════════════════════════════ */
 function showToast(msg, dur){
   const t=document.getElementById("toast");
   t.textContent=msg; t.classList.add("show");
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"), dur||3000);
 }
-
 function setHint(cls, msg){
   const h=document.getElementById("hint");
   h.className="hint "+cls; h.textContent=msg; h.style.margin="0 12px";
 }
 
-/* ══════════════════════════════════════════════════
-   ÂM THANH + RUNG
-══════════════════════════════════════════════════ */
 let audioCtx=null;
 function ac(){if(!audioCtx){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}} return audioCtx;}
 function tone(freq,dur,when){const c=ac();if(!c)return;const o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;o.connect(g);g.connect(c.destination);const t=c.currentTime+(when||0);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.start(t);o.stop(t+dur+.02);}
@@ -281,90 +232,89 @@ const FB={
   warn(){tone(440,.2,0);buzz(200);}
 };
 
-/* ══════════════════════════════════════════════════
-   SCREEN 1: Danh sách DN
-══════════════════════════════════════════════════ */
+/* === SCREEN 1: DN LIST === */
 async function loadDnList(){
-  const statusEl=document.getElementById("dnStatus");
-  statusEl.style.display="block";
-  statusEl.textContent="Đang tải danh sách DN...";
-  statusEl.className="hint info";
+  const el=document.getElementById("dnStatus");
+  el.style.display="block"; el.textContent="Dang tai..."; el.className="hint info";
   try{
     const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dnlist&t="+Date.now());
     const out = await res.json();
     if(out.result==="ok"){
       state.allDN = out.list||[];
-      renderDnList(state.allDN);
-      statusEl.style.display="none";
-    } else {
-      statusEl.textContent = out.error||"Lỗi tải danh sách";
-      statusEl.className="hint err";
-    }
-  }catch(e){
-    statusEl.textContent="Không kết nối được. Kiểm tra mạng.";
-    statusEl.className="hint err";
-  }
+      filterDN(""); el.style.display="none";
+    } else { el.textContent = out.error||"Loi"; el.className="hint err"; }
+  }catch(e){ el.textContent="Khong ket noi duoc."; el.className="hint err"; }
+}
+
+function filterDN(q){
+  q=(q||"").toLowerCase();
+  const hideDone = document.getElementById("chkHideDone").checked;
+  let filtered = state.allDN.filter(d=>(d.dn+d.kh).toLowerCase().includes(q));
+  if(hideDone) filtered = filtered.filter(d=>d.status !== "done");
+  renderDnList(filtered);
 }
 
 function renderDnList(list){
   const wrap=document.getElementById("dnList");
   if(!list.length){
-    wrap.innerHTML='<div class="empty">Chưa có DN nào trong sheet.<br>Paste dữ liệu vào tab DN_LSX.</div>';
+    wrap.innerHTML='<div class="empty">Khong co DN nao.</div>';
     return;
   }
   wrap.innerHTML="";
   list.forEach(d=>{
     const card=document.createElement("div");
-    card.className="dn-card";
+    const isDone = d.status === "done";
+    card.className="dn-card"+(isDone?" completed":"");
+    let statusHtml = '';
+    if(d.status==="done") statusHtml='<span class="dn-status st-done">Hoan thanh</span>';
+    else if(d.status==="partial") statusHtml='<span class="dn-status st-partial">Dang thuc hien</span>';
+    else statusHtml='<span class="dn-status st-new">Chua bat dau</span>';
     card.innerHTML='<div class="dn-code">'+esc(d.dn)+'</div>'+
-      '<div class="dn-kh">Khách: '+esc(d.kh)+'</div>'+
-      '<div class="dn-count">'+d.soLSX+' LSX</div>';
+      '<div class="dn-kh">Khach: '+esc(d.kh)+'</div>'+
+      '<div class="dn-meta"><span class="dn-count">'+d.soLSX+' LSX</span>'+statusHtml+'</div>';
     card.onclick=()=>openDN(d.dn);
     wrap.appendChild(card);
   });
 }
 
-function filterDN(q){
-  q=(q||"").toLowerCase();
-  const filtered=state.allDN.filter(d=>(d.dn+d.kh).toLowerCase().includes(q));
-  renderDnList(filtered);
-}
-
-/* ══════════════════════════════════════════════════
-   SCREEN 2: Chi tiết DN + Quét
-══════════════════════════════════════════════════ */
+/* === SCREEN 2: SCAN === */
 async function openDN(dnCode){
   show("screenScan");
   document.getElementById("dnTitle").textContent=dnCode;
-  document.getElementById("lsxWrap").innerHTML='<div class="hint info">Đang tải...</div>';
+  document.getElementById("lsxWrap").innerHTML='<div class="hint info">Dang tai...</div>';
   document.getElementById("summaryBar").innerHTML="";
-  setHint("info","Đang tải dữ liệu DN...");
-
+  setHint("info","Dang tai du lieu DN...");
   state.sessionId = dnCode+"_"+Date.now();
   state.scanList = [];
-
   try{
     const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dndetail&dn="+encodeURIComponent(dnCode)+"&t="+Date.now());
     const out = await res.json();
     if(out.result==="ok"){
       state.currentDN = out;
       renderAll();
-      setHint("info","Bấm \"Bắt đầu quét\" để mở camera");
+      setHint("info",'Bam "Bat dau quet" de mo camera');
     } else {
       document.getElementById("lsxWrap").innerHTML='<div class="hint err">'+esc(out.error)+'</div>';
       setHint("err", out.error);
     }
   }catch(e){
-    document.getElementById("lsxWrap").innerHTML='<div class="hint err">Không kết nối được. Kiểm tra mạng.</div>';
-    setHint("err","Lỗi mạng");
+    document.getElementById("lsxWrap").innerHTML='<div class="hint err">Khong ket noi duoc.</div>';
+    setHint("err","Loi mang");
   }
 }
 
-/** Render progress + scan list + show/hide submit button */
+async function refreshDN(){
+  if(!state.currentDN) return;
+  if(state.scanList.length > 0 && !confirm("Tai lai se xoa "+state.scanList.length+" muc chua gui. Tiep tuc?")) return;
+  const dnCode = state.currentDN.dn;
+  state.scanList = [];
+  showToast("Dang tai lai...", 2000);
+  await openDN(dnCode);
+}
+
 function renderAll(){
   renderProgress();
   renderScanList();
-  // Hiện nút Gửi nếu có ít nhất 1 scan
   document.getElementById("btnSubmit").style.display = state.scanList.length > 0 ? "" : "none";
 }
 
@@ -373,24 +323,18 @@ function renderProgress(){
   if(!dn) return;
   const wrap=document.getElementById("lsxWrap");
   wrap.innerHTML="";
-
   let totalLSX=dn.items.length, doneLSX=0;
-
   dn.items.forEach(it=>{
-    // Tổng SL = đã gửi trước đó (slDone) + scan trong phiên này
     const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl,0);
     const totalDone = it.slDone + sessionSL;
-
     const pct = it.slYC>0 ? Math.min(totalDone/it.slYC*100, 100) : 0;
     const isDone = totalDone >= it.slYC;
     const isOver = totalDone > it.slYC;
     if(isDone) doneLSX++;
-
     const cls = isOver?"lsx-item over":(isDone?"lsx-item done":"lsx-item");
-    const badge = isOver?'<span class="lsx-badge badge-over">VƯỢT</span>'
-                : isDone?'<span class="lsx-badge badge-done">ĐỦ</span>'
+    const badge = isOver?'<span class="lsx-badge badge-over">VUOT</span>'
+                : isDone?'<span class="lsx-badge badge-done">DU</span>'
                 : '<span class="lsx-badge badge-ok">'+Math.round(pct)+'%</span>';
-
     const div=document.createElement("div");
     div.className=cls;
     div.innerHTML=
@@ -402,32 +346,20 @@ function renderProgress(){
       '</div>';
     wrap.appendChild(div);
   });
-
-  // Summary bar
   document.getElementById("summaryBar").innerHTML=
     '<span class="sum-chip chip-total">'+totalLSX+' LSX</span>'+
-    '<span class="sum-chip chip-done">'+doneLSX+' đủ</span>'+
-    '<span class="sum-chip chip-remain">'+(totalLSX-doneLSX)+' còn thiếu</span>';
+    '<span class="sum-chip chip-done">'+doneLSX+' du</span>'+
+    '<span class="sum-chip chip-remain">'+(totalLSX-doneLSX)+' con thieu</span>';
 }
 
-/* ══════════════════════════════════════════════════
-   DANH SÁCH ĐÃ SCAN TRONG PHIÊN
-══════════════════════════════════════════════════ */
 function renderScanList(){
   const section = document.getElementById("scanSection");
   const listEl = document.getElementById("scanListEl");
   const countEl = document.getElementById("scanCount");
-
-  if(state.scanList.length === 0){
-    section.style.display = "none";
-    return;
-  }
-
+  if(state.scanList.length === 0){ section.style.display = "none"; return; }
   section.style.display = "";
   countEl.textContent = state.scanList.length;
   listEl.innerHTML = "";
-
-  // Hiển thị từ mới → cũ
   for(let i = state.scanList.length - 1; i >= 0; i--){
     const s = state.scanList[i];
     const row = document.createElement("div");
@@ -435,259 +367,204 @@ function renderScanList(){
     row.innerHTML =
       '<span class="sr-lsx">'+esc(s.lsx)+'</span>'+
       '<span class="sr-sl">'+fmt(s.sl)+'</span>'+
-      '<button class="sr-del" data-idx="'+i+'" title="Xóa">✕</button>';
+      '<button class="sr-del" data-idx="'+i+'">&#10005;</button>';
     listEl.appendChild(row);
   }
-
-  // Gắn event xóa
   listEl.querySelectorAll(".sr-del").forEach(btn=>{
     btn.onclick=function(){
       const idx = parseInt(this.getAttribute("data-idx"));
-      if(confirm("Xóa dòng "+state.scanList[idx].lsx+" (SL: "+fmt(state.scanList[idx].sl)+")?")){
-        state.scanList.splice(idx, 1);
-        renderAll();
+      if(confirm("Xoa dong "+state.scanList[idx].lsx+" (SL: "+fmt(state.scanList[idx].sl)+")?")){
+        state.scanList.splice(idx, 1); renderAll();
       }
     };
   });
 }
 
-/* ══════════════════════════════════════════════════
-   QUÉT QR
-══════════════════════════════════════════════════ */
+/* === QR SCAN === */
 async function startOrNext(){
-  if(scanning){
-    scanLocked=false; lastText="";
-    document.getElementById("btnScan").textContent="Đang quét...";
-    setHint("info","Đưa QR vào khung để quét");
-    return;
-  }
+  if(scanning){ scanLocked=false; lastText=""; document.getElementById("btnScan").textContent="Dang quet..."; setHint("info","Dua QR vao khung de quet"); return; }
   await startCamera();
 }
-
 async function startCamera(){
   try{
     qr=new Html5Qrcode("reader",{verbose:false});
-    const cfg={fps:10,qrbox:{width:240,height:240},aspectRatio:1.0};
-    await qr.start({facingMode:"environment"},cfg,onScan,()=>{});
+    await qr.start({facingMode:"environment"},{fps:10,qrbox:{width:240,height:240},aspectRatio:1.0},onScan,()=>{});
     scanning=true; scanLocked=false; lastText="";
-    document.getElementById("btnScan").textContent="Đang quét...";
-    setHint("info","Đưa QR vào khung để quét");
-  }catch(e){
-    setHint("err","Không mở được camera. Cấp quyền camera rồi thử lại.");
-  }
+    document.getElementById("btnScan").textContent="Dang quet...";
+    setHint("info","Dua QR vao khung de quet");
+  }catch(e){ setHint("err","Khong mo duoc camera."); }
 }
-
 function stopCamera(){
   if(qr&&scanning){qr.stop().then(()=>{try{qr.clear();}catch(e){}}).catch(()=>{});}
   scanning=false; scanLocked=true;
 }
-
 function onScan(text){
   if(scanLocked) return;
   text=(text||"").trim().toUpperCase();
   if(!text||text===lastText) return;
-  lastText=text;
-  scanLocked=true;
-  processQR(text);
+  lastText=text; scanLocked=true; processQR(text);
 }
 
-/* ══════════════════════════════════════════════════
-   XỬ LÝ QR → ĐỐI CHIẾU → GHI NHẬN VÀO DANH SÁCH
-══════════════════════════════════════════════════ */
-
-/** Parse QR: chấp nhận 2-4 phần, chỉ lấy LSX và SL */
 function parseQR(text){
   const parts=text.split("/");
   if(parts.length < 2) return null;
   const lsx = parts[0].trim();
-  const sl  = parseFloat(String(parts[1]).replace(",","."));
+  const sl = parseFloat(String(parts[1]).replace(",","."));
   if(!lsx || isNaN(sl) || sl <= 0) return null;
   return { raw: text, lsx: lsx, sl: sl };
 }
 
 function processQR(text){
   const parsed=parseQR(text);
-  if(!parsed){
-    FB.err();
-    setHint("err","QR không hợp lệ — cần ít nhất: LSX/SL");
-    document.getElementById("btnScan").textContent="Quét tiếp";
-    return;
-  }
-
+  if(!parsed){ FB.err(); setHint("err","QR khong hop le"); document.getElementById("btnScan").textContent="Quet tiep"; return; }
   addScanItem(parsed.lsx, parsed.sl, parsed.raw);
 }
 
-/** Thêm 1 item vào danh sách scan (dùng chung cho QR và nhập tay) */
 function addScanItem(lsx, sl, qrRaw){
   const dn=state.currentDN;
-  if(!dn){ FB.err(); setHint("err","Chưa tải được dữ liệu DN"); return; }
-
-  // Tìm LSX trong DN
+  if(!dn){ FB.err(); setHint("err","Chua tai duoc du lieu DN"); return; }
   const item = dn.items.find(it=>it.lsx===lsx);
-  if(!item){
-    FB.err();
-    setHint("err","⚠ LSX "+esc(lsx)+" không có trong DN này!");
-    document.getElementById("btnScan").textContent="Quét tiếp";
-    return;
-  }
-
-  // Tính SL hiện tại (đã gửi trước + đã scan trong phiên)
+  if(!item){ FB.err(); setHint("err","LSX "+esc(lsx)+" khong co trong DN nay!"); document.getElementById("btnScan").textContent="Quet tiep"; return; }
   const sessionSL = state.scanList.filter(s=>s.lsx===lsx).reduce((a,s)=>a+s.sl, 0);
   const totalAfter = item.slDone + sessionSL + sl;
-
-  // Chặn vượt SL
   if(totalAfter > item.slYC){
     FB.err();
-    setHint("err","⚠ VƯỢT SL! Tổng sẽ là "+fmt(totalAfter)+" > YC: "+fmt(item.slYC)+". Không thể thêm.");
-    document.getElementById("btnScan").textContent="Quét tiếp";
-    return;
-  } else {
-    const isDone = totalAfter >= item.slYC;
-    if(isDone){
-      FB.ok();
-      setHint("ok","✓ "+lsx+" — ĐÃ ĐỦ SL! ("+fmt(totalAfter)+"/"+fmt(item.slYC)+")");
-    } else {
-      FB.ok();
-      setHint("ok","✓ Ghi nhận "+lsx+" +"+fmt(sl)+" (tổng: "+fmt(totalAfter)+"/"+fmt(item.slYC)+")");
-    }
+    setHint("err","VUOT SL! Tong se la "+fmt(totalAfter)+" > YC: "+fmt(item.slYC));
+    document.getElementById("btnScan").textContent="Quet tiep"; return;
   }
-
-  // Thêm vào danh sách scan
-  state.scanList.push({
-    lsx: lsx,
-    sl: sl,
-    qr: qrRaw || (lsx+"/"+sl),
-    time: nowStr()
-  });
-
+  const isDone = totalAfter >= item.slYC;
+  if(isDone){ FB.ok(); setHint("ok",""+lsx+" - DA DU SL! ("+fmt(totalAfter)+"/"+fmt(item.slYC)+")"); }
+  else { FB.ok(); setHint("ok","Ghi nhan "+lsx+" +"+fmt(sl)+" (tong: "+fmt(totalAfter)+"/"+fmt(item.slYC)+")"); }
+  state.scanList.push({ lsx: lsx, sl: sl, qr: qrRaw || (lsx+"/"+sl), time: nowStr() });
   renderAll();
-  document.getElementById("btnScan").textContent="Quét tiếp";
+  document.getElementById("btnScan").textContent="Quet tiep";
 }
 
-/* ══════════════════════════════════════════════════
-   GỬI KẾT QUẢ LÊN SHEET
-══════════════════════════════════════════════════ */
+/* === SUBMIT === */
 async function submitAll(){
-  if(state.scanList.length === 0){
-    showToast("Chưa có dữ liệu để gửi", 2000);
-    return;
-  }
-
-  if(!confirm("Gửi "+state.scanList.length+" mục lên Google Sheet?")){
-    return;
-  }
-
+  if(state.scanList.length === 0){ showToast("Chua co du lieu", 2000); return; }
+  if(!confirm("Gui "+state.scanList.length+" muc len Google Sheet?")) return;
   const dn = state.currentDN;
-  const btnSubmit = document.getElementById("btnSubmit");
-  btnSubmit.disabled = true;
-  btnSubmit.innerHTML = '<span class="spin"></span> Đang gửi...';
-
-  // Tổng hợp theo LSX
+  const btn = document.getElementById("btnSubmit");
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Dang gui...';
   const summaryMap = {};
   dn.items.forEach(it=>{
     const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
-    summaryMap[it.lsx] = {
-      lsx: it.lsx,
-      slYC: it.slYC,
-      slThucTe: it.slDone + sessionSL   // tổng = đã gửi trước + phiên này
-    };
+    summaryMap[it.lsx] = { lsx: it.lsx, slYC: it.slYC, slThucTe: it.slDone + sessionSL };
   });
-
   const payload = {
-    action: "submit",
-    dn: dn.dn,
-    sessionId: state.sessionId,
-    user: state.user || "",
-    time: nowStr(),
+    action: "submit", dn: dn.dn, sessionId: state.sessionId,
+    user: state.user || "", time: nowStr(),
     scanRows: state.scanList.map(s=>({ lsx: s.lsx, qr: s.qr, sl: s.sl, time: s.time })),
     summary: Object.values(summaryMap)
   };
-
   try{
     const res = await fetch(CONFIG.XUAT_HANG_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload),
-      redirect: "follow"
+      method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify(payload), redirect:"follow"
     });
     const out = await res.json();
     if(out.result === "ok"){
-      FB.ok();
-      showToast("✓ Đã gửi "+out.scans+" scan + "+out.summaries+" kết quả!", 4000);
-
-      // Cập nhật slDone trong state (cộng dồn session vào)
+      FB.ok(); showToast("Da gui "+out.scans+" scan!", 4000);
       dn.items.forEach(it=>{
         const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
         it.slDone += sessionSL;
       });
-
-      // Reset scan list
-      state.scanList = [];
-      renderAll();
-      setHint("ok","✓ Đã gửi kết quả thành công!");
-    } else {
-      FB.err();
-      showToast("Lỗi: "+(out.error||"Không rõ"), 4000);
-    }
-  }catch(e){
-    FB.err();
-    showToast("Mất mạng — chưa gửi được. Thử lại sau.", 4000);
-  }
-
-  btnSubmit.disabled = false;
-  btnSubmit.innerHTML = '📤 Gửi kết quả';
+      state.scanList = []; renderAll(); setHint("ok","Da gui ket qua thanh cong!");
+    } else { FB.err(); showToast("Loi: "+(out.error||"Khong ro"), 4000); }
+  }catch(e){ FB.err(); showToast("Mat mang - chua gui duoc.", 4000); }
+  btn.disabled = false; btn.innerHTML = '&#128228; Gui ket qua';
 }
 
-/* ══════════════════════════════════════════════════
-   NHẬP THỦ CÔNG
-══════════════════════════════════════════════════ */
+/* === MANUAL INPUT === */
 function openManual(){
-  // Populate LSX dropdown
   const sel = document.getElementById("mLSX");
-  sel.innerHTML = '<option value="">— Chọn LSX —</option>';
+  sel.innerHTML = '<option value="">- Chon LSX -</option>';
   if(state.currentDN){
     state.currentDN.items.forEach(it=>{
       const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
       const totalDone = it.slDone + sessionSL;
-      const opt = document.createElement("option");
-      opt.value = it.lsx;
-      opt.textContent = it.lsx + " ("+fmt(totalDone)+"/"+fmt(it.slYC)+")";
-      sel.appendChild(opt);
+      if(totalDone < it.slYC){
+        const opt = document.createElement("option");
+        opt.value = it.lsx;
+        opt.textContent = it.lsx + " ("+fmt(totalDone)+"/"+fmt(it.slYC)+")";
+        sel.appendChild(opt);
+      }
     });
   }
   document.getElementById("mSL").value = "";
-  const err=document.getElementById("manualErr");
-  err.style.display="none"; err.textContent="";
+  const err=document.getElementById("manualErr"); err.style.display="none";
   document.getElementById("manualOverlay").classList.add("active");
   setTimeout(()=>document.getElementById("mSL").focus(),200);
 }
-
-function closeManual(){
-  document.getElementById("manualOverlay").classList.remove("active");
-}
-
+function closeManual(){ document.getElementById("manualOverlay").classList.remove("active"); }
 function submitManual(){
   const lsx = document.getElementById("mLSX").value.trim();
   const slStr = document.getElementById("mSL").value.trim();
   const err = document.getElementById("manualErr");
-
-  if(!lsx){
-    err.textContent="Vui lòng chọn LSX"; err.style.display="block";
-    return;
-  }
+  if(!lsx){ err.textContent="Chon LSX"; err.style.display="block"; return; }
   const sl = parseFloat(slStr.replace(",","."));
-  if(isNaN(sl) || sl <= 0){
-    err.textContent="Số lượng phải > 0"; err.style.display="block";
-    return;
-  }
-
+  if(isNaN(sl) || sl <= 0){ err.textContent="So luong phai > 0"; err.style.display="block"; return; }
   closeManual();
   addScanItem(lsx, sl, "MANUAL/"+lsx+"/"+sl);
 }
 
-/* ══════════════════════════════════════════════════
-   HELPERS
-══════════════════════════════════════════════════ */
+/* === HISTORY === */
+async function openHistory(){
+  const dn = state.currentDN;
+  if(!dn){ showToast("Chua chon DN", 2000); return; }
+  state.historyFrom = "scan";
+  show("screenHistory");
+  document.getElementById("histTitle").textContent = dn.dn;
+  document.getElementById("histContent").innerHTML = '<div class="hint info">Dang tai lich su...</div>';
+  try{
+    const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dnhistory&dn="+encodeURIComponent(dn.dn)+"&t="+Date.now());
+    const out = await res.json();
+    if(out.result==="ok") renderHistory(out);
+    else document.getElementById("histContent").innerHTML='<div class="hint err">'+esc(out.error||"Loi")+'</div>';
+  }catch(e){
+    document.getElementById("histContent").innerHTML='<div class="hint err">Khong ket noi duoc.</div>';
+  }
+}
+
+function openHistoryFromList(dnCode){
+  state.historyFrom = "list";
+  state.currentDN = { dn: dnCode };
+  show("screenHistory");
+  document.getElementById("histTitle").textContent = dnCode;
+  document.getElementById("histContent").innerHTML = '<div class="hint info">Dang tai lich su...</div>';
+  fetch(CONFIG.XUAT_HANG_URL+"?action=dnhistory&dn="+encodeURIComponent(dnCode)+"&t="+Date.now())
+    .then(r=>r.json()).then(out=>{
+      if(out.result==="ok") renderHistory(out);
+      else document.getElementById("histContent").innerHTML='<div class="hint err">'+esc(out.error||"Loi")+'</div>';
+    }).catch(()=>{
+      document.getElementById("histContent").innerHTML='<div class="hint err">Khong ket noi duoc.</div>';
+    });
+}
+
+function renderHistory(data){
+  const wrap = document.getElementById("histContent");
+  const logs = data.logs || [];
+  if(logs.length === 0){
+    wrap.innerHTML='<div class="hist-empty">Chua co lich su scan nao.</div>';
+    return;
+  }
+  let html = '<div style="margin-bottom:12px;font-size:13px;color:var(--muted)">Tong: '+logs.length+' lan scan</div>';
+  logs.forEach(l=>{
+    html += '<div class="hist-row">'+
+      '<div class="hist-lsx">'+esc(l.lsx)+' <span style="color:var(--teal);font-size:14px">x'+fmt(l.sl)+'</span></div>'+
+      '<div class="hist-detail">'+esc(l.time)+' | '+esc(l.user)+(l.kl ? ' | KL: '+fmt(l.kl)+'kg' : '')+'</div>'+
+    '</div>';
+  });
+  wrap.innerHTML = html;
+}
+
+function backFromHistory(){
+  if(state.historyFrom === "scan") show("screenScan");
+  else show("screenDN");
+}
+
+/* === HELPERS === */
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function fmt(n){return n%1===0?String(n):n.toFixed(1);}
 function nowStr(){
@@ -697,18 +574,12 @@ function nowStr(){
   return dd+"/"+mm+"/"+yy+" "+hh+":"+mi+":"+ss;
 }
 
-/* ══════════════════════════════════════════════════
-   KHỞI ĐỘNG
-══════════════════════════════════════════════════ */
+/* === BOOT === */
 document.getElementById("mSL").addEventListener("keydown",function(ev){
   if(ev.key==="Enter"){ev.preventDefault();submitManual();}
 });
-
 function boot(){
-  if(!checkSession()){
-    window.location.href="index.html";
-    return;
-  }
+  if(!checkSession()){ window.location.href="index.html"; return; }
   loadDnList();
 }
 boot();
