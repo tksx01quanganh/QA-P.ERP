@@ -694,11 +694,7 @@ function enterModuleScreen(){
 function openModuleFuncs(modCode, group){
   const mod = ALL_MODULES.find(m => m.ma === modCode) || {};
 
-  // Nếu module chỉ có 1 chức năng → vào thẳng, không hiện sub-screen
-  if(group.funcs.length === 1){
-    selectFunction(group.funcs[0]);
-    return;
-  }
+  // Luôn hiện sub-screen chức năng (không auto-skip dù chỉ có 1)
 
   document.getElementById("funcModIcon").textContent = mod.icon || "📋";
   document.getElementById("funcModName").textContent = group.tenModule || mod.ten || modCode;
