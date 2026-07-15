@@ -18,29 +18,49 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .wrap{padding:12px;flex:1;overflow-y:auto;}
 .search-box{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:12px;font-size:16px;outline:none;margin-bottom:10px;}
 .search-box:focus{border-color:var(--teal);}
-.dn-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:8px;cursor:pointer;position:relative;}
-.dn-card:active{border-color:var(--teal);background:#ecfdf5;}
-.dn-card.completed{opacity:.65;border-color:#bbf7d0;}
-.dn-code{font-size:18px;font-weight:700;}
-.dn-kh{font-size:13px;color:var(--muted);margin-top:2px;}
-.dn-meta{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap;}
+/* Accordion DN */
+.dn-acc{border:2px solid var(--border);border-radius:14px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.dn-acc.completed{opacity:.7;border-color:#bbf7d0;}
+.dn-hdr{display:flex;align-items:center;padding:12px 14px;cursor:pointer;gap:8px;}
+.dn-hdr:active{background:#f8fafc;}
+.dn-tri{font-size:10px;color:var(--muted);transition:transform .2s;flex-shrink:0;width:16px;text-align:center;}
+.dn-tri.open{transform:rotate(90deg);}
+.dn-hdr-info{flex:1;min-width:0;}
+.dn-title-row{display:flex;align-items:center;gap:8px;}
+.dn-code{font-size:17px;font-weight:700;}
+.dn-kh{font-size:13px;color:var(--muted);}
+.dn-meta{display:flex;gap:8px;align-items:center;margin-top:3px;flex-wrap:wrap;}
 .dn-count{font-size:12px;color:var(--teal);font-weight:600;}
 .dn-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;}
 .st-done{background:#dcfce7;color:#15803d;}
 .st-partial{background:#fef3c7;color:#92400e;}
 .st-new{background:#e0f2fe;color:#0369a1;}
+.dn-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
+.dn-body.open{display:block;}
+.dn-lsx-item{background:#f8fafc;border-radius:10px;padding:10px 12px;margin-top:8px;}
+.dn-lsx-item.done{background:#f0fdf4;border:1px solid #bbf7d0;}
+.dn-lsx-head{display:flex;justify-content:space-between;align-items:center;}
+.dn-lsx-code{font-weight:700;font-size:15px;}
+.dn-lsx-prog{font-size:13px;color:var(--muted);}
+.dn-lsx-scanner{font-size:12px;color:var(--muted);margin-top:3px;}
+.dn-actions{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.dn-act-btn{border:none;padding:8px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;flex:1;text-align:center;}
+.dn-act-btn:active{opacity:.85;}
+.dn-act-btn.scan{background:var(--green);color:#fff;}
+.dn-act-btn.hist{background:#e0f2fe;color:#0369a1;}
+.lsx-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;}
+.badge-ok{background:#e0f2fe;color:#0369a1;}
+.badge-done{background:#bbf7d0;color:#15803d;}
+.badge-over{background:#fecaca;color:var(--red);}
 .filter-bar{display:flex;gap:8px;margin-bottom:10px;align-items:center;}
 .filter-bar label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer;}
 .filter-bar input[type=checkbox]{width:16px;height:16px;}
+/* Scan screen */
 .lsx-item{background:#fff;border:2px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;}
 .lsx-item.done{border-color:var(--green);background:#f0fdf4;}
 .lsx-item.over{border-color:var(--red);background:#fef2f2;}
 .lsx-head{display:flex;justify-content:space-between;align-items:center;}
 .lsx-code{font-size:16px;font-weight:700;}
-.lsx-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;}
-.badge-ok{background:#e0f2fe;color:#0369a1;}
-.badge-done{background:#bbf7d0;color:#15803d;}
-.badge-over{background:#fecaca;color:var(--red);}
 .lsx-bars{margin-top:8px;}
 .bar-row{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:13px;}
 .bar-label{width:28px;font-weight:600;color:var(--muted);flex-shrink:0;}
@@ -54,8 +74,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .btn.lg{padding:14px;font-size:18px;}
 .btn.green{background:var(--green);color:#fff;}
 .btn.teal{background:var(--teal);color:#fff;}
-.btn.amber{background:var(--amber);color:#fff;}
-.btn.red{background:var(--red);color:#fff;}
 .btn.gray{background:#e2e8f0;color:var(--txt);}
 .btn.ghost{background:none;border:2px solid var(--border);color:var(--txt);}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
@@ -66,7 +84,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .hint.info{background:#e0f2fe;color:#0369a1;}
 .hint.ok{background:#dcfce7;color:#15803d;}
 .hint.err{background:#fef2f2;color:var(--red);}
-.hint.warn{background:#fef3c7;color:#92400e;}
 #reader{width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;}
 #reader video{border-radius:12px;}
 .scan-section{margin-top:12px;border-top:2px solid var(--border);padding-top:10px;}
@@ -95,13 +112,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:15px;}
 .spin{display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle;}
 @keyframes sp{to{transform:rotate(360deg)}}
-/* history */
 .hist-row{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;}
 .hist-lsx{font-weight:700;font-size:15px;}
 .hist-detail{font-size:13px;color:var(--muted);margin-top:2px;}
 .hist-empty{text-align:center;color:var(--muted);font-size:14px;padding:20px;}
-.dn-hist-btn{background:none;border:none;font-size:14px;color:var(--teal);cursor:pointer;padding:2px 6px;border-radius:6px;font-weight:600;}
-.dn-hist-btn:active{background:#ecfdf5;}
+.loading-text{text-align:center;color:var(--muted);padding:12px;font-size:14px;}
 </style>
 </head>
 <body>
@@ -109,11 +124,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <!-- SCREEN 1: Chọn DN -->
 <section id="screenDN" class="screen active">
   <div class="topbar">
-    <button class="icon-btn" onclick="goBack()">&#8592;</button>
+    <button class="icon-btn" onclick="goHome()">&#8592;</button>
     <div class="ttl">&#128230; Đối chiếu Xuất hàng</div>
+    <button class="icon-btn" onclick="goHome()" title="Trang chủ">&#127968;</button>
   </div>
   <div class="wrap">
-    <input id="searchDN" class="search-box" type="text" placeholder="Tìm theo mã DN hoặc khách hàng..." oninput="filterDN(this.value)" />
+    <input id="searchDN" class="search-box" type="text" placeholder="Tìm theo mã DN, khách hàng hoặc LSX..." oninput="filterDN(this.value)" />
     <div class="filter-bar">
       <label><input type="checkbox" id="chkHideDone" onchange="filterDN(document.getElementById('searchDN').value)"> Ẩn DN đã hoàn thành</label>
     </div>
@@ -122,13 +138,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 </section>
 
-<!-- SCREEN 2: Chi tiết DN + Quét -->
+<!-- SCREEN 2: Quét hàng -->
 <section id="screenScan" class="screen">
   <div class="topbar">
     <button class="icon-btn" onclick="backToDN()">&#8592;</button>
     <div class="ttl">&#128203; <span id="dnTitle">-</span></div>
     <button class="icon-btn" onclick="refreshDN()" title="Tải lại">&#128260;</button>
     <button class="icon-btn" onclick="openHistory()" title="Lịch sử">&#128337;</button>
+    <button class="icon-btn" onclick="goHome()" title="Trang chủ">&#127968;</button>
   </div>
   <div class="summary" id="summaryBar"></div>
   <div class="wrap" id="mainWrap">
@@ -140,7 +157,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
   <div id="reader"></div>
   <div id="hint" class="hint info" style="margin:0 12px">Bấm "Bắt đầu quét" để mở camera</div>
-  <div class="controls">
+  <div class="controls" id="scanControls">
     <button id="btnScan" class="btn lg green" onclick="startOrNext()">Bắt đầu quét</button>
     <div class="row2">
       <button class="btn ghost" onclick="openManual()">&#9999;&#65039; Nhập thủ công</button>
@@ -154,6 +171,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="backFromHistory()">&#8592;</button>
     <div class="ttl">&#128337; Lịch sử <span id="histTitle">-</span></div>
+    <button class="icon-btn" onclick="goHome()" title="Trang chủ">&#127968;</button>
   </div>
   <div class="wrap">
     <div id="histContent"></div>
@@ -189,8 +207,9 @@ const CONFIG = {
 
 let state = {
   user: null, maNV: null, currentDN: null, sessionId: "",
-  allDN: [], scanList: [], historyFrom: "scan"
+  allDN: [], scanList: [], historyFrom: "scan", expandedDN: {}
 };
+let filteredList = [];
 let qr = null, scanning = false, scanLocked = true, lastText = "";
 
 function checkSession(){
@@ -209,7 +228,7 @@ function show(id){
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 }
-function goBack(){ window.location.href = "index.html"; }
+function goHome(){ window.location.href = "index.html"; }
 function backToDN(){
   if(state.scanList.length > 0 && !confirm("Bạn có "+state.scanList.length+" mục chưa gửi. Quay lại sẽ mất dữ liệu. Tiếp tục?")) return;
   stopCamera(); state.currentDN = null; state.scanList = []; show("screenDN");
@@ -234,7 +253,7 @@ const FB={
   warn(){tone(440,.2,0);buzz(200);}
 };
 
-/* === SCREEN 1: DN LIST === */
+/* === SCREEN 1: DN LIST (ACCORDION) === */
 async function loadDnList(){
   const el=document.getElementById("dnStatus");
   el.style.display="block"; el.textContent="Đang tải..."; el.className="hint info";
@@ -243,6 +262,7 @@ async function loadDnList(){
     const out = await res.json();
     if(out.result==="ok"){
       state.allDN = out.list||[];
+      state.expandedDN = {};
       filterDN(""); el.style.display="none";
     } else { el.textContent = out.error||"Lỗi"; el.className="hint err"; }
   }catch(e){ el.textContent="Không kết nối được."; el.className="hint err"; }
@@ -251,9 +271,12 @@ async function loadDnList(){
 function filterDN(q){
   q=(q||"").toLowerCase();
   const hideDone = document.getElementById("chkHideDone").checked;
-  let filtered = state.allDN.filter(d=>(d.dn+" "+d.kh).toLowerCase().includes(q));
-  if(hideDone) filtered = filtered.filter(d=>d.status !== "done");
-  renderDnList(filtered);
+  filteredList = state.allDN.filter(d=>{
+    const s = (d.dn+" "+d.kh+" "+(d.lsxList||[]).join(" ")).toLowerCase();
+    return s.includes(q);
+  });
+  if(hideDone) filteredList = filteredList.filter(d=>d.status !== "done");
+  renderDnList(filteredList);
 }
 
 function renderDnList(list){
@@ -263,31 +286,114 @@ function renderDnList(list){
     return;
   }
   wrap.innerHTML="";
-  list.forEach(d=>{
-    const card=document.createElement("div");
-    const isDone = d.status === "done";
-    card.className="dn-card"+(isDone?" completed":"");
+  list.forEach((d, idx)=>{
+    const acc=document.createElement("div");
+    acc.className="dn-acc"+(d.status==="done"?" completed":"");
+
     let statusHtml = '';
     if(d.status==="done") statusHtml='<span class="dn-status st-done">Hoàn thành</span>';
     else if(d.status==="partial") statusHtml='<span class="dn-status st-partial">Đang thực hiện</span>';
     else statusHtml='<span class="dn-status st-new">Chưa bắt đầu</span>';
 
-    let histBtn = '';
-    if(d.status==="done" || d.status==="partial"){
-      histBtn = '<button class="dn-hist-btn" data-dn="'+esc(d.dn)+'" onclick="event.stopPropagation();openHistoryFromList(this.getAttribute(\'data-dn\'))">&#128337; Xem lịch sử</button>';
-    }
+    acc.innerHTML=
+      '<div class="dn-hdr" onclick="toggleDN('+idx+')">'+
+        '<span class="dn-tri" id="tri_'+idx+'">&#9654;</span>'+
+        '<div class="dn-hdr-info">'+
+          '<div class="dn-title-row">'+
+            '<span class="dn-code">'+esc(d.dn)+'</span>'+
+            '<span class="dn-kh">— '+esc(d.kh)+'</span>'+
+          '</div>'+
+          '<div class="dn-meta">'+
+            '<span class="dn-count">'+d.soLSX+' LSX</span>'+
+            statusHtml+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="dn-body" id="body_'+idx+'"></div>';
 
-    card.innerHTML='<div class="dn-code">'+esc(d.dn)+'</div>'+
-      '<div class="dn-kh">Khách: '+esc(d.kh)+'</div>'+
-      '<div class="dn-meta"><span class="dn-count">'+d.soLSX+' LSX</span>'+statusHtml+histBtn+'</div>';
-
-    if(isDone){
-      card.onclick=()=>openHistoryFromList(d.dn);
-    } else {
-      card.onclick=()=>openDN(d.dn);
-    }
-    wrap.appendChild(card);
+    wrap.appendChild(acc);
   });
+}
+
+async function toggleDN(idx){
+  const d = filteredList[idx];
+  if(!d) return;
+  const body = document.getElementById("body_"+idx);
+  const tri = document.getElementById("tri_"+idx);
+
+  if(body.classList.contains("open")){
+    body.classList.remove("open"); tri.classList.remove("open");
+    return;
+  }
+
+  // Close others
+  document.querySelectorAll(".dn-body.open").forEach(b=>{
+    b.classList.remove("open");
+    const id = b.id.replace("body_","");
+    const t = document.getElementById("tri_"+id);
+    if(t) t.classList.remove("open");
+  });
+
+  tri.classList.add("open");
+  body.classList.add("open");
+
+  if(!state.expandedDN[d.dn]){
+    body.innerHTML='<div class="loading-text">Đang tải...</div>';
+    try{
+      const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dndetail&dn="+encodeURIComponent(d.dn)+"&t="+Date.now());
+      const out = await res.json();
+      if(out.result==="ok"){
+        state.expandedDN[d.dn] = out;
+        renderAccBody(idx, out, d);
+      } else {
+        body.innerHTML='<div class="loading-text" style="color:var(--red)">'+esc(out.error)+'</div>';
+      }
+    }catch(e){
+      body.innerHTML='<div class="loading-text" style="color:var(--red)">Không kết nối được</div>';
+    }
+  } else {
+    renderAccBody(idx, state.expandedDN[d.dn], d);
+  }
+}
+
+function renderAccBody(idx, data, d){
+  const body = document.getElementById("body_"+idx);
+  const allDone = data.items.every(it => it.slDone >= it.slYC);
+  let html = '';
+
+  data.items.forEach(it=>{
+    const pct = it.slYC > 0 ? Math.min(it.slDone/it.slYC*100, 100) : 0;
+    const isDone = it.slDone >= it.slYC;
+    const isOver = it.slDone > it.slYC;
+
+    let badge = '';
+    if(isOver) badge='<span class="lsx-badge badge-over">VƯỢT</span>';
+    else if(isDone) badge='<span class="lsx-badge badge-done">ĐỦ</span>';
+    else badge='<span class="lsx-badge badge-ok">'+Math.round(pct)+'%</span>';
+
+    let scannerInfo = '';
+    if(it.lastUser) scannerInfo='<div class="dn-lsx-scanner">Gần nhất: '+esc(it.lastUser)+' — '+esc(it.lastTime||'')+'</div>';
+
+    html += '<div class="dn-lsx-item'+(isDone?' done':'')+'">'+
+      '<div class="dn-lsx-head">'+
+        '<span class="dn-lsx-code">'+esc(it.lsx)+'</span>'+
+        badge+
+      '</div>'+
+      '<div class="dn-lsx-prog">'+fmt(it.slDone)+' / '+fmt(it.slYC)+'</div>'+
+      scannerInfo+
+    '</div>';
+  });
+
+  html += '<div class="dn-actions">';
+  if(!allDone){
+    html += '<button class="dn-act-btn scan" onclick="openDN(\''+escAttr(data.dn)+'\')">&#128247; Quét hàng</button>';
+  }
+  if(d.status !== "new"){
+    html += '<button class="dn-act-btn hist" onclick="openHistoryFromList(\''+escAttr(data.dn)+'\')">&#128337; Xem lịch sử</button>';
+  }
+  html += '</div>';
+
+  body.innerHTML = html;
 }
 
 /* === SCREEN 2: SCAN === */
@@ -304,8 +410,11 @@ async function openDN(dnCode){
     const out = await res.json();
     if(out.result==="ok"){
       state.currentDN = out;
+      const allDone = out.items.every(it=>it.slDone>=it.slYC);
+      document.getElementById("scanControls").style.display = allDone ? "none" : "";
+      document.getElementById("hint").style.display = allDone ? "none" : "";
       renderAll();
-      setHint("info",'Bấm "Bắt đầu quét" để mở camera');
+      if(!allDone) setHint("info",'Bấm "Bắt đầu quét" để mở camera');
     } else {
       document.getElementById("lsxWrap").innerHTML='<div class="hint err">'+esc(out.error)+'</div>';
       setHint("err", out.error);
@@ -321,6 +430,7 @@ async function refreshDN(){
   if(state.scanList.length > 0 && !confirm("Tải lại sẽ xoá "+state.scanList.length+" mục chưa gửi. Tiếp tục?")) return;
   const dnCode = state.currentDN.dn;
   state.scanList = [];
+  state.expandedDN = {};
   showToast("Đang tải lại...", 2000);
   await openDN(dnCode);
 }
@@ -446,7 +556,7 @@ function addScanItem(lsx, sl, qrRaw){
     document.getElementById("btnScan").textContent="Quét tiếp"; return;
   }
   const isDone = totalAfter >= item.slYC;
-  if(isDone){ FB.ok(); setHint("ok",""+lsx+" - ĐÃ ĐỦ SL! ("+fmt(totalAfter)+"/"+fmt(item.slYC)+")"); }
+  if(isDone){ FB.ok(); setHint("ok",""+lsx+" — ĐÃ ĐỦ SL! ("+fmt(totalAfter)+"/"+fmt(item.slYC)+")"); }
   else { FB.ok(); setHint("ok","Ghi nhận "+lsx+" +"+fmt(sl)+" (tổng: "+fmt(totalAfter)+"/"+fmt(item.slYC)+")"); }
   state.scanList.push({ lsx: lsx, sl: sl, qr: qrRaw || (lsx+"/"+sl), time: nowStr() });
   renderAll();
@@ -483,9 +593,9 @@ async function submitAll(){
         const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
         it.slDone += sessionSL;
       });
-      state.scanList = []; renderAll(); setHint("ok","Đã gửi kết quả thành công!");
+      state.scanList = []; state.expandedDN = {}; renderAll(); setHint("ok","Đã gửi kết quả thành công!");
     } else { FB.err(); showToast("Lỗi: "+(out.error||"Không rõ"), 4000); }
-  }catch(e){ FB.err(); showToast("Mất mạng - chưa gửi được.", 4000); }
+  }catch(e){ FB.err(); showToast("Mất mạng — chưa gửi được.", 4000); }
   btn.disabled = false; btn.innerHTML = '&#128228; Gửi kết quả';
 }
 
@@ -572,9 +682,14 @@ function renderHistory(data){
   }
   let html = '<div style="margin-bottom:12px;font-size:13px;color:var(--muted)">Tổng: '+logs.length+' lần scan</div>';
   logs.forEach(l=>{
+    let kqBadge = '';
+    if(l.kq === "Du") kqBadge = ' <span class="lsx-badge badge-done">Đủ</span>';
+    else if(l.kq === "Vuot") kqBadge = ' <span class="lsx-badge badge-over">Vượt</span>';
+    else if(l.kq === "Thieu") kqBadge = ' <span class="lsx-badge badge-ok">Thiếu</span>';
+
     html += '<div class="hist-row">'+
-      '<div class="hist-lsx">'+esc(l.lsx)+' <span style="color:var(--teal);font-size:14px">x'+fmt(l.sl)+'</span></div>'+
-      '<div class="hist-detail">'+esc(l.time)+' | '+esc(l.user)+(l.kl ? ' | KL: '+fmt(l.kl)+'kg' : '')+'</div>'+
+      '<div class="hist-lsx">'+esc(l.lsx)+' <span style="color:var(--teal);font-size:14px">x'+fmt(l.sl)+'</span>'+kqBadge+'</div>'+
+      '<div class="hist-detail">'+esc(l.user)+' — '+esc(l.time)+(l.kl ? ' | KL: '+fmt(l.kl)+'kg' : '')+'</div>'+
     '</div>';
   });
   wrap.innerHTML = html;
@@ -587,6 +702,7 @@ function backFromHistory(){
 
 /* === HELPERS === */
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function escAttr(s){return String(s).replace(/'/g,"\\'").replace(/"/g,"&quot;");}
 function fmt(n){return n%1===0?String(n):n.toFixed(1);}
 function nowStr(){
   const d=new Date();
