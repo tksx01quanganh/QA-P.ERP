@@ -100,80 +100,82 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .hist-lsx{font-weight:700;font-size:15px;}
 .hist-detail{font-size:13px;color:var(--muted);margin-top:2px;}
 .hist-empty{text-align:center;color:var(--muted);font-size:14px;padding:20px;}
+.dn-hist-btn{background:none;border:none;font-size:14px;color:var(--teal);cursor:pointer;padding:2px 6px;border-radius:6px;font-weight:600;}
+.dn-hist-btn:active{background:#ecfdf5;}
 </style>
 </head>
 <body>
 
-<!-- SCREEN 1: Chon DN -->
+<!-- SCREEN 1: Chọn DN -->
 <section id="screenDN" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goBack()">&#8592;</button>
-    <div class="ttl">&#128230; Doi chieu Xuat hang</div>
+    <div class="ttl">&#128230; Đối chiếu Xuất hàng</div>
   </div>
   <div class="wrap">
-    <input id="searchDN" class="search-box" type="text" placeholder="Tim hoac nhap ma DN..." oninput="filterDN(this.value)" />
+    <input id="searchDN" class="search-box" type="text" placeholder="Tìm theo mã DN hoặc khách hàng..." oninput="filterDN(this.value)" />
     <div class="filter-bar">
-      <label><input type="checkbox" id="chkHideDone" onchange="filterDN(document.getElementById('searchDN').value)"> An DN da hoan thanh</label>
+      <label><input type="checkbox" id="chkHideDone" onchange="filterDN(document.getElementById('searchDN').value)"> Ẩn DN đã hoàn thành</label>
     </div>
-    <div id="dnStatus" class="hint info" style="display:none">Dang tai danh sach DN...</div>
+    <div id="dnStatus" class="hint info" style="display:none">Đang tải danh sách DN...</div>
     <div id="dnList"></div>
   </div>
 </section>
 
-<!-- SCREEN 2: Chi tiet DN + Quet -->
+<!-- SCREEN 2: Chi tiết DN + Quét -->
 <section id="screenScan" class="screen">
   <div class="topbar">
     <button class="icon-btn" onclick="backToDN()">&#8592;</button>
     <div class="ttl">&#128203; <span id="dnTitle">-</span></div>
-    <button class="icon-btn" onclick="refreshDN()" title="Tai lai">&#128260;</button>
-    <button class="icon-btn" onclick="openHistory()" title="Lich su">&#128337;</button>
+    <button class="icon-btn" onclick="refreshDN()" title="Tải lại">&#128260;</button>
+    <button class="icon-btn" onclick="openHistory()" title="Lịch sử">&#128337;</button>
   </div>
   <div class="summary" id="summaryBar"></div>
   <div class="wrap" id="mainWrap">
     <div id="lsxWrap"></div>
     <div id="scanSection" class="scan-section" style="display:none">
-      <h4>&#128221; Da scan/nhap trong phien nay (<span id="scanCount">0</span>)</h4>
+      <h4>&#128221; Đã scan/nhập trong phiên này (<span id="scanCount">0</span>)</h4>
       <div id="scanListEl"></div>
     </div>
   </div>
   <div id="reader"></div>
-  <div id="hint" class="hint info" style="margin:0 12px">Bam "Bat dau quet" de mo camera</div>
+  <div id="hint" class="hint info" style="margin:0 12px">Bấm "Bắt đầu quét" để mở camera</div>
   <div class="controls">
-    <button id="btnScan" class="btn lg green" onclick="startOrNext()">Bat dau quet</button>
+    <button id="btnScan" class="btn lg green" onclick="startOrNext()">Bắt đầu quét</button>
     <div class="row2">
-      <button class="btn ghost" onclick="openManual()">&#9999;&#65039; Nhap thu cong</button>
-      <button id="btnSubmit" class="btn teal" onclick="submitAll()" style="display:none">&#128228; Gui ket qua</button>
+      <button class="btn ghost" onclick="openManual()">&#9999;&#65039; Nhập thủ công</button>
+      <button id="btnSubmit" class="btn teal" onclick="submitAll()" style="display:none">&#128228; Gửi kết quả</button>
     </div>
   </div>
 </section>
 
-<!-- SCREEN 3: Lich su DN -->
+<!-- SCREEN 3: Lịch sử DN -->
 <section id="screenHistory" class="screen">
   <div class="topbar">
     <button class="icon-btn" onclick="backFromHistory()">&#8592;</button>
-    <div class="ttl">&#128337; Lich su <span id="histTitle">-</span></div>
+    <div class="ttl">&#128337; Lịch sử <span id="histTitle">-</span></div>
   </div>
   <div class="wrap">
     <div id="histContent"></div>
   </div>
 </section>
 
-<!-- OVERLAY: Nhap thu cong -->
+<!-- OVERLAY: Nhập thủ công -->
 <div id="manualOverlay" class="overlay">
   <div class="sheet">
-    <h3>&#9999;&#65039; Nhap thu cong</h3>
+    <h3>&#9999;&#65039; Nhập thủ công</h3>
     <div class="field">
-      <label>Ma LSX</label>
-      <select id="mLSX"><option value="">- Chon LSX -</option></select>
+      <label>Mã LSX</label>
+      <select id="mLSX"><option value="">- Chọn LSX -</option></select>
     </div>
     <div class="field">
-      <label>So luong</label>
+      <label>Số lượng</label>
       <input id="mSL" type="number" inputmode="numeric" placeholder="VD: 500" min="1" />
     </div>
     <div id="manualErr" class="manual-err"></div>
     <div class="row2" style="margin-top:12px">
-      <button class="btn gray" onclick="closeManual()">Huy</button>
-      <button class="btn green" onclick="submitManual()">&#10003; Xac nhan</button>
+      <button class="btn gray" onclick="closeManual()">Huỷ</button>
+      <button class="btn green" onclick="submitManual()">&#10003; Xác nhận</button>
     </div>
   </div>
 </div>
@@ -209,7 +211,7 @@ function show(id){
 }
 function goBack(){ window.location.href = "index.html"; }
 function backToDN(){
-  if(state.scanList.length > 0 && !confirm("Ban co "+state.scanList.length+" muc chua gui. Quay lai se mat du lieu. Tiep tuc?")) return;
+  if(state.scanList.length > 0 && !confirm("Bạn có "+state.scanList.length+" mục chưa gửi. Quay lại sẽ mất dữ liệu. Tiếp tục?")) return;
   stopCamera(); state.currentDN = null; state.scanList = []; show("screenDN");
 }
 function showToast(msg, dur){
@@ -235,21 +237,21 @@ const FB={
 /* === SCREEN 1: DN LIST === */
 async function loadDnList(){
   const el=document.getElementById("dnStatus");
-  el.style.display="block"; el.textContent="Dang tai..."; el.className="hint info";
+  el.style.display="block"; el.textContent="Đang tải..."; el.className="hint info";
   try{
     const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dnlist&t="+Date.now());
     const out = await res.json();
     if(out.result==="ok"){
       state.allDN = out.list||[];
       filterDN(""); el.style.display="none";
-    } else { el.textContent = out.error||"Loi"; el.className="hint err"; }
-  }catch(e){ el.textContent="Khong ket noi duoc."; el.className="hint err"; }
+    } else { el.textContent = out.error||"Lỗi"; el.className="hint err"; }
+  }catch(e){ el.textContent="Không kết nối được."; el.className="hint err"; }
 }
 
 function filterDN(q){
   q=(q||"").toLowerCase();
   const hideDone = document.getElementById("chkHideDone").checked;
-  let filtered = state.allDN.filter(d=>(d.dn+d.kh).toLowerCase().includes(q));
+  let filtered = state.allDN.filter(d=>(d.dn+" "+d.kh).toLowerCase().includes(q));
   if(hideDone) filtered = filtered.filter(d=>d.status !== "done");
   renderDnList(filtered);
 }
@@ -257,7 +259,7 @@ function filterDN(q){
 function renderDnList(list){
   const wrap=document.getElementById("dnList");
   if(!list.length){
-    wrap.innerHTML='<div class="empty">Khong co DN nao.</div>';
+    wrap.innerHTML='<div class="empty">Không có DN nào.</div>';
     return;
   }
   wrap.innerHTML="";
@@ -266,13 +268,24 @@ function renderDnList(list){
     const isDone = d.status === "done";
     card.className="dn-card"+(isDone?" completed":"");
     let statusHtml = '';
-    if(d.status==="done") statusHtml='<span class="dn-status st-done">Hoan thanh</span>';
-    else if(d.status==="partial") statusHtml='<span class="dn-status st-partial">Dang thuc hien</span>';
-    else statusHtml='<span class="dn-status st-new">Chua bat dau</span>';
+    if(d.status==="done") statusHtml='<span class="dn-status st-done">Hoàn thành</span>';
+    else if(d.status==="partial") statusHtml='<span class="dn-status st-partial">Đang thực hiện</span>';
+    else statusHtml='<span class="dn-status st-new">Chưa bắt đầu</span>';
+
+    let histBtn = '';
+    if(d.status==="done" || d.status==="partial"){
+      histBtn = '<button class="dn-hist-btn" data-dn="'+esc(d.dn)+'" onclick="event.stopPropagation();openHistoryFromList(this.getAttribute(\'data-dn\'))">&#128337; Xem lịch sử</button>';
+    }
+
     card.innerHTML='<div class="dn-code">'+esc(d.dn)+'</div>'+
-      '<div class="dn-kh">Khach: '+esc(d.kh)+'</div>'+
-      '<div class="dn-meta"><span class="dn-count">'+d.soLSX+' LSX</span>'+statusHtml+'</div>';
-    card.onclick=()=>openDN(d.dn);
+      '<div class="dn-kh">Khách: '+esc(d.kh)+'</div>'+
+      '<div class="dn-meta"><span class="dn-count">'+d.soLSX+' LSX</span>'+statusHtml+histBtn+'</div>';
+
+    if(isDone){
+      card.onclick=()=>openHistoryFromList(d.dn);
+    } else {
+      card.onclick=()=>openDN(d.dn);
+    }
     wrap.appendChild(card);
   });
 }
@@ -281,9 +294,9 @@ function renderDnList(list){
 async function openDN(dnCode){
   show("screenScan");
   document.getElementById("dnTitle").textContent=dnCode;
-  document.getElementById("lsxWrap").innerHTML='<div class="hint info">Dang tai...</div>';
+  document.getElementById("lsxWrap").innerHTML='<div class="hint info">Đang tải...</div>';
   document.getElementById("summaryBar").innerHTML="";
-  setHint("info","Dang tai du lieu DN...");
+  setHint("info","Đang tải dữ liệu DN...");
   state.sessionId = dnCode+"_"+Date.now();
   state.scanList = [];
   try{
@@ -292,23 +305,23 @@ async function openDN(dnCode){
     if(out.result==="ok"){
       state.currentDN = out;
       renderAll();
-      setHint("info",'Bam "Bat dau quet" de mo camera');
+      setHint("info",'Bấm "Bắt đầu quét" để mở camera');
     } else {
       document.getElementById("lsxWrap").innerHTML='<div class="hint err">'+esc(out.error)+'</div>';
       setHint("err", out.error);
     }
   }catch(e){
-    document.getElementById("lsxWrap").innerHTML='<div class="hint err">Khong ket noi duoc.</div>';
-    setHint("err","Loi mang");
+    document.getElementById("lsxWrap").innerHTML='<div class="hint err">Không kết nối được.</div>';
+    setHint("err","Lỗi mạng");
   }
 }
 
 async function refreshDN(){
   if(!state.currentDN) return;
-  if(state.scanList.length > 0 && !confirm("Tai lai se xoa "+state.scanList.length+" muc chua gui. Tiep tuc?")) return;
+  if(state.scanList.length > 0 && !confirm("Tải lại sẽ xoá "+state.scanList.length+" mục chưa gửi. Tiếp tục?")) return;
   const dnCode = state.currentDN.dn;
   state.scanList = [];
-  showToast("Dang tai lai...", 2000);
+  showToast("Đang tải lại...", 2000);
   await openDN(dnCode);
 }
 
@@ -332,8 +345,8 @@ function renderProgress(){
     const isOver = totalDone > it.slYC;
     if(isDone) doneLSX++;
     const cls = isOver?"lsx-item over":(isDone?"lsx-item done":"lsx-item");
-    const badge = isOver?'<span class="lsx-badge badge-over">VUOT</span>'
-                : isDone?'<span class="lsx-badge badge-done">DU</span>'
+    const badge = isOver?'<span class="lsx-badge badge-over">VƯỢT</span>'
+                : isDone?'<span class="lsx-badge badge-done">ĐỦ</span>'
                 : '<span class="lsx-badge badge-ok">'+Math.round(pct)+'%</span>';
     const div=document.createElement("div");
     div.className=cls;
@@ -348,8 +361,8 @@ function renderProgress(){
   });
   document.getElementById("summaryBar").innerHTML=
     '<span class="sum-chip chip-total">'+totalLSX+' LSX</span>'+
-    '<span class="sum-chip chip-done">'+doneLSX+' du</span>'+
-    '<span class="sum-chip chip-remain">'+(totalLSX-doneLSX)+' con thieu</span>';
+    '<span class="sum-chip chip-done">'+doneLSX+' đủ</span>'+
+    '<span class="sum-chip chip-remain">'+(totalLSX-doneLSX)+' còn thiếu</span>';
 }
 
 function renderScanList(){
@@ -373,7 +386,7 @@ function renderScanList(){
   listEl.querySelectorAll(".sr-del").forEach(btn=>{
     btn.onclick=function(){
       const idx = parseInt(this.getAttribute("data-idx"));
-      if(confirm("Xoa dong "+state.scanList[idx].lsx+" (SL: "+fmt(state.scanList[idx].sl)+")?")){
+      if(confirm("Xoá dòng "+state.scanList[idx].lsx+" (SL: "+fmt(state.scanList[idx].sl)+")?")){
         state.scanList.splice(idx, 1); renderAll();
       }
     };
@@ -382,7 +395,7 @@ function renderScanList(){
 
 /* === QR SCAN === */
 async function startOrNext(){
-  if(scanning){ scanLocked=false; lastText=""; document.getElementById("btnScan").textContent="Dang quet..."; setHint("info","Dua QR vao khung de quet"); return; }
+  if(scanning){ scanLocked=false; lastText=""; document.getElementById("btnScan").textContent="Đang quét..."; setHint("info","Đưa QR vào khung để quét"); return; }
   await startCamera();
 }
 async function startCamera(){
@@ -390,9 +403,9 @@ async function startCamera(){
     qr=new Html5Qrcode("reader",{verbose:false});
     await qr.start({facingMode:"environment"},{fps:10,qrbox:{width:240,height:240},aspectRatio:1.0},onScan,()=>{});
     scanning=true; scanLocked=false; lastText="";
-    document.getElementById("btnScan").textContent="Dang quet...";
-    setHint("info","Dua QR vao khung de quet");
-  }catch(e){ setHint("err","Khong mo duoc camera."); }
+    document.getElementById("btnScan").textContent="Đang quét...";
+    setHint("info","Đưa QR vào khung để quét");
+  }catch(e){ setHint("err","Không mở được camera."); }
 }
 function stopCamera(){
   if(qr&&scanning){qr.stop().then(()=>{try{qr.clear();}catch(e){}}).catch(()=>{});}
@@ -416,37 +429,37 @@ function parseQR(text){
 
 function processQR(text){
   const parsed=parseQR(text);
-  if(!parsed){ FB.err(); setHint("err","QR khong hop le"); document.getElementById("btnScan").textContent="Quet tiep"; return; }
+  if(!parsed){ FB.err(); setHint("err","QR không hợp lệ"); document.getElementById("btnScan").textContent="Quét tiếp"; return; }
   addScanItem(parsed.lsx, parsed.sl, parsed.raw);
 }
 
 function addScanItem(lsx, sl, qrRaw){
   const dn=state.currentDN;
-  if(!dn){ FB.err(); setHint("err","Chua tai duoc du lieu DN"); return; }
+  if(!dn||!dn.items){ FB.err(); setHint("err","Chưa tải được dữ liệu DN"); return; }
   const item = dn.items.find(it=>it.lsx===lsx);
-  if(!item){ FB.err(); setHint("err","LSX "+esc(lsx)+" khong co trong DN nay!"); document.getElementById("btnScan").textContent="Quet tiep"; return; }
+  if(!item){ FB.err(); setHint("err","LSX "+esc(lsx)+" không có trong DN này!"); document.getElementById("btnScan").textContent="Quét tiếp"; return; }
   const sessionSL = state.scanList.filter(s=>s.lsx===lsx).reduce((a,s)=>a+s.sl, 0);
   const totalAfter = item.slDone + sessionSL + sl;
   if(totalAfter > item.slYC){
     FB.err();
-    setHint("err","VUOT SL! Tong se la "+fmt(totalAfter)+" > YC: "+fmt(item.slYC));
-    document.getElementById("btnScan").textContent="Quet tiep"; return;
+    setHint("err","VƯỢT SL! Tổng sẽ là "+fmt(totalAfter)+" > YC: "+fmt(item.slYC));
+    document.getElementById("btnScan").textContent="Quét tiếp"; return;
   }
   const isDone = totalAfter >= item.slYC;
-  if(isDone){ FB.ok(); setHint("ok",""+lsx+" - DA DU SL! ("+fmt(totalAfter)+"/"+fmt(item.slYC)+")"); }
-  else { FB.ok(); setHint("ok","Ghi nhan "+lsx+" +"+fmt(sl)+" (tong: "+fmt(totalAfter)+"/"+fmt(item.slYC)+")"); }
+  if(isDone){ FB.ok(); setHint("ok",""+lsx+" - ĐÃ ĐỦ SL! ("+fmt(totalAfter)+"/"+fmt(item.slYC)+")"); }
+  else { FB.ok(); setHint("ok","Ghi nhận "+lsx+" +"+fmt(sl)+" (tổng: "+fmt(totalAfter)+"/"+fmt(item.slYC)+")"); }
   state.scanList.push({ lsx: lsx, sl: sl, qr: qrRaw || (lsx+"/"+sl), time: nowStr() });
   renderAll();
-  document.getElementById("btnScan").textContent="Quet tiep";
+  document.getElementById("btnScan").textContent="Quét tiếp";
 }
 
 /* === SUBMIT === */
 async function submitAll(){
-  if(state.scanList.length === 0){ showToast("Chua co du lieu", 2000); return; }
-  if(!confirm("Gui "+state.scanList.length+" muc len Google Sheet?")) return;
+  if(state.scanList.length === 0){ showToast("Chưa có dữ liệu", 2000); return; }
+  if(!confirm("Gửi "+state.scanList.length+" mục lên Google Sheet?")) return;
   const dn = state.currentDN;
   const btn = document.getElementById("btnSubmit");
-  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Dang gui...';
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Đang gửi...';
   const summaryMap = {};
   dn.items.forEach(it=>{
     const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
@@ -465,32 +478,40 @@ async function submitAll(){
     });
     const out = await res.json();
     if(out.result === "ok"){
-      FB.ok(); showToast("Da gui "+out.scans+" scan!", 4000);
+      FB.ok(); showToast("Đã gửi "+out.scans+" scan!", 4000);
       dn.items.forEach(it=>{
         const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
         it.slDone += sessionSL;
       });
-      state.scanList = []; renderAll(); setHint("ok","Da gui ket qua thanh cong!");
-    } else { FB.err(); showToast("Loi: "+(out.error||"Khong ro"), 4000); }
-  }catch(e){ FB.err(); showToast("Mat mang - chua gui duoc.", 4000); }
-  btn.disabled = false; btn.innerHTML = '&#128228; Gui ket qua';
+      state.scanList = []; renderAll(); setHint("ok","Đã gửi kết quả thành công!");
+    } else { FB.err(); showToast("Lỗi: "+(out.error||"Không rõ"), 4000); }
+  }catch(e){ FB.err(); showToast("Mất mạng - chưa gửi được.", 4000); }
+  btn.disabled = false; btn.innerHTML = '&#128228; Gửi kết quả';
 }
 
 /* === MANUAL INPUT === */
 function openManual(){
   const sel = document.getElementById("mLSX");
-  sel.innerHTML = '<option value="">- Chon LSX -</option>';
-  if(state.currentDN){
+  sel.innerHTML = '<option value="">- Chọn LSX -</option>';
+  if(state.currentDN && state.currentDN.items){
+    let hasOption = false;
     state.currentDN.items.forEach(it=>{
       const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
       const totalDone = it.slDone + sessionSL;
       if(totalDone < it.slYC){
         const opt = document.createElement("option");
         opt.value = it.lsx;
-        opt.textContent = it.lsx + " ("+fmt(totalDone)+"/"+fmt(it.slYC)+")";
+        opt.textContent = it.lsx + " (còn " + fmt(it.slYC - totalDone) + ")";
         sel.appendChild(opt);
+        hasOption = true;
       }
     });
+    if(!hasOption){
+      const opt = document.createElement("option");
+      opt.value = ""; opt.disabled = true;
+      opt.textContent = "Tất cả LSX đã đủ số lượng";
+      sel.appendChild(opt);
+    }
   }
   document.getElementById("mSL").value = "";
   const err=document.getElementById("manualErr"); err.style.display="none";
@@ -502,9 +523,9 @@ function submitManual(){
   const lsx = document.getElementById("mLSX").value.trim();
   const slStr = document.getElementById("mSL").value.trim();
   const err = document.getElementById("manualErr");
-  if(!lsx){ err.textContent="Chon LSX"; err.style.display="block"; return; }
+  if(!lsx){ err.textContent="Chọn LSX"; err.style.display="block"; return; }
   const sl = parseFloat(slStr.replace(",","."));
-  if(isNaN(sl) || sl <= 0){ err.textContent="So luong phai > 0"; err.style.display="block"; return; }
+  if(isNaN(sl) || sl <= 0){ err.textContent="Số lượng phải > 0"; err.style.display="block"; return; }
   closeManual();
   addScanItem(lsx, sl, "MANUAL/"+lsx+"/"+sl);
 }
@@ -512,18 +533,18 @@ function submitManual(){
 /* === HISTORY === */
 async function openHistory(){
   const dn = state.currentDN;
-  if(!dn){ showToast("Chua chon DN", 2000); return; }
+  if(!dn){ showToast("Chưa chọn DN", 2000); return; }
   state.historyFrom = "scan";
   show("screenHistory");
   document.getElementById("histTitle").textContent = dn.dn;
-  document.getElementById("histContent").innerHTML = '<div class="hint info">Dang tai lich su...</div>';
+  document.getElementById("histContent").innerHTML = '<div class="hint info">Đang tải lịch sử...</div>';
   try{
     const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dnhistory&dn="+encodeURIComponent(dn.dn)+"&t="+Date.now());
     const out = await res.json();
     if(out.result==="ok") renderHistory(out);
-    else document.getElementById("histContent").innerHTML='<div class="hint err">'+esc(out.error||"Loi")+'</div>';
+    else document.getElementById("histContent").innerHTML='<div class="hint err">'+esc(out.error||"Lỗi")+'</div>';
   }catch(e){
-    document.getElementById("histContent").innerHTML='<div class="hint err">Khong ket noi duoc.</div>';
+    document.getElementById("histContent").innerHTML='<div class="hint err">Không kết nối được.</div>';
   }
 }
 
@@ -532,13 +553,13 @@ function openHistoryFromList(dnCode){
   state.currentDN = { dn: dnCode };
   show("screenHistory");
   document.getElementById("histTitle").textContent = dnCode;
-  document.getElementById("histContent").innerHTML = '<div class="hint info">Dang tai lich su...</div>';
+  document.getElementById("histContent").innerHTML = '<div class="hint info">Đang tải lịch sử...</div>';
   fetch(CONFIG.XUAT_HANG_URL+"?action=dnhistory&dn="+encodeURIComponent(dnCode)+"&t="+Date.now())
     .then(r=>r.json()).then(out=>{
       if(out.result==="ok") renderHistory(out);
-      else document.getElementById("histContent").innerHTML='<div class="hint err">'+esc(out.error||"Loi")+'</div>';
+      else document.getElementById("histContent").innerHTML='<div class="hint err">'+esc(out.error||"Lỗi")+'</div>';
     }).catch(()=>{
-      document.getElementById("histContent").innerHTML='<div class="hint err">Khong ket noi duoc.</div>';
+      document.getElementById("histContent").innerHTML='<div class="hint err">Không kết nối được.</div>';
     });
 }
 
@@ -546,10 +567,10 @@ function renderHistory(data){
   const wrap = document.getElementById("histContent");
   const logs = data.logs || [];
   if(logs.length === 0){
-    wrap.innerHTML='<div class="hist-empty">Chua co lich su scan nao.</div>';
+    wrap.innerHTML='<div class="hist-empty">Chưa có lịch sử scan nào.</div>';
     return;
   }
-  let html = '<div style="margin-bottom:12px;font-size:13px;color:var(--muted)">Tong: '+logs.length+' lan scan</div>';
+  let html = '<div style="margin-bottom:12px;font-size:13px;color:var(--muted)">Tổng: '+logs.length+' lần scan</div>';
   logs.forEach(l=>{
     html += '<div class="hist-row">'+
       '<div class="hist-lsx">'+esc(l.lsx)+' <span style="color:var(--teal);font-size:14px">x'+fmt(l.sl)+'</span></div>'+
