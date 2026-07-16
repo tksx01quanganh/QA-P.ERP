@@ -401,6 +401,7 @@ function renderYghList(list){
           '</div>'+
           '<div class="ygh-meta">'+
             '<span class="ygh-count">'+d.soLSX+' LSX</span>'+
+            (d.ngayNhap ? '<span style="font-size:11px;color:var(--muted)">'+esc(d.ngayNhap)+'</span>' : '')+
             statusHtml+
           '</div>'+
         '</div>'+
