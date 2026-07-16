@@ -81,6 +81,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .footer-note{text-align:center;color:var(--muted);font-size:11px;padding:12px 10px 20px;}
 .no-access{text-align:center;color:var(--red);font-weight:600;padding:40px 20px;font-size:16px;}
 
+/* ── chi tiết scan LSX (accordion) ────────── */
+.oc-toggle{cursor:pointer;}
+.oc-toggle:active{background:#f8fafc;}
+.oc-expand-icon{font-size:10px;color:var(--muted);transition:transform .2s;display:inline-block;margin-right:4px;}
+.oc-expand-icon.open{transform:rotate(90deg);}
+.lsx-detail{display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:10px;}
+.lsx-detail.open{display:block;}
+.lsx-detail-loading{text-align:center;color:var(--muted);font-size:13px;padding:8px 0;}
+.scan-detail-table{width:100%;border-collapse:collapse;font-size:12px;}
+.scan-detail-table th{text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;padding:4px 6px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;}
+.scan-detail-table th.num{text-align:right;}
+.scan-detail-table td{padding:5px 6px;border-bottom:1px solid #f1f5f9;}
+.scan-detail-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.scan-summary{display:flex;gap:12px;font-size:12px;font-weight:600;color:var(--teal-d);margin-bottom:8px;flex-wrap:wrap;}
+.scan-summary span{background:#ecfdf5;padding:2px 8px;border-radius:6px;}
+
 /* ── màn hình chọn kiểu tra cứu ──────────── */
 .choose-wrap{max-width:440px;margin:40px auto;padding:20px;}
 .choose-sub{text-align:center;color:var(--muted);font-size:14px;margin:0 0 18px;}
@@ -468,25 +484,29 @@ function renderRows(rows){
     const pctBar  = Math.min(pct, 100);
     const cls     = progressClass(pct);
     const color   = progressColor(pct);
+    const lsxId   = esc(r.lsxct || r.lsx);
 
     parts.push(
       '<div class="order-card">'+
-        '<div class="oc-header">'+
-          '<div><div class="oc-lsx">'+esc(r.lsxct)+'</div>'+
-          '<div class="oc-lsx-parent">LSX: '+esc(r.lsx)+'</div></div>'+
-          '<div class="oc-customer">'+esc(r.khachhang||"—")+'</div>'+
+        '<div class="oc-toggle" onclick="toggleLsxDetail(this,\''+lsxId.replace(/'/g,"\\'")+'\')">'+
+          '<div class="oc-header">'+
+            '<div><div class="oc-lsx"><span class="oc-expand-icon">▶</span>'+esc(r.lsxct)+'</div>'+
+            '<div class="oc-lsx-parent">LSX: '+esc(r.lsx)+'</div></div>'+
+            '<div class="oc-customer">'+esc(r.khachhang||"—")+'</div>'+
+          '</div>'+
+          '<div class="oc-body">'+
+            '<div class="oc-field">SP: <b>'+esc(r.masp||"—")+'</b></div>'+
+            '<div class="oc-field">'+esc(r.mota||"")+'</div>'+
+            '<div class="oc-field">SL: <b>'+(soLuong?soLuong.toLocaleString("vi-VN"):"—")+' '+esc(r.dvt||"")+'</b></div>'+
+            '<div class="oc-field">Giao: <b>'+esc(r.ngaygiao||"—")+'</b></div>'+
+          '</div>'+
+          '<div class="oc-progress">'+
+            '<div class="progBar"><div class="fill" style="width:'+pctBar+'%;background:'+color+'"></div></div>'+
+            '<div class="progTxt '+cls+'">'+daCat.toLocaleString("vi-VN")+' / '+soLuong.toLocaleString("vi-VN")+' ('+pct+'%)</div>'+
+            '<div class="progDetail">'+(Number(r.daCatKg)||0).toLocaleString("vi-VN")+' kg · '+(r.soDongGhiNhan||0)+' lượt</div>'+
+          '</div>'+
         '</div>'+
-        '<div class="oc-body">'+
-          '<div class="oc-field">SP: <b>'+esc(r.masp||"—")+'</b></div>'+
-          '<div class="oc-field">'+esc(r.mota||"")+'</div>'+
-          '<div class="oc-field">SL: <b>'+(soLuong?soLuong.toLocaleString("vi-VN"):"—")+' '+esc(r.dvt||"")+'</b></div>'+
-          '<div class="oc-field">Giao: <b>'+esc(r.ngaygiao||"—")+'</b></div>'+
-        '</div>'+
-        '<div class="oc-progress">'+
-          '<div class="progBar"><div class="fill" style="width:'+pctBar+'%;background:'+color+'"></div></div>'+
-          '<div class="progTxt '+cls+'">'+daCat.toLocaleString("vi-VN")+' / '+soLuong.toLocaleString("vi-VN")+' ('+pct+'%)</div>'+
-          '<div class="progDetail">'+(Number(r.daCatKg)||0).toLocaleString("vi-VN")+' kg · '+(r.soDongGhiNhan||0)+' lượt</div>'+
-        '</div>'+
+        '<div class="lsx-detail" id="detail_'+i+'"></div>'+
       '</div>'
     );
   }
@@ -694,6 +714,76 @@ function renderTeamDays(days){
   }
   document.getElementById("tdResultList").innerHTML = parts.join("");
   document.getElementById("tdResultArea").scrollTop = 0;
+}
+
+/* ══════════════════════════════════════════════
+   CHI TIẾT SCAN THEO LSX
+══════════════════════════════════════════════ */
+const lsxDetailCache = {};
+
+async function toggleLsxDetail(toggleEl, lsx){
+  const card = toggleEl.closest('.order-card');
+  const detail = card.querySelector('.lsx-detail');
+  const icon = toggleEl.querySelector('.oc-expand-icon');
+
+  if(detail.classList.contains('open')){
+    detail.classList.remove('open');
+    icon.classList.remove('open');
+    return;
+  }
+
+  icon.classList.add('open');
+  detail.classList.add('open');
+
+  if(lsxDetailCache[lsx]){
+    renderLsxDetail(detail, lsxDetailCache[lsx]);
+    return;
+  }
+
+  detail.innerHTML = '<div class="lsx-detail-loading"><span class="spin" style="border-color:rgba(15,118,110,.3);border-top-color:var(--teal);width:14px;height:14px;border-width:2px"></span> Đang tải chi tiết...</div>';
+
+  try{
+    const data = await apiFetch("lsxDetail", {lsx});
+    if(data.result === "ok"){
+      lsxDetailCache[lsx] = data;
+      renderLsxDetail(detail, data);
+    } else {
+      detail.innerHTML = '<div class="lsx-detail-loading" style="color:var(--red)">'+esc(data.error||"Lỗi")+'</div>';
+    }
+  }catch(e){
+    if(e.name === "AbortError") return;
+    detail.innerHTML = '<div class="lsx-detail-loading" style="color:var(--red)">Không kết nối được</div>';
+  }
+}
+
+function renderLsxDetail(el, data){
+  if(!data.scans || data.scans.length === 0){
+    el.innerHTML = '<div class="lsx-detail-loading">Chưa có dữ liệu scan nào.</div>';
+    return;
+  }
+
+  let html = '<div class="scan-summary">'+
+    '<span>'+data.scanCount+' lần scan</span>'+
+    '<span>Tổng SL: '+(data.totalSL||0).toLocaleString("vi-VN")+'</span>'+
+    '<span>Tổng KL: '+(data.totalKG||0).toLocaleString("vi-VN")+' kg</span>'+
+  '</div>';
+
+  html += '<div style="max-height:250px;overflow-y:auto;border-radius:8px;border:1px solid var(--border)">';
+  html += '<table class="scan-detail-table">';
+  html += '<tr><th>Ngày giờ</th><th>Máy</th><th>Công nhân</th><th class="num">SL</th><th class="num">KL (kg)</th></tr>';
+
+  for(const s of data.scans){
+    const timeShort = s.time ? s.time.replace(/:\d{2}$/, '') : '—';
+    html += '<tr>'+
+      '<td>'+esc(timeShort)+'</td>'+
+      '<td>'+esc(s.may || '—')+(s.mayTen ? ' <span style="color:var(--muted);font-size:11px">'+esc(s.mayTen)+'</span>' : '')+'</td>'+
+      '<td>'+esc(s.cnTen || s.cn || '—')+'</td>'+
+      '<td class="num">'+((s.sl||0).toLocaleString("vi-VN"))+'</td>'+
+      '<td class="num">'+((s.klTT || s.klQR || 0).toLocaleString("vi-VN"))+'</td>'+
+    '</tr>';
+  }
+  html += '</table></div>';
+  el.innerHTML = html;
 }
 
 /* ══════════════════════════════════════════════
