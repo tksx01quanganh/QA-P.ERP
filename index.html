@@ -195,6 +195,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 </section>
 
+<!-- SCREEN 1c2: Chức năng con (level 3) -->
+<section id="screenSubFuncs" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" id="subFuncBackBtn" onclick="backToFuncs()">←</button>
+    <div class="ttl"><span id="subFuncIcon">📋</span> <span id="subFuncName">—</span></div>
+    <button class="icon-btn" onclick="enterModuleScreen()">🏠</button>
+  </div>
+  <div class="picker-wrap">
+    <p class="picker-sub" id="subFuncSubtitle">Chọn chức năng</p>
+    <div id="subFuncList" class="func-list"></div>
+  </div>
+</section>
+
 <!-- SCREEN 1d: Chọn nhánh ghi nhận SX -->
 <section id="screenBranch" class="screen">
   <div class="topbar">
@@ -637,6 +650,19 @@ const QUYEN_LABELS = {
   KiemTra: "Kiểm tra", PheDuyet: "Phê duyệt", Xoa: "Xóa"
 };
 
+/* ── Cấu hình phân cấp chức năng (3 level) ── */
+/* Nếu module có FUNC_HIERARCHY, hiển thị nhóm cha → click → hiện chức năng con */
+const FUNC_HIERARCHY = {
+  WH: [
+    {
+      name: "Xuất hàng",
+      icon: "📤",
+      // Các URL chức năng con thuộc nhóm này
+      childUrls: ["xuat-hang.html"]
+    }
+  ]
+};
+
 /** Nhóm permissions theo module code. quyen giờ là array ["Xem","Tao",...] */
 function groupPermsByModule(){
   const g = {};
@@ -690,21 +716,107 @@ function enterModuleScreen(){
   show("screenModules");
 }
 
+/** Lưu context để backToFuncs quay lại đúng module */
+let _lastModCode = null;
+let _lastModGroup = null;
+
 /** Mở sub-screen chức năng trong 1 module */
 function openModuleFuncs(modCode, group){
   const mod = ALL_MODULES.find(m => m.ma === modCode) || {};
+  _lastModCode = modCode;
+  _lastModGroup = group;
 
-  // Luôn hiện sub-screen chức năng (không auto-skip dù chỉ có 1)
+  const hierarchy = FUNC_HIERARCHY[modCode];
 
   document.getElementById("funcModIcon").textContent = mod.icon || "📋";
   document.getElementById("funcModName").textContent = group.tenModule || mod.ten || modCode;
-  document.getElementById("funcSubtitle").textContent =
-    group.funcs.length + " chức năng";
 
   const list = document.getElementById("funcList");
   list.innerHTML = "";
 
-  group.funcs.forEach(p => {
+  if(hierarchy && hierarchy.length){
+    // Nhóm chức năng theo hierarchy
+    const usedUrls = new Set();
+    const parentItems = [];
+
+    hierarchy.forEach(h => {
+      const children = group.funcs.filter(p => {
+        const u = (p.url || "").trim().toLowerCase();
+        return h.childUrls.some(cu => u === cu || u.startsWith(cu + "?"));
+      });
+      children.forEach(c => usedUrls.add((c.url || "").trim().toLowerCase()));
+      if(children.length) parentItems.push({ ...h, children });
+    });
+
+    // Chức năng không thuộc nhóm nào → hiện trực tiếp
+    const ungrouped = group.funcs.filter(p =>
+      !usedUrls.has((p.url || "").trim().toLowerCase())
+    );
+
+    const totalItems = parentItems.length + ungrouped.length;
+    document.getElementById("funcSubtitle").textContent = totalItems + " chức năng";
+
+    // Render nhóm cha (click → mở sub-func)
+    parentItems.forEach(ph => {
+      const btn = document.createElement("button");
+      btn.className = "func-btn";
+      btn.innerHTML =
+        '<div class="func-icon">' + (ph.icon || mod.icon || "📋") + '</div>' +
+        '<div class="func-info">' +
+          '<div class="func-name">' + esc(ph.name) + '</div>' +
+          '<div class="func-desc" style="color:var(--teal)">' + ph.children.length + ' chức năng con ▸</div>' +
+        '</div>';
+      btn.onclick = () => openSubFuncs(mod, ph);
+      list.appendChild(btn);
+    });
+
+    // Render chức năng không thuộc nhóm
+    ungrouped.forEach(p => {
+      const btn = document.createElement("button");
+      btn.className = "func-btn";
+      btn.innerHTML =
+        '<div class="func-icon">' + (mod.icon || "📋") + '</div>' +
+        '<div class="func-info">' +
+          '<div class="func-name">' + esc(p.chucNang || p.tenModule) + '</div>' +
+          '<div class="func-desc">' + quyenTags(p.quyen, true) + '</div>' +
+        '</div>';
+      btn.onclick = () => selectFunction(p);
+      list.appendChild(btn);
+    });
+
+  } else {
+    // Không có hierarchy → render bình thường
+    document.getElementById("funcSubtitle").textContent =
+      group.funcs.length + " chức năng";
+
+    group.funcs.forEach(p => {
+      const btn = document.createElement("button");
+      btn.className = "func-btn";
+      btn.innerHTML =
+        '<div class="func-icon">' + (mod.icon || "📋") + '</div>' +
+        '<div class="func-info">' +
+          '<div class="func-name">' + esc(p.chucNang || p.tenModule) + '</div>' +
+          '<div class="func-desc">' + quyenTags(p.quyen, true) + '</div>' +
+        '</div>';
+      btn.onclick = () => selectFunction(p);
+      list.appendChild(btn);
+    });
+  }
+
+  show("screenFuncs");
+}
+
+/** Mở danh sách chức năng con (level 3) */
+function openSubFuncs(mod, parentItem){
+  document.getElementById("subFuncIcon").textContent = parentItem.icon || mod.icon || "📋";
+  document.getElementById("subFuncName").textContent = parentItem.name;
+  document.getElementById("subFuncSubtitle").textContent =
+    parentItem.children.length + " chức năng";
+
+  const list = document.getElementById("subFuncList");
+  list.innerHTML = "";
+
+  parentItem.children.forEach(p => {
     const btn = document.createElement("button");
     btn.className = "func-btn";
     btn.innerHTML =
@@ -717,7 +829,16 @@ function openModuleFuncs(modCode, group){
     list.appendChild(btn);
   });
 
-  show("screenFuncs");
+  show("screenSubFuncs");
+}
+
+/** Quay lại danh sách chức năng cha */
+function backToFuncs(){
+  if(_lastModCode && _lastModGroup){
+    openModuleFuncs(_lastModCode, _lastModGroup);
+  } else {
+    enterModuleScreen();
+  }
 }
 
 function backToModules(){
