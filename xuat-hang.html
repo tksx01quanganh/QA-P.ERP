@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-<title>Đối chiếu Xuất hàng</title>
+<title>Đối chiếu Xuất hàng — QA-P.ERP</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 :root{--teal:#0f766e;--bg:#f8fafc;--txt:#1e293b;--muted:#64748b;--border:#e2e8f0;--red:#dc2626;--green:#16a34a;--amber:#d97706;--blue:#2563eb;}
@@ -18,36 +18,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .wrap{padding:12px;flex:1;overflow-y:auto;}
 .search-box{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:12px;font-size:16px;outline:none;margin-bottom:10px;}
 .search-box:focus{border-color:var(--teal);}
-/* Accordion DN */
-.dn-acc{border:2px solid var(--border);border-radius:14px;margin-bottom:8px;overflow:hidden;background:#fff;}
-.dn-acc.completed{opacity:.7;border-color:#bbf7d0;}
-.dn-hdr{display:flex;align-items:center;padding:12px 14px;cursor:pointer;gap:8px;}
-.dn-hdr:active{background:#f8fafc;}
-.dn-tri{font-size:10px;color:var(--muted);transition:transform .2s;flex-shrink:0;width:16px;text-align:center;}
-.dn-tri.open{transform:rotate(90deg);}
-.dn-hdr-info{flex:1;min-width:0;}
-.dn-title-row{display:flex;align-items:center;gap:8px;}
-.dn-code{font-size:17px;font-weight:700;}
-.dn-kh{font-size:13px;color:var(--muted);}
-.dn-meta{display:flex;gap:8px;align-items:center;margin-top:3px;flex-wrap:wrap;}
-.dn-count{font-size:12px;color:var(--teal);font-weight:600;}
-.dn-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;}
+/* Accordion YGH */
+.ygh-acc{border:2px solid var(--border);border-radius:14px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.ygh-acc.completed{opacity:.7;border-color:#bbf7d0;}
+.ygh-hdr{display:flex;align-items:center;padding:12px 14px;cursor:pointer;gap:8px;}
+.ygh-hdr:active{background:#f8fafc;}
+.ygh-tri{font-size:10px;color:var(--muted);transition:transform .2s;flex-shrink:0;width:16px;text-align:center;}
+.ygh-tri.open{transform:rotate(90deg);}
+.ygh-hdr-info{flex:1;min-width:0;}
+.ygh-title-row{display:flex;align-items:center;gap:8px;}
+.ygh-code{font-size:17px;font-weight:700;}
+.ygh-kh{font-size:13px;color:var(--muted);}
+.ygh-meta{display:flex;gap:8px;align-items:center;margin-top:3px;flex-wrap:wrap;}
+.ygh-count{font-size:12px;color:var(--teal);font-weight:600;}
+.ygh-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;}
 .st-done{background:#dcfce7;color:#15803d;}
 .st-partial{background:#fef3c7;color:#92400e;}
 .st-new{background:#e0f2fe;color:#0369a1;}
-.dn-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
-.dn-body.open{display:block;}
-.dn-lsx-item{background:#f8fafc;border-radius:10px;padding:10px 12px;margin-top:8px;}
-.dn-lsx-item.done{background:#f0fdf4;border:1px solid #bbf7d0;}
-.dn-lsx-head{display:flex;justify-content:space-between;align-items:center;}
-.dn-lsx-code{font-weight:700;font-size:15px;}
-.dn-lsx-prog{font-size:13px;color:var(--muted);}
-.dn-lsx-scanner{font-size:12px;color:var(--muted);margin-top:3px;}
-.dn-actions{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
-.dn-act-btn{border:none;padding:8px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;flex:1;text-align:center;}
-.dn-act-btn:active{opacity:.85;}
-.dn-act-btn.scan{background:var(--green);color:#fff;}
-.dn-act-btn.hist{background:#e0f2fe;color:#0369a1;}
+.ygh-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
+.ygh-body.open{display:block;}
+.ygh-lsx-item{background:#f8fafc;border-radius:10px;padding:10px 12px;margin-top:8px;}
+.ygh-lsx-item.done{background:#f0fdf4;border:1px solid #bbf7d0;}
+.ygh-lsx-head{display:flex;justify-content:space-between;align-items:center;}
+.ygh-lsx-code{font-weight:700;font-size:15px;}
+.ygh-lsx-prog{font-size:13px;color:var(--muted);}
+.ygh-lsx-scanner{font-size:12px;color:var(--muted);margin-top:3px;}
+.ygh-actions{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.ygh-act-btn{border:none;padding:8px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;flex:1;text-align:center;}
+.ygh-act-btn:active{opacity:.85;}
+.ygh-act-btn.scan{background:var(--green);color:#fff;}
+.ygh-act-btn.hist{background:#e0f2fe;color:#0369a1;}
 .lsx-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;}
 .badge-ok{background:#e0f2fe;color:#0369a1;}
 .badge-done{background:#bbf7d0;color:#15803d;}
@@ -117,33 +117,52 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .hist-detail{font-size:13px;color:var(--muted);margin-top:2px;}
 .hist-empty{text-align:center;color:var(--muted);font-size:14px;padding:20px;}
 .loading-text{text-align:center;color:var(--muted);padding:12px;font-size:14px;}
+/* Date filter */
+.date-filter{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;}
+.date-filter input[type=date]{padding:8px 10px;border:2px solid var(--border);border-radius:10px;font-size:14px;outline:none;flex:1;min-width:120px;}
+.date-filter input[type=date]:focus{border-color:var(--teal);}
+.date-filter-btn{border:none;background:var(--teal);color:#fff;padding:8px 14px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.date-filter-btn:active{opacity:.85;}
+.date-summary{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;}
+.date-summary-title{font-size:14px;font-weight:700;color:var(--teal);margin-bottom:8px;}
+.date-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.date-chip{font-size:13px;font-weight:600;padding:4px 10px;border-radius:8px;}
+.dc-total{background:#e0f2fe;color:#0369a1;}
+.dc-done{background:#dcfce7;color:#15803d;}
+.dc-partial{background:#fef3c7;color:#92400e;}
+.dc-new{background:#f1f5f9;color:#64748b;}
 </style>
 </head>
 <body>
 
-<!-- SCREEN 1: Chọn DN -->
-<section id="screenDN" class="screen active">
+<!-- SCREEN 1: Chọn YGH -->
+<section id="screenYGH" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#8592;</button>
     <div class="ttl">&#128230; Đối chiếu Xuất hàng</div>
     <button class="icon-btn" onclick="goHome()" title="Trang chủ">&#127968;</button>
   </div>
   <div class="wrap">
-    <input id="searchDN" class="search-box" type="text" placeholder="Tìm theo mã DN, khách hàng hoặc LSX..." oninput="filterDN(this.value)" />
+    <input id="searchYGH" class="search-box" type="text" placeholder="Tìm theo Yêu cầu giao hàng / Khách hàng / LSX..." oninput="filterYGH(this.value)" />
     <div class="filter-bar">
-      <label><input type="checkbox" id="chkHideDone" onchange="filterDN(document.getElementById('searchDN').value)"> Ẩn DN đã hoàn thành</label>
+      <label><input type="checkbox" id="chkHideDone" onchange="filterYGH(document.getElementById('searchYGH').value)"> Ẩn YGH đã hoàn thành</label>
     </div>
-    <div id="dnStatus" class="hint info" style="display:none">Đang tải danh sách DN...</div>
-    <div id="dnList"></div>
+    <div class="date-filter">
+      <input type="date" id="filterDate" />
+      <button class="date-filter-btn" onclick="searchByDate()">&#128197; Kiểm tra theo ngày</button>
+    </div>
+    <div id="dateSummary" class="date-summary" style="display:none"></div>
+    <div id="yghStatus" class="hint info" style="display:none">Đang tải danh sách YGH...</div>
+    <div id="yghList"></div>
   </div>
 </section>
 
 <!-- SCREEN 2: Quét hàng -->
 <section id="screenScan" class="screen">
   <div class="topbar">
-    <button class="icon-btn" onclick="backToDN()">&#8592;</button>
-    <div class="ttl">&#128203; <span id="dnTitle">-</span></div>
-    <button class="icon-btn" onclick="refreshDN()" title="Tải lại">&#128260;</button>
+    <button class="icon-btn" onclick="backToYGH()">&#8592;</button>
+    <div class="ttl">&#128203; <span id="yghTitle">-</span></div>
+    <button class="icon-btn" onclick="refreshYGH()" title="Tải lại">&#128260;</button>
     <button class="icon-btn" onclick="openHistory()" title="Lịch sử">&#128337;</button>
     <button class="icon-btn" onclick="goHome()" title="Trang chủ">&#127968;</button>
   </div>
@@ -166,7 +185,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 </section>
 
-<!-- SCREEN 3: Lịch sử DN -->
+<!-- SCREEN 3: Lịch sử YGH -->
 <section id="screenHistory" class="screen">
   <div class="topbar">
     <button class="icon-btn" onclick="backFromHistory()">&#8592;</button>
@@ -229,9 +248,9 @@ function show(id){
   document.getElementById(id).classList.add("active");
 }
 function goHome(){ window.location.href = "index.html"; }
-function backToDN(){
+function backToYGH(){
   if(state.scanList.length > 0 && !confirm("Bạn có "+state.scanList.length+" mục chưa gửi. Quay lại sẽ mất dữ liệu. Tiếp tục?")) return;
-  stopCamera(); state.currentDN = null; state.scanList = []; show("screenDN");
+  stopCamera(); state.currentDN = null; state.scanList = []; show("screenYGH");
 }
 function showToast(msg, dur){
   const t=document.getElementById("toast");
@@ -253,9 +272,54 @@ const FB={
   warn(){tone(440,.2,0);buzz(200);}
 };
 
-/* === SCREEN 1: DN LIST (ACCORDION) === */
-async function loadDnList(){
-  const el=document.getElementById("dnStatus");
+/* === TRA CỨU THEO NGÀY === */
+async function searchByDate(){
+  const dateInput = document.getElementById("filterDate").value;
+  if(!dateInput){ showToast("Vui lòng chọn ngày", 2000); return; }
+  const sumEl = document.getElementById("dateSummary");
+  sumEl.style.display = "block";
+  sumEl.innerHTML = '<div class="loading-text"><span class="spin"></span> Đang kiểm tra...</div>';
+
+  try{
+    const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dnByDate&date="+encodeURIComponent(dateInput)+"&t="+Date.now());
+    const out = await res.json();
+    if(out.result === "ok"){
+      const dp = dateInput.split("-");
+      const dateVN = dp[2]+"/"+dp[1]+"/"+dp[0];
+      let html = '<div class="date-summary-title">&#128197; Kết quả ngày '+dateVN+'</div>';
+      html += '<div class="date-chips">';
+      html += '<span class="date-chip dc-total">Tổng: '+out.total+' YGH</span>';
+      html += '<span class="date-chip dc-done">Hoàn thành: '+out.done+'</span>';
+      html += '<span class="date-chip dc-partial">Đang thực hiện: '+out.partial+'</span>';
+      html += '<span class="date-chip dc-new">Chưa bắt đầu: '+out.newCount+'</span>';
+      html += '</div>';
+
+      if(out.list && out.list.length > 0){
+        // Hiển thị danh sách YGH có scan trong ngày, bấm vào để lọc
+        html += '<div style="margin-top:10px;font-size:12px;color:var(--muted)">Bấm vào YGH để xem chi tiết:</div>';
+        out.list.forEach(d=>{
+          let stCls = d.status==="done"?"st-done":(d.status==="partial"?"st-partial":"st-new");
+          let stTxt = d.status==="done"?"Hoàn thành":(d.status==="partial"?"Đang thực hiện":"Chưa bắt đầu");
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;cursor:pointer" onclick="document.getElementById(\'searchYGH\').value=\''+esc(d.dn)+'\';filterYGH(\''+esc(d.dn)+'\');document.getElementById(\'dateSummary\').style.display=\'none\'">'+
+            '<span style="font-weight:700;font-size:14px">'+esc(d.dn)+'</span>'+
+            '<span style="font-size:12px;color:var(--muted)">'+esc(d.kh)+'</span>'+
+            '<span class="ygh-status '+stCls+'" style="margin-left:auto">'+stTxt+'</span>'+
+          '</div>';
+        });
+      }
+
+      sumEl.innerHTML = html;
+    } else {
+      sumEl.innerHTML = '<div class="loading-text" style="color:var(--red)">'+esc(out.error||"Lỗi")+'</div>';
+    }
+  }catch(e){
+    sumEl.innerHTML = '<div class="loading-text" style="color:var(--red)">Không kết nối được</div>';
+  }
+}
+
+/* === SCREEN 1: YGH LIST (ACCORDION) === */
+async function loadYghList(){
+  const el=document.getElementById("yghStatus");
   el.style.display="block"; el.textContent="Đang tải..."; el.className="hint info";
   try{
     const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=dnlist&t="+Date.now());
@@ -263,59 +327,66 @@ async function loadDnList(){
     if(out.result==="ok"){
       state.allDN = out.list||[];
       state.expandedDN = {};
-      filterDN(""); el.style.display="none";
+      filterYGH(""); el.style.display="none";
     } else { el.textContent = out.error||"Lỗi"; el.className="hint err"; }
   }catch(e){ el.textContent="Không kết nối được."; el.className="hint err"; }
 }
 
-function filterDN(q){
-  q=(q||"").toLowerCase();
+function filterYGH(q){
+  q=(q||"").trim().toLowerCase();
   const hideDone = document.getElementById("chkHideDone").checked;
   filteredList = state.allDN.filter(d=>{
-    const s = (d.dn+" "+d.kh+" "+(d.lsxList||[]).join(" ")).toLowerCase();
-    return s.includes(q);
+    if(!q) return true;
+    // Tìm trong mã YGH, khách hàng, và từng LSX
+    if(String(d.dn||"").toLowerCase().includes(q)) return true;
+    if(String(d.kh||"").toLowerCase().includes(q)) return true;
+    const lsxArr = d.lsxList || [];
+    for(let i=0; i<lsxArr.length; i++){
+      if(String(lsxArr[i]||"").toLowerCase().includes(q)) return true;
+    }
+    return false;
   });
   if(hideDone) filteredList = filteredList.filter(d=>d.status !== "done");
-  renderDnList(filteredList);
+  renderYghList(filteredList);
 }
 
-function renderDnList(list){
-  const wrap=document.getElementById("dnList");
+function renderYghList(list){
+  const wrap=document.getElementById("yghList");
   if(!list.length){
-    wrap.innerHTML='<div class="empty">Không có DN nào.</div>';
+    wrap.innerHTML='<div class="empty">Không có YGH nào.</div>';
     return;
   }
   wrap.innerHTML="";
   list.forEach((d, idx)=>{
     const acc=document.createElement("div");
-    acc.className="dn-acc"+(d.status==="done"?" completed":"");
+    acc.className="ygh-acc"+(d.status==="done"?" completed":"");
 
     let statusHtml = '';
-    if(d.status==="done") statusHtml='<span class="dn-status st-done">Hoàn thành</span>';
-    else if(d.status==="partial") statusHtml='<span class="dn-status st-partial">Đang thực hiện</span>';
-    else statusHtml='<span class="dn-status st-new">Chưa bắt đầu</span>';
+    if(d.status==="done") statusHtml='<span class="ygh-status st-done">Hoàn thành</span>';
+    else if(d.status==="partial") statusHtml='<span class="ygh-status st-partial">Đang thực hiện</span>';
+    else statusHtml='<span class="ygh-status st-new">Chưa bắt đầu</span>';
 
     acc.innerHTML=
-      '<div class="dn-hdr" onclick="toggleDN('+idx+')">'+
-        '<span class="dn-tri" id="tri_'+idx+'">&#9654;</span>'+
-        '<div class="dn-hdr-info">'+
-          '<div class="dn-title-row">'+
-            '<span class="dn-code">'+esc(d.dn)+'</span>'+
-            '<span class="dn-kh">— '+esc(d.kh)+'</span>'+
+      '<div class="ygh-hdr" onclick="toggleYGH('+idx+')">'+
+        '<span class="ygh-tri" id="tri_'+idx+'">&#9654;</span>'+
+        '<div class="ygh-hdr-info">'+
+          '<div class="ygh-title-row">'+
+            '<span class="ygh-code">'+esc(d.dn)+'</span>'+
+            '<span class="ygh-kh">— '+esc(d.kh)+'</span>'+
           '</div>'+
-          '<div class="dn-meta">'+
-            '<span class="dn-count">'+d.soLSX+' LSX</span>'+
+          '<div class="ygh-meta">'+
+            '<span class="ygh-count">'+d.soLSX+' LSX</span>'+
             statusHtml+
           '</div>'+
         '</div>'+
       '</div>'+
-      '<div class="dn-body" id="body_'+idx+'"></div>';
+      '<div class="ygh-body" id="body_'+idx+'"></div>';
 
     wrap.appendChild(acc);
   });
 }
 
-async function toggleDN(idx){
+async function toggleYGH(idx){
   const d = filteredList[idx];
   if(!d) return;
   const body = document.getElementById("body_"+idx);
@@ -327,7 +398,7 @@ async function toggleDN(idx){
   }
 
   // Close others
-  document.querySelectorAll(".dn-body.open").forEach(b=>{
+  document.querySelectorAll(".ygh-body.open").forEach(b=>{
     b.classList.remove("open");
     const id = b.id.replace("body_","");
     const t = document.getElementById("tri_"+id);
@@ -372,24 +443,24 @@ function renderAccBody(idx, data, d){
     else badge='<span class="lsx-badge badge-ok">'+Math.round(pct)+'%</span>';
 
     let scannerInfo = '';
-    if(it.lastUser) scannerInfo='<div class="dn-lsx-scanner">Gần nhất: '+esc(it.lastUser)+' — '+esc(it.lastTime||'')+'</div>';
+    if(it.lastUser) scannerInfo='<div class="ygh-lsx-scanner">Gần nhất: '+esc(it.lastUser)+' — '+esc(it.lastTime||'')+'</div>';
 
-    html += '<div class="dn-lsx-item'+(isDone?' done':'')+'">'+
-      '<div class="dn-lsx-head">'+
-        '<span class="dn-lsx-code">'+esc(it.lsx)+'</span>'+
+    html += '<div class="ygh-lsx-item'+(isDone?' done':'')+'">'+
+      '<div class="ygh-lsx-head">'+
+        '<span class="ygh-lsx-code">'+esc(it.lsx)+'</span>'+
         badge+
       '</div>'+
-      '<div class="dn-lsx-prog">'+fmt(it.slDone)+' / '+fmt(it.slYC)+'</div>'+
+      '<div class="ygh-lsx-prog">'+fmt(it.slDone)+' / '+fmt(it.slYC)+'</div>'+
       scannerInfo+
     '</div>';
   });
 
-  html += '<div class="dn-actions">';
+  html += '<div class="ygh-actions">';
   if(!allDone){
-    html += '<button class="dn-act-btn scan" onclick="openDN(\''+escAttr(data.dn)+'\')">&#128247; Quét hàng</button>';
+    html += '<button class="ygh-act-btn scan" onclick="openYGH(\''+escAttr(data.dn)+'\')">&#128247; Quét hàng</button>';
   }
   if(d.status !== "new"){
-    html += '<button class="dn-act-btn hist" onclick="openHistoryFromList(\''+escAttr(data.dn)+'\')">&#128337; Xem lịch sử</button>';
+    html += '<button class="ygh-act-btn hist" onclick="openHistoryFromList(\''+escAttr(data.dn)+'\')">&#128337; Xem lịch sử</button>';
   }
   html += '</div>';
 
@@ -397,12 +468,12 @@ function renderAccBody(idx, data, d){
 }
 
 /* === SCREEN 2: SCAN === */
-async function openDN(dnCode){
+async function openYGH(dnCode){
   show("screenScan");
-  document.getElementById("dnTitle").textContent=dnCode;
+  document.getElementById("yghTitle").textContent=dnCode;
   document.getElementById("lsxWrap").innerHTML='<div class="hint info">Đang tải...</div>';
   document.getElementById("summaryBar").innerHTML="";
-  setHint("info","Đang tải dữ liệu DN...");
+  setHint("info","Đang tải dữ liệu YGH...");
   state.sessionId = dnCode+"_"+Date.now();
   state.scanList = [];
   try{
@@ -425,14 +496,14 @@ async function openDN(dnCode){
   }
 }
 
-async function refreshDN(){
+async function refreshYGH(){
   if(!state.currentDN) return;
   if(state.scanList.length > 0 && !confirm("Tải lại sẽ xoá "+state.scanList.length+" mục chưa gửi. Tiếp tục?")) return;
   const dnCode = state.currentDN.dn;
   state.scanList = [];
   state.expandedDN = {};
   showToast("Đang tải lại...", 2000);
-  await openDN(dnCode);
+  await openYGH(dnCode);
 }
 
 function renderAll(){
@@ -545,9 +616,9 @@ function processQR(text){
 
 function addScanItem(lsx, sl, qrRaw){
   const dn=state.currentDN;
-  if(!dn||!dn.items){ FB.err(); setHint("err","Chưa tải được dữ liệu DN"); return; }
+  if(!dn||!dn.items){ FB.err(); setHint("err","Chưa tải được dữ liệu YGH"); return; }
   const item = dn.items.find(it=>it.lsx===lsx);
-  if(!item){ FB.err(); setHint("err","LSX "+esc(lsx)+" không có trong DN này!"); document.getElementById("btnScan").textContent="Quét tiếp"; return; }
+  if(!item){ FB.err(); setHint("err","LSX "+esc(lsx)+" không có trong YGH này!"); document.getElementById("btnScan").textContent="Quét tiếp"; return; }
   const sessionSL = state.scanList.filter(s=>s.lsx===lsx).reduce((a,s)=>a+s.sl, 0);
   const totalAfter = item.slDone + sessionSL + sl;
   if(totalAfter > item.slYC){
@@ -643,7 +714,7 @@ function submitManual(){
 /* === HISTORY === */
 async function openHistory(){
   const dn = state.currentDN;
-  if(!dn){ showToast("Chưa chọn DN", 2000); return; }
+  if(!dn){ showToast("Chưa chọn YGH", 2000); return; }
   state.historyFrom = "scan";
   show("screenHistory");
   document.getElementById("histTitle").textContent = dn.dn;
@@ -683,13 +754,21 @@ function renderHistory(data){
   let html = '<div style="margin-bottom:12px;font-size:13px;color:var(--muted)">Tổng: '+logs.length+' lần scan</div>';
   logs.forEach(l=>{
     let kqBadge = '';
-    if(l.kq === "Du") kqBadge = ' <span class="lsx-badge badge-done">Đủ</span>';
-    else if(l.kq === "Vuot") kqBadge = ' <span class="lsx-badge badge-over">Vượt</span>';
-    else if(l.kq === "Thieu") kqBadge = ' <span class="lsx-badge badge-ok">Thiếu</span>';
+    if(l.kq === "Du") kqBadge = '<span class="lsx-badge badge-done">Đủ</span>';
+    else if(l.kq === "Vuot") kqBadge = '<span class="lsx-badge badge-over">Vượt</span>';
+    else if(l.kq === "Thieu") kqBadge = '<span class="lsx-badge badge-ok">Thiếu</span>';
 
     html += '<div class="hist-row">'+
-      '<div class="hist-lsx">'+esc(l.lsx)+' <span style="color:var(--teal);font-size:14px">x'+fmt(l.sl)+'</span>'+kqBadge+'</div>'+
-      '<div class="hist-detail">'+esc(l.user)+' — '+esc(l.time)+(l.kl ? ' | KL: '+fmt(l.kl)+'kg' : '')+'</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+        kqBadge+
+        '<span style="font-size:12px;color:var(--muted)">'+esc(l.user||'—')+'</span>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">'+
+        '<span class="hist-lsx" style="margin:0">'+esc(l.lsx)+'</span>'+
+        '<span style="color:var(--teal);font-size:13px;font-weight:600">'+fmt(l.sl)+(l.slYC ? ' / '+fmt(l.slYC) : '')+'</span>'+
+        (l.kl ? '<span style="font-size:12px;color:var(--muted)">KL: '+fmt(l.kl)+'kg</span>' : '')+
+        '<span style="font-size:12px;color:var(--muted);margin-left:auto">'+esc(l.time||'')+'</span>'+
+      '</div>'+
     '</div>';
   });
   wrap.innerHTML = html;
@@ -697,7 +776,7 @@ function renderHistory(data){
 
 function backFromHistory(){
   if(state.historyFrom === "scan") show("screenScan");
-  else show("screenDN");
+  else show("screenYGH");
 }
 
 /* === HELPERS === */
@@ -717,9 +796,7 @@ document.getElementById("mSL").addEventListener("keydown",function(ev){
 });
 function boot(){
   if(!checkSession()){ window.location.href="index.html"; return; }
-  loadDnList();
+  loadYghList();
 }
 boot();
-</script>
-</body>
-</html>
+</sc
