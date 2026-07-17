@@ -87,8 +87,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .hint.info{background:#e0f2fe;color:#0369a1;}
 .hint.ok{background:#dcfce7;color:#15803d;}
 .hint.err{background:#fef2f2;color:var(--red);}
-#reader{width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;}
+#reader{width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;position:relative;}
 #reader video{border-radius:12px;}
+/* Báo lỗi scan: viền + phủ đỏ nhấp nháy tại vùng camera */
+#reader.scan-err{box-shadow:0 0 0 4px var(--red);}
+#reader.scan-err::after{content:"";position:absolute;inset:0;background:rgba(220,38,38,.45);z-index:5;pointer-events:none;animation:errflash .28s ease 3;}
+@keyframes errflash{50%{background:rgba(220,38,38,.1)}}
+/* Màn quét: nút cố định phía trên, danh sách LSX cuộn bên dưới */
+#screenScan{height:100vh;height:100dvh;}
+.controls.top{border-top:none;border-bottom:1px solid var(--border);}
 .scan-section{margin-top:12px;border-top:2px solid var(--border);padding-top:10px;}
 .scan-section h4{font-size:14px;font-weight:700;color:var(--muted);margin-bottom:8px;}
 .scan-row{display:flex;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:4px;gap:8px;}
@@ -148,6 +155,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .mlsx-row{padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;}
 .mlsx-row:last-child{border-bottom:none;}
 .mlsx-row.sel{background:#ccfbf1;}
+/* Đã chọn LSX → ẩn các LSX khác, bấm lại dòng đã chọn để đổi */
+.mlsx-list.collapsed .mlsx-row{display:none;}
+.mlsx-list.collapsed .mlsx-row.sel{display:block;}
+.mlsx-list.collapsed .mlsx-row.sel .mlsx-remain::after{content:" — bấm để đổi";color:var(--muted);font-weight:400;}
 .mlsx-row-top{display:flex;align-items:center;gap:8px;}
 .mlsx-code{font-weight:700;font-size:14px;}
 .mlsx-remain{margin-left:auto;font-size:12px;color:var(--teal);font-weight:600;white-space:nowrap;}
@@ -199,20 +210,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <button class="icon-btn" onclick="goHome()" title="Trang chủ">&#127968;</button>
   </div>
   <div class="summary" id="summaryBar"></div>
+  <div class="controls top" id="scanControls">
+    <button id="btnScan" class="btn lg green" onclick="startOrNext()">Bắt đầu quét</button>
+    <div class="row2">
+      <button class="btn ghost" onclick="openManual()">&#9999;&#65039; Nhập thủ công</button>
+      <button id="btnSubmit" class="btn teal" onclick="submitAll()" style="display:none">&#128228; Gửi kết quả</button>
+    </div>
+  </div>
+  <div id="reader"></div>
+  <div id="hint" class="hint info" style="margin:0 12px">Bấm "Bắt đầu quét" để mở camera</div>
   <div class="wrap" id="mainWrap">
     <div id="lsxWrap"></div>
     <div id="scanSection" class="scan-section" style="display:none">
       <h4>&#128221; Đã scan/nhập trong phiên này (<span id="scanCount">0</span>)</h4>
       <div id="scanListEl"></div>
-    </div>
-  </div>
-  <div id="reader"></div>
-  <div id="hint" class="hint info" style="margin:0 12px">Bấm "Bắt đầu quét" để mở camera</div>
-  <div class="controls" id="scanControls">
-    <button id="btnScan" class="btn lg green" onclick="startOrNext()">Bắt đầu quét</button>
-    <div class="row2">
-      <button class="btn ghost" onclick="openManual()">&#9999;&#65039; Nhập thủ công</button>
-      <button id="btnSubmit" class="btn teal" onclick="submitAll()" style="display:none">&#128228; Gửi kết quả</button>
     </div>
   </div>
 </section>
@@ -304,8 +315,18 @@ function buzz(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
 const FB={
   ok(){tone(1175,.12,0);tone(1568,.14,.13);buzz([60,40,90]);},
   err(){tone(200,.16,0);tone(200,.16,.22);buzz([40,40,40]);},
+  // Lỗi scan nghiêm trọng (vượt SL / sai LSX): rung mạnh + kêu to dài
+  errStrong(){tone(180,.3,0);tone(180,.3,.35);tone(150,.45,.7);buzz([300,120,300,120,400]);},
   warn(){tone(440,.2,0);buzz(200);}
 };
+
+/* Nháy đỏ vùng camera khi scan lỗi */
+function flashReader(){
+  const r=document.getElementById("reader");
+  if(!r) return;
+  r.classList.add("scan-err");
+  clearTimeout(r._t); r._t=setTimeout(()=>r.classList.remove("scan-err"), 900);
+}
 
 /* === TRA CỨU THEO NGÀY === */
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
@@ -717,7 +738,7 @@ function parseQR(text){
 
 function processQR(text){
   const parsed=parseQR(text);
-  if(!parsed){ FB.err(); setHint("err","QR không hợp lệ"); document.getElementById("btnScan").textContent="Quét tiếp"; return; }
+  if(!parsed){ FB.errStrong(); flashReader(); setHint("err","QR không hợp lệ"); document.getElementById("btnScan").textContent="Quét tiếp"; return; }
   addScanItem(parsed.lsx, parsed.sl, parsed.raw);
 }
 
@@ -725,11 +746,11 @@ function addScanItem(lsx, sl, qrRaw){
   const dn=state.currentDN;
   if(!dn||!dn.items){ FB.err(); setHint("err","Chưa tải được dữ liệu YGH"); return; }
   const item = dn.items.find(it=>it.lsx===lsx);
-  if(!item){ FB.err(); setHint("err","LSX "+esc(lsx)+" không có trong YGH này!"); document.getElementById("btnScan").textContent="Quét tiếp"; return; }
+  if(!item){ FB.errStrong(); flashReader(); setHint("err","LSX "+esc(lsx)+" không có trong YGH này!"); document.getElementById("btnScan").textContent="Quét tiếp"; return; }
   const sessionSL = state.scanList.filter(s=>s.lsx===lsx).reduce((a,s)=>a+s.sl, 0);
   const totalAfter = item.slDone + sessionSL + sl;
   if(totalAfter > item.slYC){
-    FB.err();
+    FB.errStrong(); flashReader();
     setHint("err","VƯỢT SL! Tổng sẽ là "+fmt(totalAfter)+" > YC: "+fmt(item.slYC));
     document.getElementById("btnScan").textContent="Quét tiếp"; return;
   }
@@ -781,6 +802,7 @@ async function submitAll(){
 function openManual(){
   const listEl = document.getElementById("mLsxList");
   listEl.innerHTML = "";
+  listEl.classList.remove("collapsed");
   manualSelLsx = "";
   let hasOption = false;
   if(state.currentDN && state.currentDN.items){
@@ -797,9 +819,18 @@ function openManual(){
           '</div>'+
           (it.moTa ? '<div class="mlsx-desc">'+esc(it.moTa)+'</div>' : '');
         row.onclick = function(){
-          manualSelLsx = it.lsx;
-          listEl.querySelectorAll(".mlsx-row").forEach(r=>r.classList.remove("sel"));
-          row.classList.add("sel");
+          if(manualSelLsx === it.lsx){
+            // Bấm lại dòng đã chọn → bỏ chọn, hiện lại toàn bộ danh sách
+            manualSelLsx = "";
+            row.classList.remove("sel");
+            listEl.classList.remove("collapsed");
+          } else {
+            manualSelLsx = it.lsx;
+            listEl.querySelectorAll(".mlsx-row").forEach(r=>r.classList.remove("sel"));
+            row.classList.add("sel");
+            listEl.classList.add("collapsed"); // ẩn các LSX khác
+            document.getElementById("mSL").focus();
+          }
         };
         listEl.appendChild(row);
         hasOption = true;
