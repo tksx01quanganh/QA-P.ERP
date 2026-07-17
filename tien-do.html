@@ -355,7 +355,7 @@ async function doLogin(){
         btn.disabled=false; btn.textContent=oldTxt;
         return;
       }
-      sessionStorage.setItem("ghinhan_session", JSON.stringify({
+      localStorage.setItem("ghinhan_session", JSON.stringify({
         user: out.ten || username,
         maNV: out.maNV || "",
         username: out.username || username,
@@ -800,7 +800,7 @@ document.getElementById("fCustomer").addEventListener("keydown", e=>{ if(e.key==
 
 function checkExistingSession(){
   try{
-    const raw = sessionStorage.getItem("ghinhan_session");
+    const raw = localStorage.getItem("ghinhan_session");
     if(!raw) return false;
     const s = JSON.parse(raw);
     if(Date.now() - s.ts > 8*60*60*1000) return false;
