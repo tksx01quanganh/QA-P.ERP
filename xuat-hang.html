@@ -292,10 +292,45 @@ function show(id){
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 }
-function goHome(){ window.location.href = "index.html"; }
+function goHome(){
+  // Đang scan dở → hỏi lưu tạm trước khi thoát
+  if(document.getElementById("screenScan").classList.contains("active") && !confirmLeaveScan()) return;
+  window.location.href = "index.html";
+}
 function goBack(){ if(window.history.length > 1) window.history.back(); else goHome(); }
+
+/* === LƯU TẠM SCAN DỞ (localStorage, chưa gửi) === */
+function draftKey(dn){ return "ygh_draft_"+dn; }
+function saveDraft(){
+  if(!state.currentDN || !state.currentDN.dn || state.scanList.length===0) return false;
+  try{
+    localStorage.setItem(draftKey(state.currentDN.dn), JSON.stringify({ rows: state.scanList, ts: Date.now() }));
+    return true;
+  }catch(e){ return false; }
+}
+function loadDraft(dn){
+  try{
+    const raw = localStorage.getItem(draftKey(dn));
+    if(!raw) return null;
+    const d = JSON.parse(raw);
+    if(!d || !Array.isArray(d.rows) || d.rows.length===0) return null;
+    return d;
+  }catch(e){ return null; }
+}
+function clearDraft(dn){ try{ localStorage.removeItem(draftKey(dn)); }catch(e){} }
+
+/* Hỏi khi rời màn quét còn dữ liệu chưa gửi. true = cho phép rời */
+function confirmLeaveScan(){
+  if(state.scanList.length === 0) return true;
+  if(confirm("Bạn có "+state.scanList.length+" mục chưa gửi.\nLưu tạm vào máy để lần sau tiếp tục?")){
+    if(saveDraft()){ showToast("Đã lưu tạm — mở lại YGH này để tiếp tục", 3500); return true; }
+    alert("Không lưu được vào máy!"); return false;
+  }
+  return confirm("Thoát mà KHÔNG lưu? Dữ liệu chưa gửi sẽ mất.");
+}
+
 function backToYGH(){
-  if(state.scanList.length > 0 && !confirm("Bạn có "+state.scanList.length+" mục chưa gửi. Quay lại sẽ mất dữ liệu. Tiếp tục?")) return;
+  if(!confirmLeaveScan()) return;
   stopCamera(); state.currentDN = null; state.scanList = []; show("screenYGH");
 }
 function showToast(msg, dur){
@@ -611,6 +646,17 @@ async function openYGH(dnCode){
       const allDone = out.items.every(it=>it.slDone>=it.slYC);
       document.getElementById("scanControls").style.display = allDone ? "none" : "";
       document.getElementById("hint").style.display = allDone ? "none" : "";
+      // Khôi phục dữ liệu lưu tạm (nếu có)
+      const draft = loadDraft(dnCode);
+      if(draft && !allDone){
+        const tsTxt = draft.ts ? new Date(draft.ts).toLocaleString("vi-VN") : "";
+        if(confirm("Có "+draft.rows.length+" mục lưu tạm"+(tsTxt?" lúc "+tsTxt:"")+".\nKhôi phục để tiếp tục? (Hủy sẽ xóa dữ liệu lưu tạm)")){
+          // Chỉ nhận các dòng có LSX còn trong YGH này
+          state.scanList = draft.rows.filter(r=>out.items.some(it=>it.lsx===r.lsx));
+          showToast("Đã khôi phục "+state.scanList.length+" mục", 3000);
+        }
+        clearDraft(dnCode);
+      }
       renderAll();
       if(!allDone) setHint("info",'Bấm "Bắt đầu quét" để mở camera');
     } else {
@@ -792,7 +838,7 @@ async function submitAll(){
         const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
         it.slDone += sessionSL;
       });
-      state.scanList = []; state.expandedDN = {}; renderAll(); setHint("ok","Đã gửi kết quả thành công!");
+      state.scanList = []; state.expandedDN = {}; clearDraft(dn.dn); renderAll(); setHint("ok","Đã gửi kết quả thành công!");
     } else { FB.err(); showToast("Lỗi: "+(out.error||"Không rõ"), 4000); }
   }catch(e){ FB.err(); showToast("Mất mạng — chưa gửi được.", 4000); }
   btn.disabled = false; btn.innerHTML = '&#128228; Gửi kết quả';
