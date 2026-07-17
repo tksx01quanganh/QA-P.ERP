@@ -277,7 +277,7 @@ let manualSelLsx = "";
 let qr = null, scanning = false, scanLocked = true, lastText = "";
 
 function checkSession(){
-  const saved = sessionStorage.getItem("ghinhan_session");
+  const saved = localStorage.getItem("ghinhan_session");
   if(!saved) return false;
   try{
     const s = JSON.parse(saved);
