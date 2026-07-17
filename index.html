@@ -149,7 +149,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="screenLogin" class="screen active">
   <div class="topbar"><div class="ttl">QA-P.ERP</div></div>
   <div class="picker-wrap">
-    <p class="picker-sub">Đăng nhập để bắt đầu quét</p>
     <div class="field">
       <label>Username</label>
       <input id="loginUser" type="text" autocapitalize="none" autocomplete="username" placeholder="VD: tuyenpv" />
@@ -360,8 +359,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <h3>✏️ Nhập thủ công Sản phẩm</h3>
     <div id="manualCtx" class="manual-ctx"></div>
     <div class="field">
-      <label>Mã Sản phẩm</label>
-      <input id="mSP" type="text" placeholder="A/B/C/D" autocapitalize="characters" />
+      <label>Mã LSX <span style="color:var(--red)">*</span></label>
+      <input id="mLSX" type="text" placeholder="VD: LSX00123" autocapitalize="characters" />
+    </div>
+    <div class="field">
+      <label>Số lượng <span style="color:var(--red)">*</span></label>
+      <input id="mSoLuong" type="text" inputmode="decimal" placeholder="VD: 500" />
     </div>
     <div class="field">
       <label>KL thực tế (kg) <span style="color:var(--red)">*</span></label>
@@ -1225,13 +1228,14 @@ function openManualInput(){
   const may=state.currentMay, cn=state.currentCN;
   document.getElementById("manualCtx").textContent =
     "🏭 "+(may.ten||may.ma)+" · 👷 "+(cn.ten||cn.ma);
-  document.getElementById("mSP").value="";
+  document.getElementById("mLSX").value="";
+  document.getElementById("mSoLuong").value="";
   document.getElementById("mKg").value="";
   document.getElementById("mNote").value="";
   const errEl=document.getElementById("manualErr");
   errEl.style.display="none"; errEl.textContent="";
   document.getElementById("manualOverlay").classList.add("active");
-  setTimeout(()=>document.getElementById("mSP").focus(), 200);
+  setTimeout(()=>document.getElementById("mLSX").focus(), 200);
 }
 function closeManual(){
   document.getElementById("manualOverlay").classList.remove("active");
@@ -1241,24 +1245,23 @@ function showManualErr(msg){
   el.textContent=msg; el.style.display="block";
 }
 function submitManual(){
-  const sp   = document.getElementById("mSP").value.trim().toUpperCase();
+  // 3 ô riêng: LSX + Số lượng + KL. Ghép mã SP 4 phần "LSX/SL/ĐVT/KL" với ĐVT bỏ trống
+  const lsx  = document.getElementById("mLSX").value.trim().toUpperCase();
+  const slIn = document.getElementById("mSoLuong").value.trim();
   let klVal  = document.getElementById("mKg").value.trim();
   const note = document.getElementById("mNote").value.trim();
-  if(!sp){ showManualErr("Vui lòng nhập Mã Sản phẩm"); return; }
-  const parts=sp.split("/");
-  if(parts.length!==4||parts.some(p=>!p.trim())){
-    showManualErr("Mã Sản phẩm cần đúng 3 dấu / (4 phần, không để trống)");
+  if(!lsx){ showManualErr("Vui lòng nhập Mã LSX"); return; }
+  if(lsx.indexOf("/") !== -1){ showManualErr("Mã LSX không được chứa dấu /"); return; }
+  const slNum = numVN(slIn);
+  if(!slIn || isNaN(slNum) || slNum <= 0){
+    showManualErr("Vui lòng nhập Số lượng hợp lệ (> 0)");
     return;
-  }
-  // Nhánh GTB: nếu bỏ trống KL → tự lấy KL(QR) từ phần 4 của mã SP
-  if(state.branch === "GTB" && !klVal){
-    const klQR = numVN(parts[3]);
-    if(!isNaN(klQR) && klQR > 0) klVal = String(klQR);
   }
   if(!klVal || isNaN(numVN(klVal)) || numVN(klVal) <= 0){
     showManualErr("Vui lòng nhập khối lượng hợp lệ (> 0)");
     return;
   }
+  const sp = lsx+"/"+slNum+"/"+"/"+numVN(klVal); // ĐVT (phần 3) bỏ trống — ggsheet vẫn đủ 4 cột
   const row={
     may:    state.currentMay.ma,
     mayTen: state.currentMay.ten||"",
