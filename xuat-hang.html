@@ -39,9 +39,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .ygh-body.open{display:block;}
 .ygh-lsx-item{background:#f8fafc;border-radius:10px;padding:10px 12px;margin-top:8px;}
 .ygh-lsx-item.done{background:#f0fdf4;border:1px solid #bbf7d0;}
-.ygh-lsx-head{display:flex;justify-content:space-between;align-items:center;}
+.ygh-lsx-head{display:flex;align-items:center;gap:8px;}
+.ygh-lsx-head .lsx-badge{margin-left:auto;flex-shrink:0;}
 .ygh-lsx-code{font-weight:700;font-size:15px;}
-.ygh-lsx-prog{font-size:13px;color:var(--muted);}
+.ygh-lsx-prog{font-size:13px;color:var(--muted);white-space:nowrap;}
+.ygh-lsx-desc{font-size:12px;color:var(--muted);margin-top:3px;}
 .ygh-lsx-scanner{font-size:12px;color:var(--muted);margin-top:3px;}
 .ygh-actions{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
 .ygh-act-btn{border:none;padding:8px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;flex:1;text-align:center;}
@@ -61,6 +63,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .lsx-item.over{border-color:var(--red);background:#fef2f2;}
 .lsx-head{display:flex;justify-content:space-between;align-items:center;}
 .lsx-code{font-size:16px;font-weight:700;}
+.lsx-desc{font-size:12px;color:var(--muted);margin-top:2px;}
 .lsx-bars{margin-top:8px;}
 .bar-row{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:13px;}
 .bar-label{width:28px;font-weight:600;color:var(--muted);flex-shrink:0;}
@@ -134,6 +137,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .search-btn{border:none;background:var(--teal);color:#fff;padding:0 14px;border-radius:12px;font-size:18px;cursor:pointer;flex-shrink:0;}
 .search-btn:active{opacity:.85;}
 .today-btn{background:var(--amber);}
+.clear-filter-btn{border:none;background:#fef2f2;color:var(--red);padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto;}
+.clear-filter-btn:active{opacity:.85;}
+/* User filter */
+.user-filter{display:flex;gap:6px;align-items:center;margin-bottom:10px;}
+.user-filter select{flex:1;padding:8px 10px;border:2px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:#fff;min-width:0;}
+.user-filter select:focus{border-color:var(--teal);}
+/* Manual LSX picker */
+.mlsx-list{max-height:38vh;overflow-y:auto;border:2px solid var(--border);border-radius:10px;}
+.mlsx-row{padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;}
+.mlsx-row:last-child{border-bottom:none;}
+.mlsx-row.sel{background:#ccfbf1;}
+.mlsx-row-top{display:flex;align-items:center;gap:8px;}
+.mlsx-code{font-weight:700;font-size:14px;}
+.mlsx-remain{margin-left:auto;font-size:12px;color:var(--teal);font-weight:600;white-space:nowrap;}
+.mlsx-desc{font-size:11px;color:var(--muted);margin-top:2px;}
+.mlsx-empty{padding:12px;text-align:center;color:var(--muted);font-size:13px;}
 </style>
 </head>
 <body>
@@ -159,6 +178,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <input type="date" id="filterDateTo" />
       <button class="date-filter-btn" onclick="searchByDate()">&#128197;</button>
       <button class="date-filter-btn today-btn" onclick="searchToday()">Hôm nay</button>
+    </div>
+    <div class="user-filter">
+      <select id="filterUser"><option value="">&#128100; - Chọn người tạo -</option></select>
+      <button class="date-filter-btn" onclick="searchByUser()">Tìm</button>
     </div>
     <div id="dateSummary" class="date-summary" style="display:none"></div>
     <div id="yghStatus" class="hint info" style="display:none">Đang tải danh sách YGH...</div>
@@ -211,8 +234,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="sheet">
     <h3>&#9999;&#65039; Nhập thủ công</h3>
     <div class="field">
-      <label>Mã LSX</label>
-      <select id="mLSX"><option value="">- Chọn LSX -</option></select>
+      <label>Chọn LSX</label>
+      <div id="mLsxList" class="mlsx-list"></div>
     </div>
     <div class="field">
       <label>Số lượng</label>
@@ -235,9 +258,11 @@ const CONFIG = {
 
 let state = {
   user: null, maNV: null, currentDN: null, sessionId: "",
-  allDN: [], scanList: [], historyFrom: "scan", expandedDN: {}
+  allDN: [], scanList: [], historyFrom: "scan", expandedDN: {},
+  filterDNs: null // {dn:true,...} — khi lọc theo ngày/user, list chính chỉ hiện các YGH này
 };
 let filteredList = [];
+let manualSelLsx = "";
 let qr = null, scanning = false, scanLocked = true, lastText = "";
 
 function checkSession(){
@@ -312,28 +337,79 @@ async function searchByDate(){
     const out = await res.json();
     if(out.result === "ok"){
       const label = (dateFrom === dateTo) ? "ngày "+toVN(dateFrom) : toVN(dateFrom)+" — "+toVN(dateTo);
-      let html = '<div class="date-summary-title">&#128197; Kết quả '+label+'</div>';
-      html += '<div class="date-chips">';
-      html += '<span class="date-chip dc-total">Tổng: '+out.total+' YGH</span>';
-      html += '<span class="date-chip dc-done">Hoàn thành: '+out.done+'</span>';
-      html += '<span class="date-chip dc-partial">Đang thực hiện: '+out.partial+'</span>';
-      html += '<span class="date-chip dc-new">Chưa bắt đầu: '+out.newCount+'</span>';
-      html += '</div>';
+      renderFilterSummary("&#128197; Kết quả "+label, out);
+      // Lọc list chính: chỉ hiện các YGH của khoảng ngày này
+      applyDnFilter(out.list || []);
+    } else {
+      sumEl.innerHTML = '<div class="loading-text" style="color:var(--red)">'+esc(out.error||"Lỗi")+'</div>';
+    }
+  }catch(e){
+    sumEl.innerHTML = '<div class="loading-text" style="color:var(--red)">Không kết nối được</div>';
+  }
+}
 
-      if(out.list && out.list.length > 0){
-        html += '<div style="margin-top:10px;font-size:12px;color:var(--muted)">Bấm vào YGH để xem chi tiết:</div>';
-        out.list.forEach(d=>{
-          let stCls = d.status==="done"?"st-done":(d.status==="partial"?"st-partial":"st-new");
-          let stTxt = d.status==="done"?"Hoàn thành":(d.status==="partial"?"Đang thực hiện":"Chưa bắt đầu");
-          html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;cursor:pointer" onclick="document.getElementById(\'searchYGH\').value=\''+esc(d.dn)+'\';filterYGH(\''+esc(d.dn)+'\');document.getElementById(\'dateSummary\').style.display=\'none\'">'+
-            '<span style="font-weight:700;font-size:14px">'+esc(d.dn)+'</span>'+
-            '<span style="font-size:12px;color:var(--muted)">'+esc(d.kh)+'</span>'+
-            '<span class="ygh-status '+stCls+'" style="margin-left:auto">'+stTxt+'</span>'+
-          '</div>';
-        });
-      }
+/* === LỌC LIST CHÍNH THEO KẾT QUẢ TRA CỨU (ngày / user) === */
+function renderFilterSummary(title, out){
+  const sumEl = document.getElementById("dateSummary");
+  sumEl.style.display = "block";
+  let html = '<div style="display:flex;align-items:center;gap:8px">'+
+    '<div class="date-summary-title" style="margin-bottom:0">'+title+'</div>'+
+    '<button class="clear-filter-btn" onclick="clearDnFilter()">&#10005; Bỏ lọc</button>'+
+  '</div>';
+  html += '<div class="date-chips" style="margin-top:8px">';
+  html += '<span class="date-chip dc-total">Tổng: '+out.total+' YGH</span>';
+  html += '<span class="date-chip dc-done">Hoàn thành: '+out.done+'</span>';
+  html += '<span class="date-chip dc-partial">Đang thực hiện: '+out.partial+'</span>';
+  html += '<span class="date-chip dc-new">Chưa bắt đầu: '+out.newCount+'</span>';
+  html += '</div>';
+  sumEl.innerHTML = html;
+}
 
-      sumEl.innerHTML = html;
+function applyDnFilter(list){
+  state.filterDNs = {};
+  list.forEach(d=>{ state.filterDNs[d.dn] = true; });
+  filterYGH(document.getElementById("searchYGH").value);
+}
+
+function clearDnFilter(){
+  state.filterDNs = null;
+  document.getElementById("dateSummary").style.display = "none";
+  document.getElementById("filterDateFrom").value = "";
+  document.getElementById("filterDateTo").value = "";
+  document.getElementById("filterUser").value = "";
+  filterYGH(document.getElementById("searchYGH").value);
+}
+
+/* === TRA CỨU THEO USER === */
+async function loadUserList(){
+  try{
+    const res = await fetch(CONFIG.XUAT_HANG_URL+"?action=userlist&t="+Date.now());
+    const out = await res.json();
+    if(out.result === "ok" && out.users){
+      const sel = document.getElementById("filterUser");
+      out.users.forEach(u=>{
+        const opt = document.createElement("option");
+        opt.value = u.ten;
+        opt.textContent = u.ten + " (" + u.maNV + ")";
+        sel.appendChild(opt);
+      });
+    }
+  }catch(e){ /* không chặn app nếu lỗi */ }
+}
+
+async function searchByUser(){
+  const userName = document.getElementById("filterUser").value;
+  if(!userName){ showToast("Vui lòng chọn user", 2000); return; }
+  const sumEl = document.getElementById("dateSummary");
+  sumEl.style.display = "block";
+  sumEl.innerHTML = '<div class="loading-text"><span class="spin"></span> Đang kiểm tra...</div>';
+  try{
+    const url = CONFIG.XUAT_HANG_URL+"?action=dnByUser&user="+encodeURIComponent(userName)+"&t="+Date.now();
+    const res = await fetch(url);
+    const out = await res.json();
+    if(out.result === "ok"){
+      renderFilterSummary("&#128100; "+esc(userName), out);
+      applyDnFilter(out.list || []);
     } else {
       sumEl.innerHTML = '<div class="loading-text" style="color:var(--red)">'+esc(out.error||"Lỗi")+'</div>';
     }
@@ -360,7 +436,10 @@ async function loadYghList(){
 function filterYGH(q){
   q=(q||"").trim().toLowerCase();
   const hideDone = document.getElementById("chkHideDone").checked;
-  filteredList = state.allDN.filter(d=>{
+  let base = state.allDN;
+  // Đang lọc theo ngày/user → chỉ hiện các YGH trong kết quả tra cứu
+  if(state.filterDNs) base = base.filter(d=>state.filterDNs[d.dn]);
+  filteredList = base.filter(d=>{
     if(!q) return true;
     // Tìm trong mã YGH, khách hàng, và từng LSX
     if(String(d.dn||"").toLowerCase().includes(q)) return true;
@@ -474,9 +553,10 @@ function renderAccBody(idx, data, d){
     html += '<div class="ygh-lsx-item'+(isDone?' done':'')+'">'+
       '<div class="ygh-lsx-head">'+
         '<span class="ygh-lsx-code">'+esc(it.lsx)+'</span>'+
+        '<span class="ygh-lsx-prog">'+fmt(it.slDone)+' / '+fmt(it.slYC)+'</span>'+
         badge+
       '</div>'+
-      '<div class="ygh-lsx-prog">'+fmt(it.slDone)+' / '+fmt(it.slYC)+'</div>'+
+      (it.moTa ? '<div class="ygh-lsx-desc">'+esc(it.moTa)+'</div>' : '')+
       scannerInfo+
     '</div>';
   });
@@ -559,6 +639,7 @@ function renderProgress(){
     div.className=cls;
     div.innerHTML=
       '<div class="lsx-head"><span class="lsx-code">'+esc(it.lsx)+'</span>'+badge+'</div>'+
+      (it.moTa ? '<div class="lsx-desc">'+esc(it.moTa)+'</div>' : '')+
       '<div class="lsx-bars">'+
         '<div class="bar-row"><span class="bar-label">SL</span>'+
           '<div class="bar-track"><div class="bar-fill '+(isOver?"fill-over":"fill-ok")+'" style="width:'+Math.min(pct,100)+'%"></div></div>'+
@@ -698,36 +779,43 @@ async function submitAll(){
 
 /* === MANUAL INPUT === */
 function openManual(){
-  const sel = document.getElementById("mLSX");
-  sel.innerHTML = '<option value="">- Chọn LSX -</option>';
+  const listEl = document.getElementById("mLsxList");
+  listEl.innerHTML = "";
+  manualSelLsx = "";
+  let hasOption = false;
   if(state.currentDN && state.currentDN.items){
-    let hasOption = false;
     state.currentDN.items.forEach(it=>{
       const sessionSL = state.scanList.filter(s=>s.lsx===it.lsx).reduce((a,s)=>a+s.sl, 0);
       const totalDone = it.slDone + sessionSL;
       if(totalDone < it.slYC){
-        const opt = document.createElement("option");
-        opt.value = it.lsx;
-        opt.textContent = it.lsx + " (còn " + fmt(it.slYC - totalDone) + ")";
-        sel.appendChild(opt);
+        const row = document.createElement("div");
+        row.className = "mlsx-row";
+        row.innerHTML =
+          '<div class="mlsx-row-top">'+
+            '<span class="mlsx-code">'+esc(it.lsx)+'</span>'+
+            '<span class="mlsx-remain">còn '+fmt(it.slYC - totalDone)+'</span>'+
+          '</div>'+
+          (it.moTa ? '<div class="mlsx-desc">'+esc(it.moTa)+'</div>' : '');
+        row.onclick = function(){
+          manualSelLsx = it.lsx;
+          listEl.querySelectorAll(".mlsx-row").forEach(r=>r.classList.remove("sel"));
+          row.classList.add("sel");
+        };
+        listEl.appendChild(row);
         hasOption = true;
       }
     });
-    if(!hasOption){
-      const opt = document.createElement("option");
-      opt.value = ""; opt.disabled = true;
-      opt.textContent = "Tất cả LSX đã đủ số lượng";
-      sel.appendChild(opt);
-    }
+  }
+  if(!hasOption){
+    listEl.innerHTML = '<div class="mlsx-empty">Tất cả LSX đã đủ số lượng</div>';
   }
   document.getElementById("mSL").value = "";
   const err=document.getElementById("manualErr"); err.style.display="none";
   document.getElementById("manualOverlay").classList.add("active");
-  setTimeout(()=>document.getElementById("mSL").focus(),200);
 }
 function closeManual(){ document.getElementById("manualOverlay").classList.remove("active"); }
 function submitManual(){
-  const lsx = document.getElementById("mLSX").value.trim();
+  const lsx = manualSelLsx;
   const slStr = document.getElementById("mSL").value.trim();
   const err = document.getElementById("manualErr");
   if(!lsx){ err.textContent="Chọn LSX"; err.style.display="block"; return; }
@@ -826,6 +914,7 @@ document.getElementById("searchYGH").addEventListener("keydown",function(ev){
 function boot(){
   if(!checkSession()){ window.location.href="index.html"; return; }
   loadYghList();
+  loadUserList();
 }
 boot();
 </script>
