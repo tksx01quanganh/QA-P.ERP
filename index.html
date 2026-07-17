@@ -366,6 +366,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <label>Số lượng <span style="color:var(--red)">*</span></label>
       <input id="mSoLuong" type="text" inputmode="decimal" placeholder="VD: 500" />
     </div>
+    <div class="field" id="fieldKlQR" style="display:none">
+      <label>KL (QR) <span style="color:var(--red)">*</span></label>
+      <input id="mKlQR" type="text" inputmode="decimal" placeholder="KL in trên tem QR, VD: 12,5" />
+    </div>
     <div class="field">
       <label>KL thực tế (kg) <span style="color:var(--red)">*</span></label>
       <input id="mKg" type="text" inputmode="decimal" placeholder="VD: 12,5" enterkeyhint="done" />
@@ -569,8 +573,8 @@ async function doLogin(){
       document.getElementById("loginPass").value="";
       btn.disabled=false; btn.textContent=oldTxt;
 
-      // Lưu session vào sessionStorage (để tien-do.html dùng chung)
-      sessionStorage.setItem("ghinhan_session", JSON.stringify({
+      // Lưu session vào localStorage (để tien-do.html dùng chung)
+      localStorage.setItem("ghinhan_session", JSON.stringify({
         user: state.user, maNV: state.maNV, username: state.username,
         permissions: state.permissions, ts: Date.now()
       }));
@@ -605,7 +609,7 @@ function logout(){
   state.currentMay=null;
   state.currentCN=null;
   state.fromScan=false;
-  sessionStorage.removeItem("ghinhan_session");
+  localStorage.removeItem("ghinhan_session");
   stopCamera();
   show("screenLogin");
   loginSetErr("");
@@ -1230,8 +1234,11 @@ function openManualInput(){
     "🏭 "+(may.ten||may.ma)+" · 👷 "+(cn.ten||cn.ma);
   document.getElementById("mLSX").value="";
   document.getElementById("mSoLuong").value="";
+  document.getElementById("mKlQR").value="";
   document.getElementById("mKg").value="";
   document.getElementById("mNote").value="";
+  // Nhánh CT: nhập 4 trường (thêm KL QR). Nhánh GTB: 3 trường
+  document.getElementById("fieldKlQR").style.display = (state.branch === "CT") ? "" : "none";
   const errEl=document.getElementById("manualErr");
   errEl.style.display="none"; errEl.textContent="";
   document.getElementById("manualOverlay").classList.add("active");
@@ -1257,11 +1264,19 @@ function submitManual(){
     showManualErr("Vui lòng nhập Số lượng hợp lệ (> 0)");
     return;
   }
-  if(!klVal || isNaN(numVN(klVal)) || numVN(klVal) <= 0){
-    showManualErr("Vui lòng nhập khối lượng hợp lệ (> 0)");
+  // Nhánh CT: bắt buộc nhập thêm KL (QR) — là phần 4 của mã SP
+  const isCT = (state.branch === "CT");
+  const klQRIn = document.getElementById("mKlQR").value.trim();
+  if(isCT && (!klQRIn || isNaN(numVN(klQRIn)) || numVN(klQRIn) <= 0)){
+    showManualErr("Vui lòng nhập KL (QR) hợp lệ (> 0)");
     return;
   }
-  const sp = lsx+"/"+slNum+"/"+"/"+numVN(klVal); // ĐVT (phần 3) bỏ trống — ggsheet vẫn đủ 4 cột
+  if(!klVal || isNaN(numVN(klVal)) || numVN(klVal) <= 0){
+    showManualErr("Vui lòng nhập KL thực tế hợp lệ (> 0)");
+    return;
+  }
+  // Phần 4 mã SP: CT = KL(QR), GTB = KL thực tế. ĐVT (phần 3) bỏ trống — ggsheet vẫn đủ 4 cột
+  const sp = lsx+"/"+slNum+"/"+"/"+(isCT ? numVN(klQRIn) : numVN(klVal));
   const row={
     may:    state.currentMay.ma,
     mayTen: state.currentMay.ten||"",
@@ -1599,7 +1614,7 @@ function boot(){
   loadWorkers();
 
   // Khôi phục session nếu có (quay lại từ tien-do.html hoặc trang khác)
-  var saved = sessionStorage.getItem("ghinhan_session");
+  var saved = localStorage.getItem("ghinhan_session");
   if(saved){
     try{
       var s = JSON.parse(saved);
