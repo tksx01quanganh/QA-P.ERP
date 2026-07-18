@@ -35,6 +35,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .st-done{background:#dcfce7;color:#15803d;}
 .st-partial{background:#fef3c7;color:#92400e;}
 .st-new{background:#e0f2fe;color:#0369a1;}
+.st-closed{background:#e5e7eb;color:#374151;}
 .ygh-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
 .ygh-body.open{display:block;}
 .ygh-lsx-item{background:#f8fafc;border-radius:10px;padding:10px 12px;margin-top:8px;}
@@ -79,6 +80,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .btn.teal{background:var(--teal);color:#fff;}
 .btn.gray{background:#e2e8f0;color:var(--txt);}
 .btn.ghost{background:none;border:2px solid var(--border);color:var(--txt);}
+.btn.finish{background:#d97706;color:#fff;}
+.fin-item{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px;}
+.fin-head{display:flex;align-items:center;gap:8px;}
+.fin-lsx{font-weight:700;}
+.fin-thieu{margin-left:auto;color:var(--red);font-weight:700;font-size:13px;white-space:nowrap;}
+.fin-desc{font-size:12px;color:var(--muted);margin-top:2px;}
+.fin-opts{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;}
+.fin-opts label{display:flex;align-items:center;gap:5px;font-size:14px;}
+.fin-note{width:100%;margin-top:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;display:none;}
+.hint.closed{background:#e5e7eb;color:#374151;font-weight:600;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
 .controls{padding:12px;display:flex;flex-direction:column;gap:8px;background:#fff;border-top:1px solid var(--border);}
 .row2{display:flex;gap:8px;}
@@ -217,6 +228,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <button id="btnSubmit" class="btn teal" onclick="submitAll()" style="display:none">&#128228; Gửi kết quả</button>
     </div>
   </div>
+  <div class="controls top" id="finishBar" style="display:none">
+    <button id="btnFinish" class="btn finish" onclick="openFinish()">&#127937; Kết thúc YGH</button>
+  </div>
+  <div id="closedBanner" class="hint closed" style="display:none;margin:8px 12px">&#128274; YGH đã kết thúc — đã khóa, không thể scan thêm</div>
   <div id="reader"></div>
   <div id="hint" class="hint info" style="margin:0 12px">Bấm "Bắt đầu quét" để mở camera</div>
   <div class="wrap" id="mainWrap">
@@ -256,6 +271,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="row2" style="margin-top:12px">
       <button class="btn gray" onclick="closeManual()">Huỷ</button>
       <button class="btn green" onclick="submitManual()">&#10003; Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: Kết thúc YGH -->
+<div id="finishOverlay" class="overlay">
+  <div class="sheet">
+    <h3>&#127937; Kết thúc YGH</h3>
+    <div id="finishIntro" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
+    <div id="finishList"></div>
+    <div id="finishErr" class="manual-err"></div>
+    <div class="row2" style="margin-top:12px">
+      <button class="btn gray" onclick="closeFinish()">Huỷ</button>
+      <button id="btnFinishConfirm" class="btn finish" onclick="submitFinish()">&#10003; Xác nhận</button>
     </div>
   </div>
 </div>
@@ -506,7 +535,7 @@ function filterYGH(q){
     }
     return false;
   });
-  if(hideDone) filteredList = filteredList.filter(d=>d.status !== "done");
+  if(hideDone) filteredList = filteredList.filter(d=>d.status !== "done" && d.status !== "closed");
   renderYghList(filteredList);
 }
 
@@ -519,10 +548,11 @@ function renderYghList(list){
   wrap.innerHTML="";
   list.forEach((d, idx)=>{
     const acc=document.createElement("div");
-    acc.className="ygh-acc"+(d.status==="done"?" completed":"");
+    acc.className="ygh-acc"+((d.status==="done"||d.status==="closed")?" completed":"");
 
     let statusHtml = '';
-    if(d.status==="done") statusHtml='<span class="ygh-status st-done">Hoàn thành</span>';
+    if(d.status==="closed") statusHtml='<span class="ygh-status st-closed">&#128274; Đã kết thúc</span>';
+    else if(d.status==="done") statusHtml='<span class="ygh-status st-done">Hoàn thành</span>';
     else if(d.status==="partial") statusHtml='<span class="ygh-status st-partial">Đang thực hiện</span>';
     else statusHtml='<span class="ygh-status st-new">Chưa bắt đầu</span>';
 
@@ -618,7 +648,7 @@ function renderAccBody(idx, data, d){
   });
 
   html += '<div class="ygh-actions">';
-  if(!allDone){
+  if(!allDone && !data.closed){
     html += '<button class="ygh-act-btn scan" onclick="openYGH(\''+escAttr(data.dn)+'\')">&#128247; Quét hàng</button>';
   }
   if(d.status !== "new"){
@@ -643,9 +673,18 @@ async function openYGH(dnCode){
     const out = await res.json();
     if(out.result==="ok"){
       state.currentDN = out;
+      if(out.closed){
+        // YGH đã kết thúc → chế độ chỉ xem
+        clearDraft(dnCode);
+        applyClosedUI();
+        renderAll();
+        return;
+      }
       const allDone = out.items.every(it=>it.slDone>=it.slYC);
+      document.getElementById("closedBanner").style.display = "none";
       document.getElementById("scanControls").style.display = allDone ? "none" : "";
       document.getElementById("hint").style.display = allDone ? "none" : "";
+      document.getElementById("finishBar").style.display = "";
       // Khôi phục dữ liệu lưu tạm (nếu có)
       const draft = loadDraft(dnCode);
       if(draft && !allDone){
@@ -809,9 +848,10 @@ function addScanItem(lsx, sl, qrRaw){
 }
 
 /* === SUBMIT === */
-async function submitAll(){
-  if(state.scanList.length === 0){ showToast("Chưa có dữ liệu", 2000); return; }
-  if(!confirm("Gửi "+state.scanList.length+" mục lên Google Sheet?")) return;
+async function submitAll(silent){
+  if(state.scanList.length === 0){ if(!silent) showToast("Chưa có dữ liệu", 2000); return false; }
+  if(!silent && !confirm("Gửi "+state.scanList.length+" mục lên Google Sheet?")) return false;
+  let sentOk = false;
   const dn = state.currentDN;
   const btn = document.getElementById("btnSubmit");
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Đang gửi...';
@@ -839,9 +879,111 @@ async function submitAll(){
         it.slDone += sessionSL;
       });
       state.scanList = []; state.expandedDN = {}; clearDraft(dn.dn); renderAll(); setHint("ok","Đã gửi kết quả thành công!");
+      sentOk = true;
     } else { FB.err(); showToast("Lỗi: "+(out.error||"Không rõ"), 4000); }
   }catch(e){ FB.err(); showToast("Mất mạng — chưa gửi được.", 4000); }
   btn.disabled = false; btn.innerHTML = '&#128228; Gửi kết quả';
+  return sentOk;
+}
+
+/* === KẾT THÚC YGH === */
+let finishShorts = [];
+
+function applyClosedUI(){
+  stopCamera();
+  state.scanList = [];
+  document.getElementById("scanControls").style.display = "none";
+  document.getElementById("finishBar").style.display = "none";
+  document.getElementById("hint").style.display = "none";
+  document.getElementById("closedBanner").style.display = "block";
+}
+
+async function openFinish(){
+  const dn = state.currentDN;
+  if(!dn || !dn.items) return;
+  if(dn.closed){ showToast("YGH này đã kết thúc", 2500); return; }
+  if(state.scanList.length > 0){
+    if(!confirm("Bạn có "+state.scanList.length+" mục chưa gửi.\nCần GỬI lên hệ thống trước khi kết thúc. Gửi ngay?")) return;
+    const ok = await submitAll(true);
+    if(!ok){ showToast("Gửi chưa thành công — chưa thể kết thúc", 3500); return; }
+  }
+  showFinishModal();
+}
+
+function showFinishModal(){
+  const dn = state.currentDN;
+  finishShorts = dn.items.filter(it=>it.slDone < it.slYC);
+  const intro = document.getElementById("finishIntro");
+  const listEl = document.getElementById("finishList");
+  const err = document.getElementById("finishErr"); err.style.display = "none";
+  listEl.innerHTML = "";
+  if(finishShorts.length === 0){
+    intro.innerHTML = 'Tất cả LSX đã đủ số lượng. Kết thúc sẽ <b>KHÓA</b> YGH này, không scan thêm được.';
+  } else {
+    intro.innerHTML = 'Còn <b>'+finishShorts.length+' LSX chưa đủ</b>. Chọn lý do cho từng LSX — sau khi kết thúc, YGH sẽ bị <b>KHÓA</b>.';
+    finishShorts.forEach((it, i)=>{
+      const thieu = it.slYC - it.slDone;
+      const div = document.createElement("div");
+      div.className = "fin-item";
+      div.innerHTML =
+        '<div class="fin-head"><span class="fin-lsx">'+esc(it.lsx)+'</span>'+
+          '<span class="fin-thieu">thiếu '+fmt(thieu)+' ('+fmt(it.slDone)+'/'+fmt(it.slYC)+')</span></div>'+
+        (it.moTa ? '<div class="fin-desc">'+esc(it.moTa)+'</div>' : '')+
+        '<div class="fin-opts">'+
+          '<label><input type="radio" name="fr_'+i+'" value="Không có tồn"> Không có tồn</label>'+
+          '<label><input type="radio" name="fr_'+i+'" value="Hàng lỗi"> Hàng lỗi</label>'+
+          '<label><input type="radio" name="fr_'+i+'" value="Khác"> Khác</label>'+
+        '</div>'+
+        '<input type="text" class="fin-note" id="fnote_'+i+'" placeholder="Nhập lý do khác..." />';
+      div.querySelectorAll('input[type=radio]').forEach(rb=>{
+        rb.onchange = function(){
+          document.getElementById("fnote_"+i).style.display = (this.value === "Khác") ? "block" : "none";
+        };
+      });
+      listEl.appendChild(div);
+    });
+  }
+  document.getElementById("finishOverlay").classList.add("active");
+}
+function closeFinish(){ document.getElementById("finishOverlay").classList.remove("active"); }
+
+async function submitFinish(){
+  const err = document.getElementById("finishErr");
+  const items = [];
+  for(let i=0; i<finishShorts.length; i++){
+    const it = finishShorts[i];
+    const sel = document.querySelector('input[name="fr_'+i+'"]:checked');
+    if(!sel){ err.textContent = "Chọn lý do cho LSX "+it.lsx; err.style.display = "block"; return; }
+    let ghiChu = "";
+    if(sel.value === "Khác"){
+      ghiChu = document.getElementById("fnote_"+i).value.trim();
+      if(!ghiChu){ err.textContent = "Nhập nội dung lý do khác cho LSX "+it.lsx; err.style.display = "block"; return; }
+    }
+    items.push({ lsx: it.lsx, moTa: it.moTa||"", slYC: it.slYC, slDone: it.slDone, thieu: it.slYC - it.slDone, lyDo: sel.value, ghiChu: ghiChu });
+  }
+  err.style.display = "none";
+  if(!confirm("Xác nhận KẾT THÚC YGH "+state.currentDN.dn+"?\nSau khi kết thúc sẽ KHÔNG scan/gửi thêm được.")) return;
+  const btn = document.getElementById("btnFinishConfirm");
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Đang gửi...';
+  try{
+    const res = await fetch(CONFIG.XUAT_HANG_URL, {
+      method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({ action:"finish", dn: state.currentDN.dn, user: state.user||"", time: nowStr(), items: items }),
+      redirect:"follow"
+    });
+    const out = await res.json();
+    if(out.result === "ok"){
+      FB.ok(); closeFinish();
+      showToast("Đã kết thúc YGH "+state.currentDN.dn, 4000);
+      state.currentDN.closed = true;
+      clearDraft(state.currentDN.dn);
+      state.expandedDN = {};
+      applyClosedUI();
+      renderAll();
+      loadYghList();
+    } else { FB.err(); showToast("Lỗi: "+(out.error||"Không rõ"), 4000); }
+  }catch(e){ FB.err(); showToast("Mất mạng — chưa kết thúc được.", 4000); }
+  btn.disabled = false; btn.innerHTML = '&#10003; Xác nhận';
 }
 
 /* === MANUAL INPUT === */
