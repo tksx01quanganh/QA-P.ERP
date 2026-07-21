@@ -128,7 +128,6 @@ input,select,textarea{font-family:inherit;font-size:16px}
     </div>
 
     <!-- Kết quả tìm kiếm -->
-    <div id="searchResults"></div>
 
     <!-- Danh sách kiểm tra gần đây -->
     <div style="margin-top:16px">
@@ -145,14 +144,9 @@ input,select,textarea{font-family:inherit;font-size:16px}
     <div class="ttl">Ghi nhận kiểm tra</div>
   </div>
   <div class="wrap">
-    <!-- Thông tin sản phẩm (auto-fill từ QR/search) -->
+    <!-- Thông tin LSX (từ QR scan hoặc nhập tay) -->
     <div class="product-card" id="productCard">
       <div class="pc-lsx" id="pcLSX">-</div>
-      <div class="pc-info">
-        <span id="pcMaSP"></span><span id="pcKH"></span><br/>
-        <span id="pcMoTa"></span><br/>
-        <span id="pcDVT"></span><span id="pcSLYC"></span>
-      </div>
     </div>
 
     <!-- Vị trí kiểm tra (từ MA_PhongBan) -->
@@ -538,45 +532,9 @@ function manualSearchLSX() {
   searchAndOpenInspection(q);
 }
 
-async function searchAndOpenInspection(q) {
-  showSpinner("Đang tra cứu " + q + "...");
-  try {
-    const res = await apiGet("searchLSX", { q: q });
-    hideSpinner();
-    if (res.result !== "ok") { alert(res.error || "Lỗi tra cứu"); return; }
-    if (!res.list || res.list.length === 0) {
-      // Không tìm thấy trong Data Combine → vẫn cho phép nhập thủ công
-      openInspectionForm({ lsxct: q, masp: "", khachhang: "", mota: "", dvt: "", soluong: 0 });
-      return;
-    }
-    if (res.list.length === 1) {
-      openInspectionForm(res.list[0]);
-      return;
-    }
-    // Nhiều kết quả → hiện danh sách chọn
-    showSearchResults(res.list);
-  } catch(e) {
-    hideSpinner();
-    alert("Lỗi kết nối: " + e.message);
-  }
-}
-
-function showSearchResults(list) {
-  show("screenHome");
-  const container = document.getElementById("searchResults");
-  container.innerHTML = "<h3 style='font-size:14px;margin-bottom:8px'>Chọn LSX (" + list.length + " kết quả)</h3>";
-  list.slice(0, 20).forEach((item, idx) => {
-    container.innerHTML += '<div class="product-card" style="cursor:pointer" onclick="pickSearchResult(' + idx + ')">' +
-      '<div class="pc-lsx">' + esc(item.lsxct || item.lsx) + '</div>' +
-      '<div class="pc-info"><span>' + esc(item.masp) + '</span> <span>' + esc(item.khachhang) + '</span><br/>' +
-      '<span>' + esc(item.mota) + '</span></div></div>';
-  });
-  container._list = list;
-}
-
-function pickSearchResult(idx) {
-  const list = document.getElementById("searchResults")._list;
-  if (list && list[idx]) openInspectionForm(list[idx]);
+function searchAndOpenInspection(q) {
+  // Mở form trực tiếp — backend sẽ tự tra Data Combine khi ghi
+  openInspectionForm({ lsxct: q });
 }
 
 // ===== FORM KIỂM TRA =====
@@ -586,13 +544,8 @@ function openInspectionForm(product) {
   state.photos = [];
   state.photoUrls = [];
 
-  // Fill product info
-  document.getElementById("pcLSX").textContent = product.lsxct || product.lsx || "-";
-  document.getElementById("pcMaSP").textContent = product.masp ? "Mã SP: " + product.masp : "";
-  document.getElementById("pcKH").textContent = product.khachhang ? "KH: " + product.khachhang : "";
-  document.getElementById("pcMoTa").textContent = product.mota || "";
-  document.getElementById("pcDVT").textContent = product.dvt ? "ĐVT: " + product.dvt : "";
-  document.getElementById("pcSLYC").textContent = product.soluong ? "SL: " + product.soluong : "";
+  // Fill product info — chỉ hiện LSX, thông tin SP do backend tra khi ghi
+  document.getElementById("pcLSX").textContent = product.lsxct || "-";
 
   // Reset form
   document.getElementById("selViTri").value = "";
@@ -620,7 +573,6 @@ function openInspectionForm(product) {
     document.getElementById("selGroup").innerHTML = '<option value="">-- Chọn category trước --</option>';
   }
 
-  document.getElementById("searchResults").innerHTML = "";
   show("screenInspect");
 }
 
@@ -716,12 +668,7 @@ async function submitInspection() {
     const p = state.currentProduct || {};
     const row = {
       inspector: state.user,
-      lsxct: p.lsxct || p.lsx || "",
-      masp: p.masp || "",
-      khachhang: p.khachhang || "",
-      mota: p.mota || "",
-      dvt: p.dvt || "",
-      slYeuCau: p.soluong || 0,
+      lsxct: p.lsxct || "",
       congDoanKT: viTriTen,
       may: document.getElementById("selMay").value,
       congNhan: document.getElementById("selCN").value,
