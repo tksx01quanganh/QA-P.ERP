@@ -155,20 +155,10 @@ input,select,textarea{font-family:inherit;font-size:16px}
       </div>
     </div>
 
-    <!-- Chọn công đoạn kiểm tra -->
+    <!-- Chọn công đoạn kiểm tra (dynamic từ MA_CongDoan) -->
     <div class="form-group">
       <label>Công đoạn kiểm tra *</label>
-      <select id="selCongDoan">
-        <option value="">-- Chọn --</option>
-        <option value="Cắt">Cắt</option>
-        <option value="In">In</option>
-        <option value="Ghép">Ghép</option>
-        <option value="Gia công túi">Gia công túi</option>
-        <option value="Đóng gói">Đóng gói</option>
-        <option value="Kho NVL">Kho NVL</option>
-        <option value="Kho TP">Kho TP</option>
-        <option value="Xuất hàng">Xuất hàng</option>
-      </select>
+      <select id="selCongDoan" onchange="onCongDoanChange()"><option value="">-- Chọn --</option></select>
     </div>
 
     <!-- Chọn Tổ → Máy → Công nhân -->
@@ -228,16 +218,7 @@ input,select,textarea{font-family:inherit;font-size:16px}
       </div>
       <div class="form-group">
         <label>Công đoạn gây lỗi</label>
-        <select id="selCongDoanGayLoi">
-          <option value="">-- Chọn --</option>
-          <option value="Cắt">Cắt</option>
-          <option value="In">In</option>
-          <option value="Ghép">Ghép</option>
-          <option value="Gia công túi">Gia công túi</option>
-          <option value="Đóng gói">Đóng gói</option>
-          <option value="NVL đầu vào">NVL đầu vào</option>
-          <option value="Khác">Khác</option>
-        </select>
+        <select id="selCongDoanGayLoi"><option value="">-- Chọn --</option></select>
       </div>
       <div class="form-group">
         <label>Phương án xử lý</label>
@@ -378,7 +359,7 @@ async function loadMasterData() {
     if (cached) {
       try {
         const c = JSON.parse(cached);
-        if (c.ts && Date.now() - c.ts < 600000) { state.masterData = c.data; buildToChips(); buildCategorySelect(); return; }
+        if (c.ts && Date.now() - c.ts < 600000) { state.masterData = c.data; buildToChips(); buildCategorySelect(); buildProcessSelects(); return; }
       } catch(e) {}
     }
 
@@ -388,6 +369,7 @@ async function loadMasterData() {
       localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: res }));
       buildToChips();
       buildCategorySelect();
+      buildProcessSelects();
     }
   } catch(e) { console.error("Load master data failed:", e); }
 }
@@ -443,6 +425,35 @@ function buildCategorySelect() {
   state.masterData.categories.forEach(c => {
     sel.innerHTML += '<option value="' + esc(c.id) + '">' + esc(c.id + " - " + c.name) + '</option>';
   });
+}
+
+function buildProcessSelects() {
+  if (!state.masterData || !state.masterData.processes) return;
+  const procs = state.masterData.processes;
+
+  // CĐ kiểm tra: tất cả công đoạn, lưu data-to để auto-select Tổ
+  const selKT = document.getElementById("selCongDoan");
+  selKT.innerHTML = '<option value="">-- Chọn --</option>';
+  procs.forEach(p => {
+    selKT.innerHTML += '<option value="' + esc(p.ten) + '" data-to="' + esc(p.to || "") + '">' + esc(p.ten) + '</option>';
+  });
+
+  // CĐ gây lỗi: tất cả
+  const selGL = document.getElementById("selCongDoanGayLoi");
+  selGL.innerHTML = '<option value="">-- Chọn --</option>';
+  procs.forEach(p => {
+    selGL.innerHTML += '<option value="' + esc(p.ten) + '">' + esc(p.ten) + '</option>';
+  });
+}
+
+function onCongDoanChange() {
+  const sel = document.getElementById("selCongDoan");
+  const opt = sel.options[sel.selectedIndex];
+  const to = opt ? (opt.dataset.to || "") : "";
+  if (to) {
+    // Auto-select Tổ tương ứng
+    selectTo(to);
+  }
 }
 
 function onCategoryChange() {
