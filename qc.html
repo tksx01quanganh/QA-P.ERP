@@ -69,18 +69,6 @@ input,select,textarea{font-family:inherit;font-size:16px}
 .photo-add{width:80px;height:80px;border-radius:10px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted);cursor:pointer;background:#fff}
 .photo-add:active{background:#f1f5f9}
 
-/* History */
-.hist-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px}
-.hist-card.ng{border-left:4px solid var(--red)}
-.hist-card.pass{border-left:4px solid var(--green)}
-.hist-head{display:flex;align-items:center;gap:8px}
-.hist-lsx{font-weight:700;font-size:15px;flex:1}
-.hist-badge{font-size:12px;font-weight:700;padding:2px 10px;border-radius:8px}
-.hist-badge.pass{background:#dcfce7;color:#15803d}
-.hist-badge.ng{background:#fecaca;color:var(--red)}
-.hist-detail{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.6}
-.hist-detail b{color:var(--txt)}
-
 /* Overlay */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center}
 .overlay.show{display:flex}
@@ -107,7 +95,6 @@ input,select,textarea{font-family:inherit;font-size:16px}
   <div class="topbar">
     <button class="icon-btn" onclick="goBack()">←</button>
     <div class="ttl">Kiểm tra chất lượng</div>
-    <button class="icon-btn" onclick="showHistory()">📋</button>
   </div>
   <div class="wrap">
     <div style="text-align:center;padding:8px 0 16px">
@@ -128,12 +115,6 @@ input,select,textarea{font-family:inherit;font-size:16px}
     </div>
 
     <!-- Kết quả tìm kiếm -->
-
-    <!-- Danh sách kiểm tra gần đây -->
-    <div style="margin-top:16px">
-      <h3 style="font-size:15px;margin-bottom:8px">Ghi nhận gần đây</h3>
-      <div id="recentList"><div class="hint info">Quét QR hoặc nhập LSX để bắt đầu</div></div>
-    </div>
   </div>
 </div>
 
@@ -262,26 +243,6 @@ input,select,textarea{font-family:inherit;font-size:16px}
   </div>
 </div>
 
-<!-- ===== SCREEN: HISTORY ===== -->
-<div class="screen" id="screenHistory">
-  <div class="topbar">
-    <button class="icon-btn" onclick="show('screenHome')">←</button>
-    <div class="ttl">Lịch sử kiểm tra</div>
-  </div>
-  <div class="wrap">
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <div class="form-group" style="flex:1;margin-bottom:0">
-        <input type="date" id="histFrom"/>
-      </div>
-      <div class="form-group" style="flex:1;margin-bottom:0">
-        <input type="date" id="histTo"/>
-      </div>
-      <button class="btn teal" style="width:auto;padding:8px 14px;font-size:14px" onclick="loadHistory()">Xem</button>
-    </div>
-    <div id="historyList"><div class="hint info">Chọn ngày rồi bấm Xem</div></div>
-  </div>
-</div>
-
 <script>
 // ===== CONFIG =====
 // ⚠ Sau khi deploy Code_QC.gs, dán URL vào đây
@@ -305,7 +266,6 @@ window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) { window.location.href = "index.html"; return; }
   document.getElementById("homeUser").textContent = state.user;
   loadMasterData();
-  loadRecentFromLocal();
 });
 
 function checkSession() {
@@ -688,11 +648,8 @@ async function submitInspection() {
     hideSpinner();
 
     if (res.result === "ok") {
-      // Lưu vào recent local
-      saveRecentLocal(row);
       alert("Đã ghi nhận " + phanDinh + " thành công!");
       show("screenHome");
-      loadRecentFromLocal();
     } else {
       alert("Lỗi: " + (res.error || "Không xác định"));
     }
@@ -702,105 +659,6 @@ async function submitInspection() {
   }
 }
 
-// ===== RECENT LOCAL (hiển thị nhanh, không cần gọi API) =====
-function saveRecentLocal(row) {
-  try {
-    const key = "qc_recent";
-    let arr = [];
-    try { arr = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
-    arr.unshift({ ...row, _ts: Date.now() });
-    if (arr.length > 50) arr = arr.slice(0, 50);
-    localStorage.setItem(key, JSON.stringify(arr));
-  } catch(e) {}
-}
-
-function loadRecentFromLocal() {
-  const container = document.getElementById("recentList");
-  try {
-    const arr = JSON.parse(localStorage.getItem("qc_recent")) || [];
-    if (arr.length === 0) { container.innerHTML = '<div class="hint info">Chưa có ghi nhận nào</div>'; return; }
-
-    container.innerHTML = "";
-    arr.slice(0, 20).forEach(r => {
-      const isNG = r.phanDinh === "NG";
-      container.innerHTML += '<div class="hist-card ' + (isNG ? "ng" : "pass") + '">' +
-        '<div class="hist-head">' +
-          '<div class="hist-lsx">' + esc(r.lsxct) + '</div>' +
-          '<div class="hist-badge ' + (isNG ? "ng" : "pass") + '">' + r.phanDinh + '</div>' +
-        '</div>' +
-        '<div class="hist-detail">' +
-          '<b>' + esc(r.congDoanKT || "") + '</b>' +
-          (r.may ? ' · ' + esc(r.may) : '') +
-          ' · SL: ' + (r.slKiemTra || 0) +
-          (isNG ? ' · Lỗi: ' + (r.soLoi || 0) + ' (' + esc(r.maLoi || "") + ')' : '') +
-        '</div>' +
-      '</div>';
-    });
-  } catch(e) { container.innerHTML = '<div class="hint info">Chưa có ghi nhận nào</div>'; }
-}
-
-// ===== HISTORY (từ server) =====
-function showHistory() {
-  show("screenHistory");
-  // Default: hôm nay
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const dd = String(today.getDate()).padStart(2, "0");
-  document.getElementById("histFrom").value = yyyy + "-" + mm + "-" + dd;
-  document.getElementById("histTo").value = yyyy + "-" + mm + "-" + dd;
-}
-
-async function loadHistory() {
-  const fromVal = document.getElementById("histFrom").value;
-  const toVal = document.getElementById("histTo").value;
-  if (!fromVal) { alert("Chọn ngày"); return; }
-
-  // Convert yyyy-mm-dd → dd/mm/yyyy
-  const from = fromVal.split("-").reverse().join("/");
-  const to = toVal ? toVal.split("-").reverse().join("/") : from;
-
-  showSpinner("Đang tải lịch sử...");
-  try {
-    const res = await apiGet("history", { from: from, to: to });
-    hideSpinner();
-    if (res.result !== "ok") { alert(res.error || "Lỗi"); return; }
-
-    const container = document.getElementById("historyList");
-    if (!res.list || res.list.length === 0) {
-      container.innerHTML = '<div class="hint info">Không có dữ liệu trong khoảng ngày này</div>';
-      return;
-    }
-
-    container.innerHTML = '<div style="font-size:13px;color:var(--muted);margin-bottom:8px">' + res.list.length + ' bản ghi</div>';
-    res.list.forEach(r => {
-      const isNG = r.phanDinh === "NG";
-      container.innerHTML += '<div class="hist-card ' + (isNG ? "ng" : "pass") + '">' +
-        '<div class="hist-head">' +
-          '<div class="hist-lsx">' + esc(r.lsxct) + '</div>' +
-          '<div class="hist-badge ' + (isNG ? "ng" : "pass") + '">' + r.phanDinh + '</div>' +
-        '</div>' +
-        '<div class="hist-detail">' +
-          esc(r.ngay) + ' ' + esc(r.gio) + ' · <b>' + esc(r.inspector) + '</b><br/>' +
-          esc(r.masp || "") + ' · ' + esc(r.khachhang || "") + '<br/>' +
-          'CĐ kiểm tra: <b>' + esc(r.congDoanKT || "") + '</b>' +
-          (r.may ? ' · Máy: ' + esc(r.may) : '') +
-          (r.congNhan ? ' · CN: ' + esc(r.congNhan) : '') +
-          ' · SL KT: ' + (r.slKiemTra || 0) +
-          (isNG ? '<br/>Lỗi: <b>' + (r.soLoi || 0) + '</b> (' + esc(r.tyLeNG || "") + ')' +
-            ' · ' + esc(r.maLoi || "") + ' - ' + esc(r.moTaLoi || "") +
-            (r.congDoanGayLoi ? ' · CĐ gây lỗi: ' + esc(r.congDoanGayLoi) : '') +
-            (r.phuongAnXuLy ? ' · XL: ' + esc(r.phuongAnXuLy) : '') : '') +
-          (r.ghiChu ? '<br/>Ghi chú: ' + esc(r.ghiChu) : '') +
-          (r.linkAnh ? '<br/><a href="' + esc(r.linkAnh.split(" | ")[0]) + '" target="_blank" style="color:var(--blue)">Xem ảnh</a>' : '') +
-        '</div>' +
-      '</div>';
-    });
-  } catch(e) {
-    hideSpinner();
-    alert("Lỗi kết nối: " + e.message);
-  }
-}
 </script>
 </body>
 </html>
