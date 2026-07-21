@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Kiểm tra chất lượng — QC</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{--teal:#0f766e;--bg:#f8fafc;--txt:#1e293b;--muted:#64748b;--border:#e2e8f0;--red:#dc2626;--green:#16a34a;--amber:#d97706;--blue:#2563eb;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);-webkit-tap-highlight-color:transparent}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.topbar{display:flex;align-items:center;padding:10px 12px;background:#fff;border-bottom:1px solid var(--border);gap:8px;position:sticky;top:0;z-index:10}
+.topbar .ttl{flex:1;font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:4px 8px;border-radius:8px}
+.icon-btn:active{background:#f1f5f9}
+.wrap{padding:12px;flex:1;overflow-y:auto}
+.btn{border:none;padding:12px 20px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%}
+.btn:active{opacity:.85}
+.btn.lg{padding:14px;font-size:18px}
+.btn.green{background:var(--green);color:#fff}
+.btn.teal{background:var(--teal);color:#fff}
+.btn.red{background:var(--red);color:#fff}
+.btn.gray{background:#e2e8f0;color:var(--txt)}
+.btn.ghost{background:none;border:2px solid var(--border);color:var(--txt)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.hint{padding:10px 14px;border-radius:10px;font-size:14px;text-align:center;margin:8px 0}
+.hint.info{background:#e0f2fe;color:#0369a1}
+.hint.ok{background:#dcfce7;color:#15803d}
+.hint.err{background:#fef2f2;color:var(--red)}
+input,select,textarea{font-family:inherit;font-size:16px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;outline:none;background:#fff}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--teal)}
+.form-group textarea{resize:vertical;min-height:60px}
+
+/* Chip chọn */
+.chip-group{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-block;padding:8px 14px;border:2px solid var(--border);border-radius:20px;font-size:14px;cursor:pointer;background:#fff;font-weight:600;transition:all .15s}
+.chip:active{opacity:.85}
+.chip.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+.chip.pass{border-color:var(--green);color:var(--green)}
+.chip.pass.active{background:var(--green);color:#fff}
+.chip.ng{border-color:var(--red);color:var(--red)}
+.chip.ng.active{background:var(--red);color:#fff}
+
+/* Card sản phẩm */
+.product-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.product-card .pc-lsx{font-size:17px;font-weight:700}
+.product-card .pc-info{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.6}
+.product-card .pc-info span{display:inline-block;margin-right:12px}
+
+/* Scan QR */
+#reader{width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;position:relative}
+#reader video{border-radius:12px}
+#reader.scan-err{box-shadow:0 0 0 4px var(--red)}
+#reader.scan-err::after{content:"";position:absolute;inset:0;background:rgba(220,38,38,.45);z-index:5;pointer-events:none;animation:errflash .28s ease 3}
+@keyframes errflash{50%{background:rgba(220,38,38,.1)}}
+
+/* NG form */
+.ng-section{background:#fef2f2;border:2px solid #fecaca;border-radius:14px;padding:14px;margin-top:12px}
+.ng-section h3{font-size:15px;color:var(--red);margin-bottom:10px}
+
+/* Photo */
+.photo-area{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.photo-thumb{width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border)}
+.photo-add{width:80px;height:80px;border-radius:10px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted);cursor:pointer;background:#fff}
+.photo-add:active{background:#f1f5f9}
+
+/* History */
+.hist-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px}
+.hist-card.ng{border-left:4px solid var(--red)}
+.hist-card.pass{border-left:4px solid var(--green)}
+.hist-head{display:flex;align-items:center;gap:8px}
+.hist-lsx{font-weight:700;font-size:15px;flex:1}
+.hist-badge{font-size:12px;font-weight:700;padding:2px 10px;border-radius:8px}
+.hist-badge.pass{background:#dcfce7;color:#15803d}
+.hist-badge.ng{background:#fecaca;color:var(--red)}
+.hist-detail{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.6}
+.hist-detail b{color:var(--txt)}
+
+/* Overlay */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center}
+.overlay.show{display:flex}
+.overlay-box{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;padding:20px;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}}
+
+/* Spinner */
+.spinner-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.7);z-index:60;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.spinner-overlay.show{display:flex}
+.spinner{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ===== SPINNER ===== -->
+<div class="spinner-overlay" id="spinnerOverlay">
+  <div class="spinner"></div>
+  <div id="spinnerText" style="font-size:14px;color:var(--muted)">Đang xử lý...</div>
+</div>
+
+<!-- ===== SCREEN: HOME ===== -->
+<div class="screen active" id="screenHome">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goBack()">←</button>
+    <div class="ttl">Kiểm tra chất lượng</div>
+    <button class="icon-btn" onclick="showHistory()">📋</button>
+  </div>
+  <div class="wrap">
+    <div style="text-align:center;padding:8px 0 16px">
+      <div style="font-size:14px;color:var(--muted)" id="homeUser"></div>
+    </div>
+
+    <!-- Scan hoặc nhập LSX -->
+    <div style="margin-bottom:16px">
+      <button class="btn lg teal" onclick="startScan()" id="btnScan">📷 Quét QR</button>
+    </div>
+    <div style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:12px">— hoặc —</div>
+    <div class="form-group">
+      <label>Nhập LSX CT</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="inputLSX" placeholder="Nhập mã LSX CT..."/>
+        <button class="btn teal" style="width:auto;padding:10px 16px" onclick="manualSearchLSX()">Tìm</button>
+      </div>
+    </div>
+
+    <!-- Kết quả tìm kiếm -->
+    <div id="searchResults"></div>
+
+    <!-- Danh sách kiểm tra gần đây -->
+    <div style="margin-top:16px">
+      <h3 style="font-size:15px;margin-bottom:8px">Ghi nhận gần đây</h3>
+      <div id="recentList"><div class="hint info">Quét QR hoặc nhập LSX để bắt đầu</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: INSPECTION FORM ===== -->
+<div class="screen" id="screenInspect">
+  <div class="topbar">
+    <button class="icon-btn" onclick="backToHome()">←</button>
+    <div class="ttl">Ghi nhận kiểm tra</div>
+  </div>
+  <div class="wrap">
+    <!-- Thông tin sản phẩm (auto-fill từ QR/search) -->
+    <div class="product-card" id="productCard">
+      <div class="pc-lsx" id="pcLSX">-</div>
+      <div class="pc-info">
+        <span id="pcMaSP"></span><span id="pcKH"></span><br/>
+        <span id="pcMoTa"></span><br/>
+        <span id="pcDVT"></span><span id="pcSLYC"></span>
+      </div>
+    </div>
+
+    <!-- Chọn công đoạn kiểm tra -->
+    <div class="form-group">
+      <label>Công đoạn kiểm tra *</label>
+      <select id="selCongDoan">
+        <option value="">-- Chọn --</option>
+        <option value="Cắt">Cắt</option>
+        <option value="In">In</option>
+        <option value="Ghép">Ghép</option>
+        <option value="Gia công túi">Gia công túi</option>
+        <option value="Đóng gói">Đóng gói</option>
+        <option value="Kho NVL">Kho NVL</option>
+        <option value="Kho TP">Kho TP</option>
+        <option value="Xuất hàng">Xuất hàng</option>
+      </select>
+    </div>
+
+    <!-- Chọn Tổ → Máy → Công nhân -->
+    <div class="form-group">
+      <label>Tổ sản xuất *</label>
+      <div class="chip-group" id="chipTo"></div>
+    </div>
+    <div class="form-group" id="grpMay" style="display:none">
+      <label>Máy (SX)</label>
+      <select id="selMay"><option value="">-- Chọn tổ trước --</option></select>
+    </div>
+    <div class="form-group" id="grpCN" style="display:none">
+      <label>Công nhân SX</label>
+      <select id="selCN"><option value="">-- Chọn tổ trước --</option></select>
+    </div>
+
+    <!-- SL kiểm tra, Số lỗi -->
+    <div style="display:flex;gap:10px">
+      <div class="form-group" style="flex:1">
+        <label>SL kiểm tra *</label>
+        <input type="number" id="inpSLKT" inputmode="numeric" min="0"/>
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>Số lỗi</label>
+        <input type="number" id="inpSoLoi" inputmode="numeric" min="0" value="0"/>
+      </div>
+    </div>
+
+    <!-- Phán định -->
+    <div class="form-group">
+      <label>Phán định *</label>
+      <div class="chip-group" id="chipPhanDinh">
+        <div class="chip pass" data-val="PASS" onclick="setPhanDinh('PASS')">✓ PASS</div>
+        <div class="chip ng" data-val="NG" onclick="setPhanDinh('NG')">✗ NG</div>
+      </div>
+    </div>
+
+    <!-- NG Section (ẩn khi PASS) -->
+    <div class="ng-section" id="ngSection" style="display:none">
+      <h3>Chi tiết lỗi</h3>
+
+      <div class="form-group">
+        <label>Nhóm lỗi (Category) *</label>
+        <select id="selCategory" onchange="onCategoryChange()">
+          <option value="">-- Chọn --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Loại lỗi (Group) *</label>
+        <select id="selGroup">
+          <option value="">-- Chọn category trước --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mô tả chi tiết</label>
+        <textarea id="inpMoTaChiTiet" placeholder="Mô tả cụ thể lỗi phát hiện..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Công đoạn gây lỗi</label>
+        <select id="selCongDoanGayLoi">
+          <option value="">-- Chọn --</option>
+          <option value="Cắt">Cắt</option>
+          <option value="In">In</option>
+          <option value="Ghép">Ghép</option>
+          <option value="Gia công túi">Gia công túi</option>
+          <option value="Đóng gói">Đóng gói</option>
+          <option value="NVL đầu vào">NVL đầu vào</option>
+          <option value="Khác">Khác</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Phương án xử lý</label>
+        <select id="selPhuongAn">
+          <option value="">-- Chọn --</option>
+          <option value="Rework">Rework</option>
+          <option value="Sort">Sort (phân loại)</option>
+          <option value="Hold">Hold (tạm giữ)</option>
+          <option value="Scrap">Scrap (hủy)</option>
+          <option value="Chấp nhận sử dụng">Chấp nhận sử dụng</option>
+          <option value="Trả NCC">Trả NCC</option>
+          <option value="Chờ quyết định">Chờ quyết định</option>
+        </select>
+      </div>
+
+      <!-- Ảnh -->
+      <div class="form-group">
+        <label>Ảnh bằng chứng</label>
+        <div class="photo-area" id="photoArea">
+          <div class="photo-add" onclick="takePhoto()">📷</div>
+        </div>
+        <input type="file" id="filePhoto" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelected(event)"/>
+      </div>
+    </div>
+
+    <!-- Ghi chú -->
+    <div class="form-group" style="margin-top:12px">
+      <label>Ghi chú</label>
+      <textarea id="inpGhiChu" placeholder="Ghi chú thêm (nếu có)..." rows="2"></textarea>
+    </div>
+
+    <!-- Nút submit -->
+    <div style="padding:12px 0 24px">
+      <button class="btn lg green" id="btnSubmit" onclick="submitInspection()">Gửi kết quả kiểm tra</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: QR SCAN ===== -->
+<div class="screen" id="screenScan">
+  <div class="topbar">
+    <button class="icon-btn" onclick="stopScan();show('screenHome')">←</button>
+    <div class="ttl">Quét QR</div>
+  </div>
+  <div class="wrap" style="display:flex;flex-direction:column;align-items:center;padding-top:20px">
+    <div id="reader"></div>
+    <div id="scanStatus" class="hint info" style="margin-top:12px">Đưa mã QR vào khung hình</div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: HISTORY ===== -->
+<div class="screen" id="screenHistory">
+  <div class="topbar">
+    <button class="icon-btn" onclick="show('screenHome')">←</button>
+    <div class="ttl">Lịch sử kiểm tra</div>
+  </div>
+  <div class="wrap">
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div class="form-group" style="flex:1;margin-bottom:0">
+        <input type="date" id="histFrom"/>
+      </div>
+      <div class="form-group" style="flex:1;margin-bottom:0">
+        <input type="date" id="histTo"/>
+      </div>
+      <button class="btn teal" style="width:auto;padding:8px 14px;font-size:14px" onclick="loadHistory()">Xem</button>
+    </div>
+    <div id="historyList"><div class="hint info">Chọn ngày rồi bấm Xem</div></div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+// ⚠ Sau khi deploy Code_QC.gs, dán URL vào đây
+const QC_URL = "https://script.google.com/macros/s/AKfycbyv2FSn2_z9DNs90qGPe_eL4uW3szhRZpuYOe3H4J_H5y4AiMk6XSrXSBKy9I1hPR8x/exec";
+
+// ===== STATE =====
+const state = {
+  user: "",
+  maNV: "",
+  phanDinh: "",
+  photos: [],       // [{dataUrl, filename}]
+  photoUrls: [],    // uploaded Drive URLs
+  masterData: null,  // {categories, groups, machines, workers}
+  currentProduct: null, // {lsxct, masp, khachhang, mota, dvt, soluong}
+  selectedTo: ""
+};
+
+// ===== INIT =====
+window.addEventListener("DOMContentLoaded", function() {
+  if (!checkSession()) { window.location.href = "index.html"; return; }
+  document.getElementById("homeUser").textContent = state.user;
+  loadMasterData();
+  loadRecentFromLocal();
+});
+
+function checkSession() {
+  const saved = localStorage.getItem("ghinhan_session");
+  if (!saved) return false;
+  try {
+    const s = JSON.parse(saved);
+    if (s.username && s.ts && (Date.now() - s.ts < 8*3600*1000)) {
+      state.user = s.user || s.username; state.maNV = s.maNV; return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+function goBack() { window.location.href = "index.html"; }
+function backToHome() { show("screenHome"); }
+function showSpinner(txt) { document.getElementById("spinnerText").textContent = txt || "Đang xử lý..."; document.getElementById("spinnerOverlay").classList.add("show"); }
+function hideSpinner() { document.getElementById("spinnerOverlay").classList.remove("show"); }
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+// ===== API =====
+async function apiGet(action, params) {
+  if (!QC_URL) { alert("Chưa cấu hình QC_URL. Vui lòng deploy Code_QC.gs trước."); throw new Error("No URL"); }
+  let url = QC_URL + "?action=" + action;
+  if (params) Object.keys(params).forEach(k => { url += "&" + k + "=" + encodeURIComponent(params[k]); });
+  const resp = await fetch(url);
+  return resp.json();
+}
+async function apiPost(body) {
+  if (!QC_URL) { alert("Chưa cấu hình QC_URL."); throw new Error("No URL"); }
+  const resp = await fetch(QC_URL, { method: "POST", body: JSON.stringify(body) });
+  return resp.json();
+}
+
+// ===== MASTER DATA =====
+async function loadMasterData() {
+  try {
+    // Cache localStorage 10 phút
+    const cacheKey = "qc_master_cache";
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const c = JSON.parse(cached);
+        if (c.ts && Date.now() - c.ts < 600000) { state.masterData = c.data; buildToChips(); buildCategorySelect(); return; }
+      } catch(e) {}
+    }
+
+    const res = await apiGet("masterData");
+    if (res.result === "ok") {
+      state.masterData = res;
+      localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: res }));
+      buildToChips();
+      buildCategorySelect();
+    }
+  } catch(e) { console.error("Load master data failed:", e); }
+}
+
+function buildToChips() {
+  if (!state.masterData) return;
+  const toSet = new Set();
+  state.masterData.machines.forEach(m => { if (m.to) toSet.add(m.to); });
+  state.masterData.workers.forEach(w => { if (w.to) toSet.add(w.to); });
+  const container = document.getElementById("chipTo");
+  container.innerHTML = "";
+  [...toSet].sort().forEach(t => {
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.textContent = t;
+    chip.onclick = () => selectTo(t);
+    container.appendChild(chip);
+  });
+}
+
+function selectTo(to) {
+  state.selectedTo = to;
+  document.querySelectorAll("#chipTo .chip").forEach(c => {
+    c.classList.toggle("active", c.textContent === to);
+  });
+  // Lọc máy và CN theo tổ
+  const grpMay = document.getElementById("grpMay");
+  const grpCN = document.getElementById("grpCN");
+  grpMay.style.display = "block";
+  grpCN.style.display = "block";
+
+  const selMay = document.getElementById("selMay");
+  selMay.innerHTML = '<option value="">-- Chọn máy --</option>';
+  if (state.masterData) {
+    state.masterData.machines.filter(m => m.to === to).forEach(m => {
+      selMay.innerHTML += '<option value="' + esc(m.ten || m.ma) + '">' + esc(m.ma + " - " + m.ten) + '</option>';
+    });
+  }
+
+  const selCN = document.getElementById("selCN");
+  selCN.innerHTML = '<option value="">-- Chọn công nhân --</option>';
+  if (state.masterData) {
+    state.masterData.workers.filter(w => w.to === to).forEach(w => {
+      selCN.innerHTML += '<option value="' + esc(w.ten || w.ma) + '">' + esc(w.ma + " - " + w.ten) + '</option>';
+    });
+  }
+}
+
+function buildCategorySelect() {
+  if (!state.masterData) return;
+  const sel = document.getElementById("selCategory");
+  sel.innerHTML = '<option value="">-- Chọn --</option>';
+  state.masterData.categories.forEach(c => {
+    sel.innerHTML += '<option value="' + esc(c.id) + '">' + esc(c.id + " - " + c.name) + '</option>';
+  });
+}
+
+function onCategoryChange() {
+  const catId = document.getElementById("selCategory").value;
+  const sel = document.getElementById("selGroup");
+  sel.innerHTML = '<option value="">-- Chọn --</option>';
+  if (!catId || !state.masterData) return;
+  state.masterData.groups.filter(g => g.categoryId === catId).forEach(g => {
+    sel.innerHTML += '<option value="' + esc(g.id) + '" data-name="' + esc(g.name) + '">' + esc(g.id + " - " + g.name) + '</option>';
+  });
+}
+
+// ===== QR SCAN =====
+let qrScanner = null;
+
+function startScan() {
+  show("screenScan");
+  document.getElementById("scanStatus").textContent = "Đang khởi động camera...";
+  document.getElementById("scanStatus").className = "hint info";
+
+  if (qrScanner) { try { qrScanner.stop(); } catch(e) {} }
+
+  qrScanner = new Html5Qrcode("reader");
+  qrScanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    onQrSuccess,
+    () => {}
+  ).then(() => {
+    document.getElementById("scanStatus").textContent = "Đưa mã QR vào khung hình";
+  }).catch(err => {
+    document.getElementById("scanStatus").textContent = "Không mở được camera: " + err;
+    document.getElementById("scanStatus").className = "hint err";
+  });
+}
+
+function stopScan() {
+  if (qrScanner) { try { qrScanner.stop(); } catch(e) {} qrScanner = null; }
+}
+
+let lastQR = "", lastQRTime = 0;
+function onQrSuccess(text) {
+  // Debounce: bỏ qua nếu cùng mã trong 3 giây
+  if (text === lastQR && Date.now() - lastQRTime < 3000) return;
+  lastQR = text; lastQRTime = Date.now();
+
+  // Parse QR: loại 1 = LSX/SL/ĐVT/KL (4 phần), loại 2 = LSX/KL (2 phần)
+  const parts = text.split("/");
+  let lsxct = "";
+
+  if (parts.length >= 4) {
+    // Loại 1: LSX/SL/ĐVT/KL
+    lsxct = parts[0].trim();
+  } else if (parts.length === 2) {
+    // Loại 2: LSX/KL
+    lsxct = parts[0].trim();
+  } else {
+    flashError("QR không hợp lệ: " + text);
+    return;
+  }
+
+  if (!lsxct) { flashError("Không đọc được LSX từ QR"); return; }
+
+  stopScan();
+  searchAndOpenInspection(lsxct);
+}
+
+function flashError(msg) {
+  const el = document.getElementById("reader");
+  el.classList.add("scan-err");
+  document.getElementById("scanStatus").textContent = msg;
+  document.getElementById("scanStatus").className = "hint err";
+  if (navigator.vibrate) navigator.vibrate([300, 120, 300]);
+  setTimeout(() => el.classList.remove("scan-err"), 900);
+}
+
+// ===== TÌM LSX =====
+function manualSearchLSX() {
+  const q = document.getElementById("inputLSX").value.trim();
+  if (!q) return;
+  searchAndOpenInspection(q);
+}
+
+async function searchAndOpenInspection(q) {
+  showSpinner("Đang tra cứu " + q + "...");
+  try {
+    const res = await apiGet("searchLSX", { q: q });
+    hideSpinner();
+    if (res.result !== "ok") { alert(res.error || "Lỗi tra cứu"); return; }
+    if (!res.list || res.list.length === 0) {
+      // Không tìm thấy trong Data Combine → vẫn cho phép nhập thủ công
+      openInspectionForm({ lsxct: q, masp: "", khachhang: "", mota: "", dvt: "", soluong: 0 });
+      return;
+    }
+    if (res.list.length === 1) {
+      openInspectionForm(res.list[0]);
+      return;
+    }
+    // Nhiều kết quả → hiện danh sách chọn
+    showSearchResults(res.list);
+  } catch(e) {
+    hideSpinner();
+    alert("Lỗi kết nối: " + e.message);
+  }
+}
+
+function showSearchResults(list) {
+  show("screenHome");
+  const container = document.getElementById("searchResults");
+  container.innerHTML = "<h3 style='font-size:14px;margin-bottom:8px'>Chọn LSX (" + list.length + " kết quả)</h3>";
+  list.slice(0, 20).forEach((item, idx) => {
+    container.innerHTML += '<div class="product-card" style="cursor:pointer" onclick="pickSearchResult(' + idx + ')">' +
+      '<div class="pc-lsx">' + esc(item.lsxct || item.lsx) + '</div>' +
+      '<div class="pc-info"><span>' + esc(item.masp) + '</span> <span>' + esc(item.khachhang) + '</span><br/>' +
+      '<span>' + esc(item.mota) + '</span></div></div>';
+  });
+  container._list = list;
+}
+
+function pickSearchResult(idx) {
+  const list = document.getElementById("searchResults")._list;
+  if (list && list[idx]) openInspectionForm(list[idx]);
+}
+
+// ===== FORM KIỂM TRA =====
+function openInspectionForm(product) {
+  state.currentProduct = product;
+  state.phanDinh = "";
+  state.photos = [];
+  state.photoUrls = [];
+
+  // Fill product info
+  document.getElementById("pcLSX").textContent = product.lsxct || product.lsx || "-";
+  document.getElementById("pcMaSP").textContent = product.masp ? "Mã SP: " + product.masp : "";
+  document.getElementById("pcKH").textContent = product.khachhang ? "KH: " + product.khachhang : "";
+  document.getElementById("pcMoTa").textContent = product.mota || "";
+  document.getElementById("pcDVT").textContent = product.dvt ? "ĐVT: " + product.dvt : "";
+  document.getElementById("pcSLYC").textContent = product.soluong ? "SL: " + product.soluong : "";
+
+  // Reset form
+  document.getElementById("selCongDoan").value = "";
+  document.getElementById("inpSLKT").value = "";
+  document.getElementById("inpSoLoi").value = "0";
+  document.getElementById("inpMoTaChiTiet").value = "";
+  document.getElementById("selCongDoanGayLoi").value = "";
+  document.getElementById("selPhuongAn").value = "";
+  document.getElementById("inpGhiChu").value = "";
+  document.getElementById("ngSection").style.display = "none";
+  document.getElementById("photoArea").innerHTML = '<div class="photo-add" onclick="takePhoto()">📷</div>';
+  document.querySelectorAll("#chipPhanDinh .chip").forEach(c => c.classList.remove("active"));
+
+  // Reset tổ/máy/CN
+  state.selectedTo = "";
+  document.querySelectorAll("#chipTo .chip").forEach(c => c.classList.remove("active"));
+  document.getElementById("grpMay").style.display = "none";
+  document.getElementById("grpCN").style.display = "none";
+
+  // Reset category/group
+  if (document.getElementById("selCategory").options.length > 1) {
+    document.getElementById("selCategory").value = "";
+    document.getElementById("selGroup").innerHTML = '<option value="">-- Chọn category trước --</option>';
+  }
+
+  document.getElementById("searchResults").innerHTML = "";
+  show("screenInspect");
+}
+
+function setPhanDinh(val) {
+  state.phanDinh = val;
+  document.querySelectorAll("#chipPhanDinh .chip").forEach(c => {
+    c.classList.toggle("active", c.dataset.val === val);
+  });
+  document.getElementById("ngSection").style.display = val === "NG" ? "block" : "none";
+}
+
+// ===== PHOTO =====
+function takePhoto() {
+  document.getElementById("filePhoto").click();
+}
+
+function onPhotoSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    state.photos.push({ dataUrl: dataUrl, filename: "qc_" + Date.now() + ".jpg" });
+    renderPhotos();
+  };
+  reader.readAsDataURL(file);
+  event.target.value = ""; // reset để có thể chọn lại cùng file
+}
+
+function renderPhotos() {
+  const area = document.getElementById("photoArea");
+  area.innerHTML = "";
+  state.photos.forEach((p, idx) => {
+    area.innerHTML += '<img class="photo-thumb" src="' + p.dataUrl + '" onclick="removePhoto(' + idx + ')"/>';
+  });
+  area.innerHTML += '<div class="photo-add" onclick="takePhoto()">📷</div>';
+}
+
+function removePhoto(idx) {
+  if (confirm("Xóa ảnh này?")) {
+    state.photos.splice(idx, 1);
+    renderPhotos();
+  }
+}
+
+// ===== SUBMIT =====
+async function submitInspection() {
+  // Validate
+  const congDoanKT = document.getElementById("selCongDoan").value;
+  const slKT = document.getElementById("inpSLKT").value;
+  const phanDinh = state.phanDinh;
+
+  if (!congDoanKT) { alert("Chọn công đoạn kiểm tra"); return; }
+  if (!slKT || parseFloat(slKT) <= 0) { alert("Nhập số lượng kiểm tra"); return; }
+  if (!phanDinh) { alert("Chọn phán định PASS hoặc NG"); return; }
+
+  let maLoi = "", moTaLoi = "";
+  if (phanDinh === "NG") {
+    const catId = document.getElementById("selCategory").value;
+    const grpId = document.getElementById("selGroup").value;
+    if (!catId || !grpId) { alert("Chọn nhóm lỗi và loại lỗi"); return; }
+    maLoi = grpId;
+    const grpSel = document.getElementById("selGroup");
+    moTaLoi = grpSel.options[grpSel.selectedIndex].dataset.name || "";
+  }
+
+  showSpinner("Đang gửi kết quả...");
+
+  try {
+    // Upload ảnh trước (nếu có)
+    let linkAnh = "";
+    if (state.photos.length > 0) {
+      const urls = [];
+      for (let i = 0; i < state.photos.length; i++) {
+        showSpinner("Đang upload ảnh " + (i+1) + "/" + state.photos.length + "...");
+        try {
+          const upRes = await apiPost({
+            action: "uploadPhoto",
+            dataUrl: state.photos[i].dataUrl,
+            filename: state.photos[i].filename
+          });
+          if (upRes.result === "ok" && upRes.url) urls.push(upRes.url);
+        } catch(ue) { console.error("Upload photo error:", ue); }
+      }
+      linkAnh = urls.join(" | ");
+    }
+
+    showSpinner("Đang lưu kết quả...");
+
+    const p = state.currentProduct || {};
+    const row = {
+      inspector: state.user,
+      lsxct: p.lsxct || p.lsx || "",
+      masp: p.masp || "",
+      khachhang: p.khachhang || "",
+      mota: p.mota || "",
+      dvt: p.dvt || "",
+      slYeuCau: p.soluong || 0,
+      congDoanKT: congDoanKT,
+      may: document.getElementById("selMay").value,
+      congNhan: document.getElementById("selCN").value,
+      slKiemTra: parseFloat(slKT) || 0,
+      soLoi: parseFloat(document.getElementById("inpSoLoi").value) || 0,
+      phanDinh: phanDinh,
+      maLoi: maLoi,
+      moTaLoi: moTaLoi,
+      moTaChiTiet: document.getElementById("inpMoTaChiTiet").value.trim(),
+      congDoanGayLoi: phanDinh === "NG" ? document.getElementById("selCongDoanGayLoi").value : "",
+      phuongAnXuLy: phanDinh === "NG" ? document.getElementById("selPhuongAn").value : "",
+      ghiChu: document.getElementById("inpGhiChu").value.trim(),
+      linkAnh: linkAnh
+    };
+
+    const res = await apiPost({ action: "submit", rows: [row] });
+    hideSpinner();
+
+    if (res.result === "ok") {
+      // Lưu vào recent local
+      saveRecentLocal(row);
+      alert("Đã ghi nhận " + phanDinh + " thành công!");
+      show("screenHome");
+      loadRecentFromLocal();
+    } else {
+      alert("Lỗi: " + (res.error || "Không xác định"));
+    }
+  } catch(e) {
+    hideSpinner();
+    alert("Lỗi kết nối: " + e.message);
+  }
+}
+
+// ===== RECENT LOCAL (hiển thị nhanh, không cần gọi API) =====
+function saveRecentLocal(row) {
+  try {
+    const key = "qc_recent";
+    let arr = [];
+    try { arr = JSON.parse(localStorage.getItem(key)) || []; } catch(e) {}
+    arr.unshift({ ...row, _ts: Date.now() });
+    if (arr.length > 50) arr = arr.slice(0, 50);
+    localStorage.setItem(key, JSON.stringify(arr));
+  } catch(e) {}
+}
+
+function loadRecentFromLocal() {
+  const container = document.getElementById("recentList");
+  try {
+    const arr = JSON.parse(localStorage.getItem("qc_recent")) || [];
+    if (arr.length === 0) { container.innerHTML = '<div class="hint info">Chưa có ghi nhận nào</div>'; return; }
+
+    container.innerHTML = "";
+    arr.slice(0, 20).forEach(r => {
+      const isNG = r.phanDinh === "NG";
+      container.innerHTML += '<div class="hist-card ' + (isNG ? "ng" : "pass") + '">' +
+        '<div class="hist-head">' +
+          '<div class="hist-lsx">' + esc(r.lsxct) + '</div>' +
+          '<div class="hist-badge ' + (isNG ? "ng" : "pass") + '">' + r.phanDinh + '</div>' +
+        '</div>' +
+        '<div class="hist-detail">' +
+          '<b>' + esc(r.congDoanKT || "") + '</b>' +
+          (r.may ? ' · ' + esc(r.may) : '') +
+          ' · SL: ' + (r.slKiemTra || 0) +
+          (isNG ? ' · Lỗi: ' + (r.soLoi || 0) + ' (' + esc(r.maLoi || "") + ')' : '') +
+        '</div>' +
+      '</div>';
+    });
+  } catch(e) { container.innerHTML = '<div class="hint info">Chưa có ghi nhận nào</div>'; }
+}
+
+// ===== HISTORY (từ server) =====
+function showHistory() {
+  show("screenHistory");
+  // Default: hôm nay
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  document.getElementById("histFrom").value = yyyy + "-" + mm + "-" + dd;
+  document.getElementById("histTo").value = yyyy + "-" + mm + "-" + dd;
+}
+
+async function loadHistory() {
+  const fromVal = document.getElementById("histFrom").value;
+  const toVal = document.getElementById("histTo").value;
+  if (!fromVal) { alert("Chọn ngày"); return; }
+
+  // Convert yyyy-mm-dd → dd/mm/yyyy
+  const from = fromVal.split("-").reverse().join("/");
+  const to = toVal ? toVal.split("-").reverse().join("/") : from;
+
+  showSpinner("Đang tải lịch sử...");
+  try {
+    const res = await apiGet("history", { from: from, to: to });
+    hideSpinner();
+    if (res.result !== "ok") { alert(res.error || "Lỗi"); return; }
+
+    const container = document.getElementById("historyList");
+    if (!res.list || res.list.length === 0) {
+      container.innerHTML = '<div class="hint info">Không có dữ liệu trong khoảng ngày này</div>';
+      return;
+    }
+
+    container.innerHTML = '<div style="font-size:13px;color:var(--muted);margin-bottom:8px">' + res.list.length + ' bản ghi</div>';
+    res.list.forEach(r => {
+      const isNG = r.phanDinh === "NG";
+      container.innerHTML += '<div class="hist-card ' + (isNG ? "ng" : "pass") + '">' +
+        '<div class="hist-head">' +
+          '<div class="hist-lsx">' + esc(r.lsxct) + '</div>' +
+          '<div class="hist-badge ' + (isNG ? "ng" : "pass") + '">' + r.phanDinh + '</div>' +
+        '</div>' +
+        '<div class="hist-detail">' +
+          esc(r.ngay) + ' ' + esc(r.gio) + ' · <b>' + esc(r.inspector) + '</b><br/>' +
+          esc(r.masp || "") + ' · ' + esc(r.khachhang || "") + '<br/>' +
+          'CĐ kiểm tra: <b>' + esc(r.congDoanKT || "") + '</b>' +
+          (r.may ? ' · Máy: ' + esc(r.may) : '') +
+          (r.congNhan ? ' · CN: ' + esc(r.congNhan) : '') +
+          ' · SL KT: ' + (r.slKiemTra || 0) +
+          (isNG ? '<br/>Lỗi: <b>' + (r.soLoi || 0) + '</b> (' + esc(r.tyLeNG || "") + ')' +
+            ' · ' + esc(r.maLoi || "") + ' - ' + esc(r.moTaLoi || "") +
+            (r.congDoanGayLoi ? ' · CĐ gây lỗi: ' + esc(r.congDoanGayLoi) : '') +
+            (r.phuongAnXuLy ? ' · XL: ' + esc(r.phuongAnXuLy) : '') : '') +
+          (r.ghiChu ? '<br/>Ghi chú: ' + esc(r.ghiChu) : '') +
+          (r.linkAnh ? '<br/><a href="' + esc(r.linkAnh.split(" | ")[0]) + '" target="_blank" style="color:var(--blue)">Xem ảnh</a>' : '') +
+        '</div>' +
+      '</div>';
+    });
+  } catch(e) {
+    hideSpinner();
+    alert("Lỗi kết nối: " + e.message);
+  }
+}
+</script>
+</body>
+</html>
