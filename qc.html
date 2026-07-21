@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>Kiểm tra chất lượng — QC</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 :root{--teal:#0f766e;--bg:#f8fafc;--txt:#1e293b;--muted:#64748b;--border:#e2e8f0;--red:#dc2626;--green:#16a34a;--amber:#d97706;--blue:#2563eb;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -68,6 +69,47 @@ input,select,textarea{font-family:inherit;font-size:16px}
 .photo-thumb{width:80px;height:80px;border-radius:10px;object-fit:cover;border:2px solid var(--border)}
 .photo-add{width:80px;height:80px;border-radius:10px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--muted);cursor:pointer;background:#fff}
 .photo-add:active{background:#f1f5f9}
+
+/* ===== TRA CỨU ===== */
+.filter-panel{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.filter-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.f-group{margin-bottom:0}
+.f-group label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:3px;text-transform:uppercase}
+.f-group input,.f-group select{width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:8px;outline:none;background:#fff;font-size:14px;font-family:inherit}
+.f-group input:focus,.f-group select:focus{border-color:var(--teal)}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.sum-card{text-align:center;padding:10px 4px;border-radius:10px}
+.sum-card .val{font-size:22px;font-weight:700}
+.sum-card .lbl{font-size:11px;font-weight:600;color:var(--muted);margin-top:2px}
+.sum-total{background:#eff6ff} .sum-total .val{color:var(--blue)}
+.sum-pass{background:#f0fdf4} .sum-pass .val{color:var(--green)}
+.sum-ng{background:#fef2f2} .sum-ng .val{color:var(--red)}
+.sum-rate{background:#fffbeb} .sum-rate .val{color:var(--amber)}
+.tc-tabs{display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;background:#fff}
+.tc-tab{flex:1;text-align:center;padding:10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);border:none;background:none}
+.tc-tab.active{color:var(--teal);background:#f0fdfa;border-bottom:2px solid var(--teal)}
+.lsx-card{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.lsx-head{display:flex;align-items:center;padding:10px 12px;gap:8px;cursor:pointer}
+.lsx-head:active{background:#f8fafc}
+.lsx-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;min-width:28px;text-align:center}
+.lsx-badge.pass{background:#dcfce7;color:#15803d}
+.lsx-badge.ng{background:#fecaca;color:var(--red)}
+.lsx-info{flex:1}
+.lsx-title{font-size:14px;font-weight:700}
+.lsx-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.lsx-arrow{font-size:14px;color:var(--muted);transition:transform .2s}
+.lsx-arrow.open{transform:rotate(90deg)}
+.lsx-detail{display:none;padding:8px 12px 10px;border-top:1px dashed var(--border);background:#fafbfc}
+.lsx-detail.show{display:block}
+.err-chip{display:inline-block;font-size:11px;padding:3px 10px;border-radius:10px;margin:2px 3px 2px 0;font-weight:500}
+.err-chip.catA{background:#fee2e2;color:#991b1b}
+.err-chip.catB{background:#fef3c7;color:#92400e}
+.err-chip.catC{background:#dbeafe;color:#1e40af}
+.err-chip.catD{background:#f3e8ff;color:#6b21a8}
+.detail-meta{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.7}
+.detail-meta b{color:var(--txt)}
+.chart-box{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+.chart-box h4{font-size:13px;font-weight:600;margin-bottom:10px;color:var(--muted)}
 
 /* Overlay */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-end;justify-content:center}
@@ -243,6 +285,51 @@ input,select,textarea{font-family:inherit;font-size:16px}
   </div>
 </div>
 
+<!-- ===== SCREEN: TRA CỨU KẾT QUẢ ===== -->
+<div class="screen" id="screenTraCuu">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goBack()">←</button>
+    <div class="ttl">Tra cứu kết quả kiểm tra</div>
+  </div>
+  <div class="wrap">
+    <div class="filter-panel">
+      <div class="filter-row" style="margin-bottom:8px">
+        <div class="f-group"><label>Từ ngày</label><input type="date" id="fFrom"/></div>
+        <div class="f-group"><label>Đến ngày</label><input type="date" id="fTo"/></div>
+      </div>
+      <div class="filter-row" style="margin-bottom:8px">
+        <div class="f-group"><label>Người kiểm tra</label><select id="fInspector"><option value="">Tất cả</option></select></div>
+        <div class="f-group"><label>Vị trí kiểm tra</label><select id="fViTriTC"><option value="">Tất cả</option></select></div>
+      </div>
+      <div class="filter-row" style="margin-bottom:8px">
+        <div class="f-group"><label>Công đoạn gây lỗi</label><select id="fCDGayLoi"><option value="">Tất cả</option></select></div>
+        <div class="f-group"><label>LSX CT</label><input type="text" id="fLSX" placeholder="Nhập mã LSX..." style="font-size:14px"/></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:4px">Nhóm lỗi</label>
+        <div class="chip-group" id="catChips"></div>
+      </div>
+      <button class="btn teal" onclick="doSearch()">🔍 Tra cứu</button>
+    </div>
+    <div class="summary" id="summaryArea" style="display:none">
+      <div class="sum-card sum-total"><div class="val" id="sumTotal">0</div><div class="lbl">TỔNG BẢN GHI</div></div>
+      <div class="sum-card sum-pass"><div class="val" id="sumPass">0</div><div class="lbl">PASS</div></div>
+      <div class="sum-card sum-ng"><div class="val" id="sumNG">0</div><div class="lbl">NG</div></div>
+      <div class="sum-card sum-rate"><div class="val" id="sumRate">0%</div><div class="lbl">TỶ LỆ NG</div></div>
+    </div>
+    <div class="tc-tabs" id="tcTabBar" style="display:none">
+      <div class="tc-tab active" data-tab="list" onclick="switchTab('list')">📋 Danh sách</div>
+      <div class="tc-tab" data-tab="chart" onclick="switchTab('chart')">📊 Biểu đồ</div>
+    </div>
+    <div id="viewList"></div>
+    <div id="viewChart" style="display:none">
+      <div class="chart-box"><h4>Pareto lỗi (theo mã lỗi)</h4><canvas id="chartPareto" height="220"></canvas></div>
+      <div class="chart-box"><h4>Tỷ lệ NG theo ngày</h4><canvas id="chartTrend" height="180"></canvas></div>
+      <div class="chart-box"><h4>Phân bổ theo nhóm lỗi</h4><canvas id="chartCategory" height="180"></canvas></div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ===== CONFIG =====
 // ⚠ Sau khi deploy Code_QC.gs, dán URL vào đây
@@ -253,18 +340,35 @@ const state = {
   user: "",
   maNV: "",
   phanDinh: "",
-  photos: [],       // [{dataUrl, filename}]
-  photoUrls: [],    // uploaded Drive URLs
-  masterData: null,  // {categories, groups, processes, machines, workers}
-  currentProduct: null, // {lsxct, masp, khachhang, mota, dvt, soluong}
+  photos: [],
+  photoUrls: [],
+  masterData: null,
+  currentProduct: null,
   _filteredMachines: [],
-  _filteredWorkers: []
+  _filteredWorkers: [],
+  // Tra cứu
+  results: [],
+  mode: ""  // "" = kiểm tra, "tracuu" = tra cứu
 };
+
+// Category color mapping
+const CAT_COLORS = { A: "#dc2626", B: "#d97706", C: "#2563eb", D: "#7c3aed" };
+const CAT_CSS    = { A: "catA", B: "catB", C: "catC", D: "catD" };
 
 // ===== INIT =====
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) { window.location.href = "index.html"; return; }
-  document.getElementById("homeUser").textContent = state.user;
+
+  // Detect mode from URL
+  const params = new URLSearchParams(window.location.search);
+  state.mode = params.get("mode") || "";
+
+  if (state.mode === "tracuu") {
+    show("screenTraCuu");
+    setDefaultDates();
+  } else {
+    document.getElementById("homeUser").textContent = state.user;
+  }
   loadMasterData();
 });
 
@@ -313,7 +417,11 @@ async function loadMasterData() {
     if (cached) {
       try {
         const c = JSON.parse(cached);
-        if (c.ts && Date.now() - c.ts < 600000) { state.masterData = c.data; buildViTriSelect(); buildCategorySelect(); return; }
+        if (c.ts && Date.now() - c.ts < 600000) {
+          state.masterData = c.data; buildViTriSelect(); buildCategorySelect();
+          if (state.mode === "tracuu") { buildTraCuuDropdowns(c.data); buildCategoryChips(c.data.categories); }
+          return;
+        }
       } catch(e) {}
     }
 
@@ -323,6 +431,7 @@ async function loadMasterData() {
       localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: res }));
       buildViTriSelect();
       buildCategorySelect();
+      if (state.mode === "tracuu") { buildTraCuuDropdowns(res); buildCategoryChips(res.categories); }
     }
   } catch(e) { console.error("Load master data failed:", e); }
 }
@@ -657,6 +766,239 @@ async function submitInspection() {
     hideSpinner();
     alert("Lỗi kết nối: " + e.message);
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TRA CỨU KẾT QUẢ KIỂM TRA
+// ═══════════════════════════════════════════════════════════
+
+function setDefaultDates() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth()+1).padStart(2,"0");
+  const dd = String(today.getDate()).padStart(2,"0");
+  document.getElementById("fFrom").value = yyyy+"-"+mm+"-"+dd;
+  document.getElementById("fTo").value = yyyy+"-"+mm+"-"+dd;
+}
+
+function buildTraCuuDropdowns(md) {
+  const procs = md.processes || [];
+  const selVT = document.getElementById("fViTriTC");
+  procs.forEach(p => { const o = document.createElement("option"); o.value = p.ten; o.textContent = p.ten; selVT.appendChild(o); });
+
+  const selCD = document.getElementById("fCDGayLoi");
+  procs.forEach(p => { const o = document.createElement("option"); o.value = p.ten; o.textContent = p.ten; selCD.appendChild(o); });
+}
+
+function buildCategoryChips(cats) {
+  const container = document.getElementById("catChips");
+  if (!cats || cats.length === 0) {
+    container.innerHTML = '<span style="font-size:12px;color:var(--muted)">Chưa có dữ liệu MA_Loi_Category</span>';
+    return;
+  }
+  container.innerHTML = "";
+  cats.forEach(c => {
+    const chip = document.createElement("span");
+    chip.className = "chip active";
+    chip.dataset.catId = c.id;
+    chip.textContent = c.name;
+    chip.onclick = function() { this.classList.toggle("active"); };
+    container.appendChild(chip);
+  });
+}
+
+async function doSearch() {
+  const fromVal = document.getElementById("fFrom").value;
+  const toVal = document.getElementById("fTo").value;
+  if (!fromVal) { alert("Vui lòng chọn ngày bắt đầu"); return; }
+
+  const from = fromVal.split("-").reverse().join("/");
+  const to = toVal ? toVal.split("-").reverse().join("/") : from;
+
+  const activeChips = document.querySelectorAll("#catChips .chip.active");
+  const catIds = Array.from(activeChips).map(c => c.dataset.catId).join(",");
+
+  const params = {
+    from: from, to: to,
+    inspector: document.getElementById("fInspector").value,
+    viTri: document.getElementById("fViTriTC").value,
+    congDoanGayLoi: document.getElementById("fCDGayLoi").value,
+    category: catIds,
+    lsx: document.getElementById("fLSX").value.trim()
+  };
+
+  showSpinner("Đang tra cứu...");
+  try {
+    const res = await apiGet("searchQC", params);
+    hideSpinner();
+    if (res.result !== "ok") { alert(res.error || "Lỗi"); return; }
+
+    state.results = res.list || [];
+    updateSummary(res.summary);
+    updateInspectorDropdown(state.results);
+    renderList(state.results);
+    renderCharts(state.results);
+
+    document.getElementById("summaryArea").style.display = "";
+    document.getElementById("tcTabBar").style.display = "";
+  } catch(e) {
+    hideSpinner();
+    alert("Lỗi kết nối: " + e.message);
+  }
+}
+
+function updateSummary(s) {
+  document.getElementById("sumTotal").textContent = s.total;
+  document.getElementById("sumPass").textContent = s.pass;
+  document.getElementById("sumNG").textContent = s.ng;
+  const rate = s.total > 0 ? Math.round(s.ng / s.total * 100) : 0;
+  document.getElementById("sumRate").textContent = rate + "%";
+}
+
+function updateInspectorDropdown(list) {
+  const sel = document.getElementById("fInspector");
+  const current = sel.value;
+  if (sel.options.length > 1) return;
+  const inspectors = [...new Set(list.map(r => r.inspector).filter(Boolean))].sort();
+  inspectors.forEach(name => { const o = document.createElement("option"); o.value = name; o.textContent = name; sel.appendChild(o); });
+  if (current) sel.value = current;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".tc-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+  document.getElementById("viewList").style.display = tab === "list" ? "" : "none";
+  document.getElementById("viewChart").style.display = tab === "chart" ? "" : "none";
+}
+
+// ===== LIST VIEW — grouped by LSX =====
+function renderList(list) {
+  const container = document.getElementById("viewList");
+  if (!list || list.length === 0) {
+    container.innerHTML = '<div class="hint info">Không có dữ liệu phù hợp</div>';
+    return;
+  }
+
+  const groups = {}; const order = [];
+  list.forEach(r => {
+    if (!groups[r.lsxct]) { groups[r.lsxct] = []; order.push(r.lsxct); }
+    groups[r.lsxct].push(r);
+  });
+
+  let html = "";
+  order.forEach(lsx => {
+    const items = groups[lsx];
+    const first = items[0];
+    const hasNG = items.some(r => r.phanDinh === "NG");
+    const totalLoi = items.reduce((s,r) => s + (Number(r.soLoi)||0), 0);
+    const badgeClass = hasNG ? "ng" : "pass";
+    const badgeText = hasNG ? "NG" : "OK";
+    const subParts = [];
+    if (first.masp) subParts.push(esc(first.masp));
+    if (first.khachhang) subParts.push("KH: " + esc(first.khachhang));
+    subParts.push(items.length + " lần KT");
+    if (totalLoi > 0) subParts.push(totalLoi + " lỗi");
+
+    html += '<div class="lsx-card"><div class="lsx-head" onclick="toggleDetail(this)">';
+    html += '<span class="lsx-badge ' + badgeClass + '">' + badgeText + '</span>';
+    html += '<div class="lsx-info"><div class="lsx-title">' + esc(lsx) + '</div>';
+    html += '<div class="lsx-sub">' + subParts.join(" · ") + '</div></div>';
+    html += '<span class="lsx-arrow">▸</span></div>';
+
+    html += '<div class="lsx-detail">';
+    items.forEach(r => {
+      const isNG = r.phanDinh === "NG";
+      if (isNG && r.maLoi) {
+        const catCss = CAT_CSS[r.categoryId] || "catA";
+        html += '<span class="err-chip ' + catCss + '">' +
+          (r.categoryName ? esc(r.categoryName) + " · " : "") +
+          esc(r.moTaLoi || r.maLoi) +
+          (r.congDoanGayLoi ? " · CĐ: " + esc(r.congDoanGayLoi) : "") + '</span>';
+      }
+      html += '<div class="detail-meta"><b>' + esc(r.phanDinh) + '</b> · ' +
+        esc(r.ngay) + ' ' + esc(r.gio) + ' · NV: <b>' + esc(r.inspector) + '</b>' +
+        ' · CĐ KT: ' + esc(r.congDoanKT || "") +
+        (r.may ? ' · Máy: ' + esc(r.may) : '') +
+        ' · SL KT: ' + (r.slKiemTra || 0) +
+        (isNG ? ' · Lỗi: <b>' + (r.soLoi || 0) + '</b> (' + esc(r.tyLeNG || "") + ')' : '') +
+        (r.phuongAnXuLy ? ' · XL: ' + esc(r.phuongAnXuLy) : '') +
+        (r.ghiChu ? ' · Ghi chú: ' + esc(r.ghiChu) : '') +
+        (r.linkAnh ? ' · <a href="' + esc(r.linkAnh.split(" | ")[0]) + '" target="_blank" style="color:var(--blue)">Ảnh</a>' : '') +
+        '</div>';
+    });
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+function toggleDetail(head) {
+  head.nextElementSibling.classList.toggle("show");
+  head.querySelector(".lsx-arrow").classList.toggle("open");
+}
+
+// ===== CHARTS =====
+let chartPareto = null, chartTrend = null, chartCategory = null;
+
+function renderCharts(list) { renderPareto(list); renderTrend(list); renderCategoryChart(list); }
+
+function renderPareto(list) {
+  const ngItems = list.filter(r => r.phanDinh === "NG" && r.maLoi);
+  const counts = {};
+  ngItems.forEach(r => { const key = r.moTaLoi || r.maLoi; counts[key] = (counts[key]||0) + (Number(r.soLoi)||1); });
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,10);
+  if (sorted.length === 0) { destroyChart("chartPareto"); return; }
+  const labels = sorted.map(e => e[0]), values = sorted.map(e => e[1]);
+  const total = values.reduce((a,b) => a+b, 0);
+  let cum = 0;
+  const cumPct = values.map(v => { cum+=v; return Math.round(cum/total*100); });
+  if (chartPareto) chartPareto.destroy();
+  chartPareto = new Chart(document.getElementById("chartPareto"), {
+    type: "bar",
+    data: { labels, datasets: [
+      { label: "Số lỗi", data: values, backgroundColor: "#ef4444", borderRadius: 4, order: 2 },
+      { label: "Tích lũy %", data: cumPct, type: "line", borderColor: "#2563eb", pointRadius: 3, yAxisID: "pct", order: 1 }
+    ]},
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { x: { ticks: { font: { size: 10 }, maxRotation: 45 } },
+        y: { beginAtZero: true, title: { display: true, text: "Số lỗi", font: { size: 11 } } },
+        pct: { position: "right", min: 0, max: 100, title: { display: true, text: "%", font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderTrend(list) {
+  const byDate = {};
+  list.forEach(r => { if (!byDate[r.ngay]) byDate[r.ngay] = { total: 0, ng: 0 }; byDate[r.ngay].total++; if (r.phanDinh === "NG") byDate[r.ngay].ng++; });
+  const dates = Object.keys(byDate).sort((a,b) => { const pa=a.split("/"),pb=b.split("/"); return (pa[2]+pa[1]+pa[0]).localeCompare(pb[2]+pb[1]+pb[0]); });
+  if (dates.length === 0) { destroyChart("chartTrend"); return; }
+  const rates = dates.map(d => Math.round(byDate[d].ng/byDate[d].total*100));
+  if (chartTrend) chartTrend.destroy();
+  chartTrend = new Chart(document.getElementById("chartTrend"), {
+    type: "line",
+    data: { labels: dates, datasets: [{ label: "Tỷ lệ NG (%)", data: rates, borderColor: "#dc2626", backgroundColor: "rgba(220,38,38,.1)", fill: true, tension: .3, pointRadius: 4 }] },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: "% NG", font: { size: 11 } } }, x: { ticks: { font: { size: 10 } } } }
+    }
+  });
+}
+
+function renderCategoryChart(list) {
+  const ngItems = list.filter(r => r.phanDinh === "NG" && r.categoryId);
+  const counts = {};
+  ngItems.forEach(r => { const key = r.categoryName || r.categoryId || "Khác"; counts[key] = (counts[key]||0) + (Number(r.soLoi)||1); });
+  const labels = Object.keys(counts), values = Object.values(counts);
+  if (labels.length === 0) { destroyChart("chartCategory"); return; }
+  const bgColors = labels.map(lbl => { const item = ngItems.find(r => (r.categoryName||r.categoryId) === lbl); return item ? (CAT_COLORS[item.categoryId]||"#94a3b8") : "#94a3b8"; });
+  if (chartCategory) chartCategory.destroy();
+  chartCategory = new Chart(document.getElementById("chartCategory"), {
+    type: "doughnut",
+    data: { labels, datasets: [{ data: values, backgroundColor: bgColors }] },
+    options: { responsive: true, plugins: { legend: { position: "bottom", labels: { font: { size: 12 }, padding: 12 } } } }
+  });
+}
+
+function destroyChart(id) {
+  const c = document.getElementById(id); if (c) { const ctx = c.getContext("2d"); ctx.clearRect(0,0,c.width,c.height); }
 }
 
 </script>
