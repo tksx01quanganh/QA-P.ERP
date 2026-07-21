@@ -155,24 +155,23 @@ input,select,textarea{font-family:inherit;font-size:16px}
       </div>
     </div>
 
-    <!-- Chọn công đoạn kiểm tra (dynamic từ MA_CongDoan) -->
+    <!-- Vị trí kiểm tra (từ MA_PhongBan) -->
     <div class="form-group">
-      <label>Công đoạn kiểm tra *</label>
-      <select id="selCongDoan" onchange="onCongDoanChange()"><option value="">-- Chọn --</option></select>
+      <label>Vị trí kiểm tra *</label>
+      <select id="selViTri" onchange="onViTriChange()"><option value="">-- Chọn --</option></select>
     </div>
 
-    <!-- Chọn Tổ → Máy → Công nhân -->
-    <div class="form-group">
-      <label>Tổ sản xuất *</label>
-      <div class="chip-group" id="chipTo"></div>
-    </div>
+    <!-- Máy (SX) — có ô tìm kiếm -->
     <div class="form-group" id="grpMay" style="display:none">
       <label>Máy (SX)</label>
-      <select id="selMay"><option value="">-- Chọn tổ trước --</option></select>
+      <input type="text" id="searchMay" placeholder="Gõ để tìm máy..." oninput="filterMay()" style="margin-bottom:6px;font-size:14px;padding:8px 10px"/>
+      <select id="selMay"><option value="">-- Chọn vị trí trước --</option></select>
     </div>
+    <!-- Công nhân SX — có ô tìm kiếm -->
     <div class="form-group" id="grpCN" style="display:none">
       <label>Công nhân SX</label>
-      <select id="selCN"><option value="">-- Chọn tổ trước --</option></select>
+      <input type="text" id="searchCN" placeholder="Gõ để tìm công nhân..." oninput="filterCN()" style="margin-bottom:6px;font-size:14px;padding:8px 10px"/>
+      <select id="selCN"><option value="">-- Chọn vị trí trước --</option></select>
     </div>
 
     <!-- SL kiểm tra, Số lỗi -->
@@ -301,9 +300,10 @@ const state = {
   phanDinh: "",
   photos: [],       // [{dataUrl, filename}]
   photoUrls: [],    // uploaded Drive URLs
-  masterData: null,  // {categories, groups, machines, workers}
+  masterData: null,  // {categories, groups, processes, machines, workers}
   currentProduct: null, // {lsxct, masp, khachhang, mota, dvt, soluong}
-  selectedTo: ""
+  _filteredMachines: [],
+  _filteredWorkers: []
 };
 
 // ===== INIT =====
@@ -359,7 +359,7 @@ async function loadMasterData() {
     if (cached) {
       try {
         const c = JSON.parse(cached);
-        if (c.ts && Date.now() - c.ts < 600000) { state.masterData = c.data; buildToChips(); buildCategorySelect(); buildProcessSelects(); return; }
+        if (c.ts && Date.now() - c.ts < 600000) { state.masterData = c.data; buildViTriSelect(); buildCategorySelect(); return; }
       } catch(e) {}
     }
 
@@ -367,55 +367,85 @@ async function loadMasterData() {
     if (res.result === "ok") {
       state.masterData = res;
       localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: res }));
-      buildToChips();
+      buildViTriSelect();
       buildCategorySelect();
-      buildProcessSelects();
     }
   } catch(e) { console.error("Load master data failed:", e); }
 }
 
-function buildToChips() {
+// ===== VỊ TRÍ KIỂM TRA (MA_PhongBan) =====
+function buildViTriSelect() {
   if (!state.masterData) return;
-  const toSet = new Set();
-  state.masterData.machines.forEach(m => { if (m.to) toSet.add(m.to); });
-  state.masterData.workers.forEach(w => { if (w.to) toSet.add(w.to); });
-  const container = document.getElementById("chipTo");
-  container.innerHTML = "";
-  [...toSet].sort().forEach(t => {
-    const chip = document.createElement("div");
-    chip.className = "chip";
-    chip.textContent = t;
-    chip.onclick = () => selectTo(t);
-    container.appendChild(chip);
+  const procs = state.masterData.processes || [];
+
+  // Dropdown Vị trí kiểm tra
+  const sel = document.getElementById("selViTri");
+  sel.innerHTML = '<option value="">-- Chọn --</option>';
+  procs.forEach(p => {
+    sel.innerHTML += '<option value="' + esc(p.ma) + '" data-ten="' + esc(p.ten) + '">' + esc(p.ten) + '</option>';
+  });
+
+  // Dropdown CĐ gây lỗi (cùng danh sách + "Chưa xác định")
+  const selGL = document.getElementById("selCongDoanGayLoi");
+  selGL.innerHTML = '<option value="">-- Chọn --</option>';
+  procs.forEach(p => {
+    selGL.innerHTML += '<option value="' + esc(p.ten) + '">' + esc(p.ten) + '</option>';
+  });
+  selGL.innerHTML += '<option value="Chưa xác định">Chưa xác định</option>';
+}
+
+// Khi chọn Vị trí KT → lọc Máy + CN theo Work station (ws)
+function onViTriChange() {
+  const sel = document.getElementById("selViTri");
+  const wsId = sel.value; // Work station ID từ MA_PhongBan
+
+  document.getElementById("grpMay").style.display = wsId ? "block" : "none";
+  document.getElementById("grpCN").style.display = wsId ? "block" : "none";
+  document.getElementById("searchMay").value = "";
+  document.getElementById("searchCN").value = "";
+
+  if (!wsId || !state.masterData) return;
+
+  // Lưu danh sách đầy đủ cho filter
+  state._filteredMachines = state.masterData.machines.filter(m => m.ws === wsId);
+  state._filteredWorkers  = state.masterData.workers.filter(w => w.ws === wsId);
+
+  renderMayOptions(state._filteredMachines);
+  renderCNOptions(state._filteredWorkers);
+}
+
+function renderMayOptions(list) {
+  const sel = document.getElementById("selMay");
+  sel.innerHTML = '<option value="">-- Chọn máy (' + list.length + ') --</option>';
+  list.forEach(m => {
+    sel.innerHTML += '<option value="' + esc(m.ten || m.ma) + '">' + esc(m.ma + " - " + m.ten) + '</option>';
   });
 }
 
-function selectTo(to) {
-  state.selectedTo = to;
-  document.querySelectorAll("#chipTo .chip").forEach(c => {
-    c.classList.toggle("active", c.textContent === to);
+function renderCNOptions(list) {
+  const sel = document.getElementById("selCN");
+  sel.innerHTML = '<option value="">-- Chọn CN (' + list.length + ') --</option>';
+  list.forEach(w => {
+    sel.innerHTML += '<option value="' + esc(w.ten || w.ma) + '">' + esc(w.ma + " - " + w.ten) + '</option>';
   });
-  // Lọc máy và CN theo tổ
-  const grpMay = document.getElementById("grpMay");
-  const grpCN = document.getElementById("grpCN");
-  grpMay.style.display = "block";
-  grpCN.style.display = "block";
+}
 
-  const selMay = document.getElementById("selMay");
-  selMay.innerHTML = '<option value="">-- Chọn máy --</option>';
-  if (state.masterData) {
-    state.masterData.machines.filter(m => m.to === to).forEach(m => {
-      selMay.innerHTML += '<option value="' + esc(m.ten || m.ma) + '">' + esc(m.ma + " - " + m.ten) + '</option>';
-    });
-  }
+function filterMay() {
+  const q = document.getElementById("searchMay").value.trim().toLowerCase();
+  if (!state._filteredMachines) return;
+  const filtered = q
+    ? state._filteredMachines.filter(m => (m.ma + " " + m.ten).toLowerCase().includes(q))
+    : state._filteredMachines;
+  renderMayOptions(filtered);
+}
 
-  const selCN = document.getElementById("selCN");
-  selCN.innerHTML = '<option value="">-- Chọn công nhân --</option>';
-  if (state.masterData) {
-    state.masterData.workers.filter(w => w.to === to).forEach(w => {
-      selCN.innerHTML += '<option value="' + esc(w.ten || w.ma) + '">' + esc(w.ma + " - " + w.ten) + '</option>';
-    });
-  }
+function filterCN() {
+  const q = document.getElementById("searchCN").value.trim().toLowerCase();
+  if (!state._filteredWorkers) return;
+  const filtered = q
+    ? state._filteredWorkers.filter(w => (w.ma + " " + w.ten).toLowerCase().includes(q))
+    : state._filteredWorkers;
+  renderCNOptions(filtered);
 }
 
 function buildCategorySelect() {
@@ -425,35 +455,6 @@ function buildCategorySelect() {
   state.masterData.categories.forEach(c => {
     sel.innerHTML += '<option value="' + esc(c.id) + '">' + esc(c.id + " - " + c.name) + '</option>';
   });
-}
-
-function buildProcessSelects() {
-  if (!state.masterData || !state.masterData.processes) return;
-  const procs = state.masterData.processes;
-
-  // CĐ kiểm tra: tất cả công đoạn, lưu data-to để auto-select Tổ
-  const selKT = document.getElementById("selCongDoan");
-  selKT.innerHTML = '<option value="">-- Chọn --</option>';
-  procs.forEach(p => {
-    selKT.innerHTML += '<option value="' + esc(p.ten) + '" data-to="' + esc(p.to || "") + '">' + esc(p.ten) + '</option>';
-  });
-
-  // CĐ gây lỗi: tất cả
-  const selGL = document.getElementById("selCongDoanGayLoi");
-  selGL.innerHTML = '<option value="">-- Chọn --</option>';
-  procs.forEach(p => {
-    selGL.innerHTML += '<option value="' + esc(p.ten) + '">' + esc(p.ten) + '</option>';
-  });
-}
-
-function onCongDoanChange() {
-  const sel = document.getElementById("selCongDoan");
-  const opt = sel.options[sel.selectedIndex];
-  const to = opt ? (opt.dataset.to || "") : "";
-  if (to) {
-    // Auto-select Tổ tương ứng
-    selectTo(to);
-  }
 }
 
 function onCategoryChange() {
@@ -594,7 +595,7 @@ function openInspectionForm(product) {
   document.getElementById("pcSLYC").textContent = product.soluong ? "SL: " + product.soluong : "";
 
   // Reset form
-  document.getElementById("selCongDoan").value = "";
+  document.getElementById("selViTri").value = "";
   document.getElementById("inpSLKT").value = "";
   document.getElementById("inpSoLoi").value = "0";
   document.getElementById("inpMoTaChiTiet").value = "";
@@ -605,11 +606,13 @@ function openInspectionForm(product) {
   document.getElementById("photoArea").innerHTML = '<div class="photo-add" onclick="takePhoto()">📷</div>';
   document.querySelectorAll("#chipPhanDinh .chip").forEach(c => c.classList.remove("active"));
 
-  // Reset tổ/máy/CN
-  state.selectedTo = "";
-  document.querySelectorAll("#chipTo .chip").forEach(c => c.classList.remove("active"));
+  // Reset Vị trí KT / Máy / CN
+  document.getElementById("searchMay").value = "";
+  document.getElementById("searchCN").value = "";
   document.getElementById("grpMay").style.display = "none";
   document.getElementById("grpCN").style.display = "none";
+  state._filteredMachines = [];
+  state._filteredWorkers = [];
 
   // Reset category/group
   if (document.getElementById("selCategory").options.length > 1) {
@@ -667,11 +670,13 @@ function removePhoto(idx) {
 // ===== SUBMIT =====
 async function submitInspection() {
   // Validate
-  const congDoanKT = document.getElementById("selCongDoan").value;
+  const selVT = document.getElementById("selViTri");
+  const viTriKT = selVT.value;
+  const viTriTen = viTriKT ? selVT.options[selVT.selectedIndex].dataset.ten : "";
   const slKT = document.getElementById("inpSLKT").value;
   const phanDinh = state.phanDinh;
 
-  if (!congDoanKT) { alert("Chọn công đoạn kiểm tra"); return; }
+  if (!viTriKT) { alert("Chọn vị trí kiểm tra"); return; }
   if (!slKT || parseFloat(slKT) <= 0) { alert("Nhập số lượng kiểm tra"); return; }
   if (!phanDinh) { alert("Chọn phán định PASS hoặc NG"); return; }
 
@@ -717,7 +722,7 @@ async function submitInspection() {
       mota: p.mota || "",
       dvt: p.dvt || "",
       slYeuCau: p.soluong || 0,
-      congDoanKT: congDoanKT,
+      congDoanKT: viTriTen,
       may: document.getElementById("selMay").value,
       congNhan: document.getElementById("selCN").value,
       slKiemTra: parseFloat(slKT) || 0,
