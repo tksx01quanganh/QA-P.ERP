@@ -761,29 +761,10 @@ async function submitInspection() {
     moTaLoi = grpSel.options[grpSel.selectedIndex].dataset.name || "";
   }
 
-  showSpinner("Đang gửi kết quả...");
+  showSpinner("Đang lưu kết quả...");
 
   try {
-    // Upload ảnh trước (nếu có)
-    let linkAnh = "";
-    if (state.photos.length > 0) {
-      const urls = [];
-      for (let i = 0; i < state.photos.length; i++) {
-        showSpinner("Đang upload ảnh " + (i+1) + "/" + state.photos.length + "...");
-        try {
-          const upRes = await apiPost({
-            action: "uploadPhoto",
-            dataUrl: state.photos[i].dataUrl,
-            filename: state.photos[i].filename
-          });
-          if (upRes.result === "ok" && upRes.url) urls.push(upRes.url);
-        } catch(ue) { console.error("Upload photo error:", ue); }
-      }
-      linkAnh = urls.join(" | ");
-    }
-
-    showSpinner("Đang lưu kết quả...");
-
+    // Bước 1: Submit trước để lấy KiemTraID
     const p = state.currentProduct || {};
     const row = {
       inspector: state.user,
@@ -800,15 +781,63 @@ async function submitInspection() {
       congDoanGayLoi: phanDinh === "NG" ? document.getElementById("selCongDoanGayLoi").value : "",
       phuongAnXuLy: phanDinh === "NG" ? document.getElementById("selPhuongAn").value : "",
       ghiChu: document.getElementById("inpGhiChu").value.trim(),
-      linkAnh: linkAnh
+      linkAnh: ""
     };
 
     const res = await apiPost({ action: "submit", rows: [row] });
+
+    if (res.result !== "ok" || !res.ids || res.ids.length === 0) {
+      hideSpinner();
+      alert("Lỗi: " + (res.error || "Không lấy được KiemTraID"));
+      return;
+    }
+
+    const kiemTraId = res.ids[0]; // KT-YYYYMMDD-NNNN
+
+    // Bước 2: Upload ảnh với tên = KiemTraID-01, KiemTraID-02...
+    let linkAnh = "";
+    if (state.photos.length > 0) {
+      const urls = [];
+      const failedUploads = [];
+      for (let i = 0; i < state.photos.length; i++) {
+        showSpinner("Đang upload ảnh " + (i+1) + "/" + state.photos.length + "...");
+        try {
+          const seq = ("00" + (i + 1)).slice(-2); // 01, 02, 03...
+          const upRes = await apiPost({
+            action: "uploadPhoto",
+            dataUrl: state.photos[i].dataUrl,
+            filename: kiemTraId + "-" + seq + ".jpg",
+            prefix: kiemTraId,
+            seq: seq
+          });
+          if (upRes.result === "ok" && upRes.url) {
+            urls.push(upRes.url);
+          } else {
+            failedUploads.push("Ảnh " + (i+1) + ": " + (upRes.error || "lỗi"));
+          }
+        } catch(ue) {
+          failedUploads.push("Ảnh " + (i+1) + ": " + String(ue));
+        }
+      }
+      linkAnh = urls.join(" | ");
+
+      // Bước 3: Cập nhật link ảnh vào bản ghi đã lưu
+      if (linkAnh) {
+        try {
+          await apiPost({ action: "updateLinkAnh", kiemTraId: kiemTraId, linkAnh: linkAnh });
+        } catch(ulErr) { console.error("updateLinkAnh error:", ulErr); }
+      }
+
+      if (failedUploads.length > 0) {
+        alert("Một số ảnh upload thất bại:\n" + failedUploads.join("\n"));
+      }
+    }
+
     hideSpinner();
 
     if (res.result === "ok") {
       if (phanDinh === "NG") {
-        // Auto-tạo NG Report DRAFT với data từ kết quả kiểm tra
+        // Auto-tạo NG Report DRAFT
         showSpinner("Đang tạo NG Report...");
         try {
           const catSel = document.getElementById("selCategory");
@@ -846,7 +875,6 @@ async function submitInspection() {
           const ngRes = await apiPost(ngBody);
           hideSpinner();
           if (ngRes.result === "ok" && ngRes.reportId) {
-            // Redirect sang ng-report.html ở bước ảnh & gửi
             window.location.href = "ng-report.html?mode=continue&id=" + encodeURIComponent(ngRes.reportId);
             return;
           }
@@ -854,7 +882,6 @@ async function submitInspection() {
           hideSpinner();
           console.error("Auto-create NG Report error:", ngErr);
         }
-        // Fallback nếu tạo NG Report lỗi
         alert("Đã ghi nhận NG. Tạo NG Report tự động thất bại — vui lòng tạo thủ công.");
         show("screenHome");
       } else {
