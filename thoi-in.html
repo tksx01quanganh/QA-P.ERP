@@ -177,11 +177,6 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
       <button class="btn amber" onclick="startPhe('Thổi')">💨 Phế Thổi</button>
       <button class="btn amber" onclick="startPhe('In')">🖨️ Phế In</button>
     </div>
-    <div class="group-card">
-      <h3>📦 Chuyển Cuộn</h3>
-      <button class="btn green" onclick="startChuyen()">Chuyển cuộn sang Cắt</button>
-      <button class="btn ghost" onclick="openChuyenStat()">📈 Thống kê chuyển cuộn</button>
-    </div>
   </div>
 </section>
 
@@ -406,7 +401,7 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
 ═══════════════════════════════════════ -->
 <section id="stepChuyenStat" class="screen">
   <div class="navrow">
-    <button class="icon-btn" onclick="showScreen('stepHome')">←</button>
+    <button class="icon-btn" onclick="backFromChuyenStat()">←</button>
     <button class="icon-btn" onclick="goHome()">🏠</button>
   </div>
   <div class="topbar"><div class="ttl">📈 Thống kê chuyển cuộn</div></div>
@@ -962,22 +957,28 @@ async function loadDaily(){
 function drawDaily(){
   if(!dailyData) return;
   let sx = dailyData.sx || [];
-  let sxd = dailyData.sxd || [];
+  let pheArr = dailyData.phe || [];
   if(dailyFilter !== "all"){
     sx = sx.filter(r => r.loai === dailyFilter);
-    sxd = sxd.filter(r => r.loai === dailyFilter);
+    pheArr = pheArr.filter(r => r.loai === dailyFilter);
   }
 
-  // Tổng
+  // Tổng SX
   const tongThoi = (dailyData.sx||[]).filter(r=>r.loai==="Thổi").reduce((s,r)=>s+r.tong,0);
   const tongIn   = (dailyData.sx||[]).filter(r=>r.loai==="In").reduce((s,r)=>s+r.tong,0);
+  // Tổng Phế
+  const tongPheTron = (dailyData.phe||[]).reduce((s,r)=>s+r.tron,0);
+  const tongPheMau  = (dailyData.phe||[]).reduce((s,r)=>s+r.mau,0);
+
   const sumEl = document.getElementById("dailySum");
   sumEl.style.display = "flex";
   sumEl.innerHTML =
     '<div class="daily-chip"><div class="dv">' + fmt(tongThoi) + '</div><div class="dl">💨 Thổi (kg)</div></div>' +
-    '<div class="daily-chip"><div class="dv">' + fmt(tongIn) + '</div><div class="dl">🖨️ In (kg)</div></div>';
+    '<div class="daily-chip"><div class="dv">' + fmt(tongIn) + '</div><div class="dl">🖨️ In (kg)</div></div>' +
+    '<div class="daily-chip"><div class="dv">' + fmt(tongPheTron) + '</div><div class="dl">🗑️ Phế trơn</div></div>' +
+    '<div class="daily-chip"><div class="dv">' + fmt(tongPheMau) + '</div><div class="dl">🎨 Phế màu</div></div>';
 
-  // Nhóm: Tổ → Ngày → Máy
+  // ── Nhóm SX: Tổ → Ngày → Máy ──
   const groups = {};
   sx.forEach(r => {
     const gk = r.loai;
@@ -1003,6 +1004,41 @@ function drawDaily(){
       }
     });
   }
+
+  // ── Nhóm Phế: Tổ → Ngày → Máy ──
+  if(pheArr.length){
+    const pheGroups = {};
+    pheArr.forEach(r => {
+      const gk = r.loai;
+      if(!pheGroups[gk]) pheGroups[gk] = {};
+      if(!pheGroups[gk][r.ngay]) pheGroups[gk][r.ngay] = {};
+      if(!pheGroups[gk][r.ngay][r.may]) pheGroups[gk][r.ngay][r.may] = { tron: 0, mau: 0 };
+      pheGroups[gk][r.ngay][r.may].tron += r.tron;
+      pheGroups[gk][r.ngay][r.may].mau  += r.mau;
+    });
+
+    for(const loai of ["Thổi", "In"]){
+      if(!pheGroups[loai]) continue;
+      const icon = loai === "Thổi" ? "💨" : "🖨️";
+      const allDays = Object.values(pheGroups[loai]);
+      const totalTron = allDays.reduce((s,days) => s + Object.values(days).reduce((a,m)=>a+m.tron,0), 0);
+      const totalMau  = allDays.reduce((s,days) => s + Object.values(days).reduce((a,m)=>a+m.mau,0), 0);
+      html += '<div class="group-row">🗑️ Phế ' + loai + ' — Trơn: ' + fmt(totalTron) + ' / Màu: ' + fmt(totalMau) + ' kg</div>';
+
+      const dates = Object.keys(pheGroups[loai]).sort().reverse();
+      dates.forEach(ngay => {
+        const mays = pheGroups[loai][ngay];
+        const dayTron = Object.values(mays).reduce((a,m)=>a+m.tron,0);
+        const dayMau  = Object.values(mays).reduce((a,m)=>a+m.mau,0);
+        html += '<div class="date-row">📅 ' + dmy(ngay) + ' — Trơn: ' + fmt(dayTron) + ' / Màu: ' + fmt(dayMau) + ' kg</div>';
+        for(const may in mays){
+          const m = mays[may];
+          html += '<div class="may-row"><span>' + esc(may) + '</span><span>Trơn: ' + fmt(m.tron) + ' / Màu: ' + fmt(m.mau) + '</span></div>';
+        }
+      });
+    }
+  }
+
   document.getElementById("dailyBody").innerHTML = html || '<div class="pick-status">Không có dữ liệu</div>';
 }
 
@@ -1127,7 +1163,10 @@ function startChuyen(){
 
 function backFromChuyen(){
   stopCCCamera();
-  showScreen("stepHome");
+  // Nếu mở trực tiếp từ menu (mode=chuyen) → quay về app trung tâm
+  const urlMode = new URLSearchParams(window.location.search).get("mode");
+  if(urlMode === "chuyen") goHome();
+  else showScreen("stepHome");
 }
 
 function startCCCamera(){
@@ -1267,6 +1306,12 @@ async function submitChuyen(){
 ══════════════════════════════════════════════════ */
 var ccStatData = null;
 
+function backFromChuyenStat(){
+  var urlMode = new URLSearchParams(window.location.search).get("mode");
+  if(urlMode === "chuyenstat") goHome();
+  else showScreen("stepHome");
+}
+
 function openChuyenStat(){
   showScreen("stepChuyenStat");
   var today = todayISO();
@@ -1360,15 +1405,19 @@ document.getElementById("ccManual").addEventListener("keydown", e => {
     return;
   }
 
-  // Đọc mode từ URL: ?mode=sx → trang chính, ?mode=dashboard → dashboard
+  // Đọc mode từ URL
   const urlMode = new URLSearchParams(window.location.search).get("mode");
+  loadMasters();
   if(urlMode === "dashboard"){
-    showScreen("stepHome"); // hiện tạm rồi mở dashboard
-    loadMasters();
+    showScreen("stepHome");
     openDashboard();
+  } else if(urlMode === "chuyen"){
+    startChuyen();
+  } else if(urlMode === "chuyenstat"){
+    showScreen("stepHome");
+    openChuyenStat();
   } else {
     showScreen("stepHome");
-    loadMasters();
   }
 })();
 </script>
