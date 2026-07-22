@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>NG Report</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{--teal:#0f766e;--bg:#f8fafc;--txt:#1e293b;--muted:#64748b;--border:#e2e8f0;--red:#dc2626;--green:#16a34a;--amber:#d97706;--blue:#2563eb;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);-webkit-tap-highlight-color:transparent}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.topbar{display:flex;align-items:center;padding:10px 12px;background:var(--teal);color:#fff;gap:8px;position:sticky;top:0;z-index:10}
+.topbar .ttl{flex:1;font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 10px;font-size:14px;font-weight:600;cursor:pointer}
+.wrap{padding:12px;flex:1;overflow-y:auto}
+.btn{border:none;padding:12px 20px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%}
+.btn:active{opacity:.85}
+.btn.lg{padding:14px;font-size:18px}
+.btn.teal{background:var(--teal);color:#fff}
+.btn.green{background:var(--green);color:#fff}
+.btn.red{background:var(--red);color:#fff}
+.btn.amber{background:var(--amber);color:#fff}
+.btn.gray{background:#e2e8f0;color:var(--txt)}
+.btn.ghost{background:none;border:2px solid var(--border);color:var(--txt)}
+.btn.small{width:auto;padding:8px 14px;font-size:13px;border-radius:10px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row2{display:flex;gap:10px;margin-top:10px}
+.row2 .btn{flex:1}
+
+/* form */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;outline:none;background:#fff;font-size:16px;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--teal)}
+.form-group textarea{resize:vertical;min-height:60px}
+.required::after{content:" *";color:var(--red)}
+
+/* stepper */
+.stepper{display:flex;gap:4px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--border)}
+.step-dot{flex:1;height:6px;border-radius:3px;background:#e2e8f0}
+.step-dot.done{background:var(--green)}
+.step-dot.active{background:var(--teal)}
+.step-content{display:none}
+.step-content.active{display:block}
+.step-title{font-size:15px;font-weight:700;color:var(--teal);margin-bottom:12px}
+
+/* chip */
+.chip-group{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-block;padding:8px 14px;border:2px solid var(--border);border-radius:20px;font-size:14px;cursor:pointer;background:#fff;font-weight:600;transition:all .15s}
+.chip:active{opacity:.85}
+.chip.active{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+/* cards */
+.report-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer}
+.report-card:active{border-color:var(--teal);background:#f0fdf4}
+.rc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.rc-id{font-size:13px;font-weight:700;color:var(--teal)}
+.rc-status{font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;text-transform:uppercase}
+.rc-status.DRAFT{background:#f1f5f9;color:var(--muted)}
+.rc-status.OPEN{background:#fef3c7;color:#92400e}
+.rc-status.UNDER_REVIEW{background:#dbeafe;color:#1e40af}
+.rc-status.CLOSED{background:#dcfce7;color:#166534}
+.rc-status.REOPENED{background:#fce7f3;color:#9d174d}
+.rc-body{font-size:13px;color:var(--muted);line-height:1.4}
+.rc-body b{color:var(--txt)}
+
+/* detail sections */
+.detail-section{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
+.ds-title{font-size:13px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.ds-row{display:flex;margin-bottom:6px;font-size:14px}
+.ds-label{width:110px;flex-shrink:0;color:var(--muted);font-weight:600}
+.ds-val{flex:1;word-break:break-word}
+
+/* photo */
+.photo-grid{display:flex;flex-wrap:wrap;gap:6px}
+.photo-thumb{width:70px;height:70px;border-radius:8px;object-fit:cover;border:1px solid var(--border);cursor:pointer}
+.photo-add{width:70px;height:70px;border-radius:8px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;background:#f8fafc}
+
+/* lightbox */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:30;display:none;align-items:center;justify-content:center}
+.lightbox.show{display:flex}
+.lightbox img{max-width:95%;max-height:90%;border-radius:8px}
+.lightbox-close{position:absolute;top:16px;right:16px;font-size:28px;color:#fff;cursor:pointer;background:none;border:none}
+
+/* audit log */
+.audit-item{padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.audit-item:last-child{border:none}
+.audit-time{color:var(--muted);font-size:12px}
+.audit-action{font-weight:600}
+
+/* toast + spinner */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e3a2f;color:#fff;padding:12px 20px;border-radius:14px;font-size:14px;font-weight:600;z-index:50;opacity:0;transition:opacity .3s;pointer-events:none;max-width:92%;text-align:center}
+.toast.show{opacity:1}
+.spinner-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:40}
+.spinner-overlay.show{display:flex}
+.spinner-box{background:#fff;border-radius:16px;padding:24px 32px;text-align:center;font-size:15px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.spin{width:20px;height:20px;border:3px solid rgba(0,0,0,.15);border-top-color:var(--teal);border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:-4px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* filter bar */
+.filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.filter-bar select,.filter-bar input{padding:8px 10px;border:2px solid var(--border);border-radius:10px;font-size:14px;background:#fff}
+.empty-state{text-align:center;padding:40px 16px;color:var(--muted)}
+
+/* supervisor section */
+.sv-section{background:#fffbeb;border:2px solid #fde68a;border-radius:12px;padding:14px;margin-bottom:10px}
+.sv-title{font-size:13px;font-weight:700;color:var(--amber);text-transform:uppercase;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<!-- ═══════ SCREEN: Danh sách NG Reports ═══════ -->
+<section id="screenList" class="screen active">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goBack()">←</button>
+    <div class="ttl">📝 NG Report</div>
+    <button class="icon-btn" onclick="goBack()">🏠</button>
+  </div>
+  <div class="wrap">
+    <div class="filter-bar">
+      <select id="filterStatus" onchange="loadReports()">
+        <option value="">Tất cả</option>
+        <option value="DRAFT">Nháp</option>
+        <option value="OPEN">Mở</option>
+        <option value="UNDER_REVIEW">Đang xem xét</option>
+        <option value="CLOSED">Đã đóng</option>
+        <option value="REOPENED">Mở lại</option>
+      </select>
+      <input id="filterFrom" type="date" onchange="loadReports()"/>
+      <input id="filterTo" type="date" onchange="loadReports()"/>
+    </div>
+    <div id="reportList"></div>
+    <button class="btn lg green" style="margin-top:12px" onclick="goCreate()">+ Tạo NG Report</button>
+  </div>
+</section>
+
+<!-- ═══════ SCREEN: Tạo NG Report ═══════ -->
+<section id="screenCreate" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="cancelCreate()">←</button>
+    <div class="ttl">Tạo NG Report</div>
+  </div>
+  <div class="stepper">
+    <div class="step-dot active" id="dot0"></div>
+    <div class="step-dot" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+  </div>
+  <div class="wrap">
+    <!-- Step 1: Thông tin cơ bản -->
+    <div class="step-content active" id="step0">
+      <div class="step-title">Bước 1: Thông tin cơ bản</div>
+      <div class="form-group">
+        <label class="required">LSX CT</label>
+        <div style="display:flex;gap:6px">
+          <input id="cLSX" type="text" placeholder="Quét QR hoặc nhập LSX..." style="flex:1"/>
+          <button class="btn teal small" onclick="scanQR()" style="width:auto;padding:8px 14px">📷</button>
+        </div>
+        <div id="cLSXInfo" style="font-size:13px;color:var(--teal);margin-top:4px"></div>
+      </div>
+      <div id="qrReader" style="display:none;margin-bottom:10px"></div>
+      <div class="form-group"><label>Mã SP</label><input id="cMaSP" type="text" readonly tabindex="-1" style="background:#f8fafc"/></div>
+      <div class="form-group"><label>Khách hàng</label><input id="cKH" type="text" readonly tabindex="-1" style="background:#f8fafc"/></div>
+      <div class="form-group"><label>Mô tả</label><input id="cMoTa" type="text" readonly tabindex="-1" style="background:#f8fafc"/></div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1"><label>ĐVT</label><input id="cDVT" type="text" readonly tabindex="-1" style="background:#f8fafc"/></div>
+        <div class="form-group" style="flex:1"><label>SL yêu cầu</label><input id="cSLYC" type="text" readonly tabindex="-1" style="background:#f8fafc"/></div>
+      </div>
+      <div class="form-group"><label class="required">Công đoạn kiểm tra</label><select id="cCongDoan"><option value="">-- Chọn --</option></select></div>
+      <div class="form-group"><label>Máy</label><select id="cMay"><option value="">-- Chọn --</option></select></div>
+      <div class="form-group"><label>Công nhân SX</label><select id="cCongNhan"><option value="">-- Chọn --</option></select></div>
+      <button class="btn teal" onclick="nextStep(1)">Tiếp theo ▸</button>
+    </div>
+
+    <!-- Step 2: Thông tin lỗi -->
+    <div class="step-content" id="step1">
+      <div class="step-title">Bước 2: Thông tin lỗi</div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1"><label class="required">SL kiểm tra</label><input id="cSLKT" type="number" inputmode="numeric" min="0"/></div>
+        <div class="form-group" style="flex:1"><label class="required">Số lỗi</label><input id="cSoLoi" type="number" inputmode="numeric" min="0" oninput="calcNG()"/></div>
+      </div>
+      <div class="form-group"><label>Tỷ lệ NG</label><input id="cTyLe" type="text" readonly tabindex="-1" style="background:#fef3c7;font-weight:700;color:var(--red)"/></div>
+      <div class="form-group">
+        <label class="required">Nhóm lỗi</label>
+        <div class="chip-group" id="cCatGroup"></div>
+      </div>
+      <div class="form-group"><label class="required">Mã lỗi</label><select id="cDefectGroup"><option value="">-- Chọn nhóm lỗi trước --</option></select></div>
+      <div class="form-group"><label>Mô tả chi tiết</label><textarea id="cDefectDesc" rows="3" placeholder="Mô tả chi tiết lỗi phát hiện..."></textarea></div>
+      <div class="form-group"><label>Công đoạn gây lỗi</label><select id="cCDGayLoi"><option value="">-- Chọn --</option></select></div>
+      <div class="form-group"><label>Phương án xử lý</label><textarea id="cPAXuLy" rows="2" placeholder="Đề xuất phương án xử lý..."></textarea></div>
+      <div class="row2">
+        <button class="btn ghost" onclick="prevStep(0)">◂ Quay lại</button>
+        <button class="btn teal" onclick="nextStep(2)">Tiếp theo ▸</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Ảnh & Gửi -->
+    <div class="step-content" id="step2">
+      <div class="step-title">Bước 3: Ảnh & Gửi</div>
+      <div class="form-group">
+        <label>Ảnh minh chứng</label>
+        <div class="photo-grid" id="photoArea">
+          <div class="photo-add" onclick="takePhoto()">📷</div>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)"/>
+      </div>
+      <div class="form-group"><label>Ghi chú</label><textarea id="cGhiChu" rows="2" placeholder="Ghi chú thêm..."></textarea></div>
+      <div class="row2">
+        <button class="btn ghost" onclick="prevStep(1)">◂ Quay lại</button>
+      </div>
+      <div class="row2">
+        <button class="btn amber" onclick="saveReport(false)">💾 Lưu nháp</button>
+        <button class="btn green" onclick="saveReport(true)">📤 Gửi báo cáo</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SCREEN: Chi tiết report ═══════ -->
+<section id="screenDetail" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="backToList()">←</button>
+    <div class="ttl" id="detailTitle">NG Report</div>
+    <button class="icon-btn" id="btnEditReport" style="display:none" onclick="goEdit()">✏️</button>
+  </div>
+  <div class="wrap" id="detailContent"></div>
+</section>
+
+<!-- ═══════ SCREEN: Sửa report ═══════ -->
+<section id="screenEdit" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="cancelEdit()">←</button>
+    <div class="ttl">Sửa NG Report</div>
+  </div>
+  <div class="wrap" id="editContent"></div>
+</section>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightboxImg" src=""/>
+</div>
+
+<!-- Spinner -->
+<div class="spinner-overlay" id="spinnerOverlay">
+  <div class="spinner-box"><span class="spin"></span> <span id="spinnerText">Đang xử lý...</span></div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+// ===== CONFIG =====
+const QC_URL = "https://script.google.com/macros/s/AKfycbyv2FSn2_z9DNs90qGPe_eL4uW3szhRZpuYOe3H4J_H5y4AiMk6XSrXSBKy9I1hPR8x/exec";
+const IMG_MAX_SIZE = 1280;
+const IMG_QUALITY = 0.7;
+
+// ===== STATE =====
+const state = {
+  user: "", maNV: "", role: "QC_INSPECTOR",
+  masterData: null,
+  photos: [],       // [{dataUrl, uploaded:false, url:""}]
+  currentReport: null,
+  currentStep: 0,
+  selectedCatId: "",
+};
+
+const STATUS_LABEL = {
+  DRAFT: "Nháp", OPEN: "Mở", UNDER_REVIEW: "Đang xem xét",
+  CLOSED: "Đã đóng", REOPENED: "Mở lại"
+};
+
+// ===== INIT =====
+window.addEventListener("DOMContentLoaded", function() {
+  if (!checkSession()) { window.location.href = "index.html"; return; }
+
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode") || "";
+  const id = params.get("id") || "";
+
+  loadMasterData().then(() => {
+    if (mode === "create") { goCreate(); }
+    else if (mode === "detail" && id) { openDetail(id); }
+    else if (mode === "continue" && id) { openContinue(id); }
+    else { showScreen("screenList"); loadReports(); }
+  });
+});
+
+function checkSession() {
+  const saved = localStorage.getItem("ghinhan_session");
+  if (!saved) return false;
+  try {
+    const s = JSON.parse(saved);
+    if (s.username && s.ts && (Date.now() - s.ts < 8*3600*1000)) {
+      state.user = s.user || s.username;
+      state.maNV = s.maNV;
+      // Detect role from permissions
+      if (s.permissions) {
+        for (const p of s.permissions) {
+          if (p.module === "QC") {
+            const q = Array.isArray(p.quyen) ? p.quyen : [p.quyen];
+            if (q.includes("A") || q.includes("PheDuyet")) { state.role = "SUPERVISOR"; break; }
+          }
+        }
+      }
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+// ===== UTILS =====
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+function goBack() { window.location.href = "index.html"; }
+function showSpinner(t) { document.getElementById("spinnerText").textContent = t || "Đang xử lý..."; document.getElementById("spinnerOverlay").classList.add("show"); }
+function hideSpinner() { document.getElementById("spinnerOverlay").classList.remove("show"); }
+function showToast(msg, dur) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), dur || 3000);
+}
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  return ("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+"/"+d.getFullYear()
+    +" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+}
+
+// ===== API =====
+async function apiGet(action, params) {
+  let url = QC_URL + "?action=" + action;
+  if (params) Object.keys(params).forEach(k => { if(params[k]) url += "&" + k + "=" + encodeURIComponent(params[k]); });
+  url += "&t=" + Date.now();
+  const resp = await fetch(url); return resp.json();
+}
+async function apiPost(body) {
+  const resp = await fetch(QC_URL, { method: "POST", body: JSON.stringify(body) });
+  return resp.json();
+}
+
+// ===== MASTER DATA =====
+async function loadMasterData() {
+  try {
+    const cacheKey = "qc_master_cache";
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const c = JSON.parse(cached);
+        if (c._ts && (Date.now() - c._ts < 600000)) { state.masterData = c; populateDropdowns(); return; }
+      } catch(e) {}
+    }
+    const data = await apiGet("masterData");
+    if (data.result === "ok") {
+      data._ts = Date.now();
+      state.masterData = data;
+      try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
+      populateDropdowns();
+    }
+  } catch(e) { console.error("loadMasterData error:", e); }
+}
+
+function populateDropdowns() {
+  if (!state.masterData) return;
+  const md = state.masterData;
+
+  // Công đoạn
+  const cdSel = document.getElementById("cCongDoan");
+  const cdGLSel = document.getElementById("cCDGayLoi");
+  if (md.processes) {
+    md.processes.forEach(p => {
+      cdSel.innerHTML += '<option value="' + esc(p.ten) + '">' + esc(p.ten) + '</option>';
+      cdGLSel.innerHTML += '<option value="' + esc(p.ten) + '">' + esc(p.ten) + '</option>';
+    });
+  }
+
+  // Máy
+  const maySel = document.getElementById("cMay");
+  if (md.machines) {
+    md.machines.forEach(m => {
+      maySel.innerHTML += '<option value="' + esc(m.ma) + '">' + esc(m.ma) + ' - ' + esc(m.ten) + '</option>';
+    });
+  }
+
+  // Công nhân
+  const cnSel = document.getElementById("cCongNhan");
+  if (md.workers) {
+    md.workers.forEach(w => {
+      cnSel.innerHTML += '<option value="' + esc(w.ten) + '">' + esc(w.ma) + ' - ' + esc(w.ten) + '</option>';
+    });
+  }
+
+  // Category chips
+  const catGroup = document.getElementById("cCatGroup");
+  catGroup.innerHTML = "";
+  if (md.categories) {
+    md.categories.forEach(c => {
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.textContent = c.id + " - " + c.name;
+      chip.dataset.id = c.id;
+      chip.dataset.name = c.name;
+      chip.onclick = function() {
+        catGroup.querySelectorAll(".chip").forEach(ch => ch.classList.remove("active"));
+        chip.classList.add("active");
+        state.selectedCatId = c.id;
+        filterDefectGroups(c.id);
+      };
+      catGroup.appendChild(chip);
+    });
+  }
+}
+
+function filterDefectGroups(catId) {
+  const sel = document.getElementById("cDefectGroup");
+  sel.innerHTML = '<option value="">-- Chọn mã lỗi --</option>';
+  if (!state.masterData || !state.masterData.groups) return;
+  state.masterData.groups.filter(g => g.categoryId === catId).forEach(g => {
+    sel.innerHTML += '<option value="' + esc(g.id) + '" data-name="' + esc(g.name) + '">' + esc(g.id) + ' - ' + esc(g.name) + '</option>';
+  });
+}
+
+function calcNG() {
+  const slkt = parseFloat(document.getElementById("cSLKT").value) || 0;
+  const loi = parseFloat(document.getElementById("cSoLoi").value) || 0;
+  const tyle = slkt > 0 ? Math.round(loi / slkt * 10000) / 100 : 0;
+  document.getElementById("cTyLe").value = tyle + "%";
+}
+
+// ===== LSX SEARCH =====
+let lsxTimeout = null;
+document.addEventListener("DOMContentLoaded", () => {
+  const inp = document.getElementById("cLSX");
+  if (inp) {
+    inp.addEventListener("input", function() {
+      clearTimeout(lsxTimeout);
+      lsxTimeout = setTimeout(() => searchLSX(inp.value.trim()), 400);
+    });
+    inp.addEventListener("change", function() { searchLSX(inp.value.trim()); });
+  }
+});
+
+async function searchLSX(q) {
+  if (!q || q.length < 2) { clearLSXInfo(); return; }
+  try {
+    const data = await apiGet("searchLSX", { q: q });
+    if (data.result === "ok" && data.list && data.list.length > 0) {
+      const item = data.list[0];
+      document.getElementById("cMaSP").value = item.masp || "";
+      document.getElementById("cKH").value = item.khachhang || "";
+      document.getElementById("cMoTa").value = item.mota || "";
+      document.getElementById("cDVT").value = item.dvt || "";
+      document.getElementById("cSLYC").value = item.soluong || "";
+      document.getElementById("cLSXInfo").textContent = "✓ " + item.masp + " — " + item.khachhang;
+      document.getElementById("cLSXInfo").style.color = "var(--green)";
+    } else {
+      clearLSXInfo();
+      document.getElementById("cLSXInfo").textContent = "Không tìm thấy LSX";
+      document.getElementById("cLSXInfo").style.color = "var(--red)";
+    }
+  } catch(e) { clearLSXInfo(); }
+}
+
+function clearLSXInfo() {
+  ["cMaSP","cKH","cMoTa","cDVT","cSLYC"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("cLSXInfo").textContent = "";
+}
+
+// ===== QR SCANNER =====
+let qrScanner = null;
+
+function scanQR() {
+  const reader = document.getElementById("qrReader");
+  if (qrScanner) { stopQR(); return; }
+  reader.style.display = "block";
+  qrScanner = new Html5Qrcode("qrReader");
+  qrScanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    text => {
+      // Parse QR — extract LSX CT
+      const parts = text.split("|");
+      const lsx = parts[0] || text;
+      document.getElementById("cLSX").value = lsx.trim();
+      searchLSX(lsx.trim());
+      stopQR();
+    }
+  ).catch(err => { console.error(err); stopQR(); });
+}
+
+function stopQR() {
+  if (qrScanner) { try { qrScanner.stop(); } catch(e) {} qrScanner = null; }
+  document.getElementById("qrReader").style.display = "none";
+}
+
+// ===== STEPPER =====
+function nextStep(n) {
+  // Validate current step
+  if (n === 1) {
+    if (!document.getElementById("cLSX").value.trim()) { showToast("Vui lòng nhập LSX", 2000); return; }
+    if (!document.getElementById("cCongDoan").value) { showToast("Vui lòng chọn công đoạn kiểm tra", 2000); return; }
+  }
+  if (n === 2) {
+    if (!document.getElementById("cSLKT").value) { showToast("Vui lòng nhập SL kiểm tra", 2000); return; }
+    if (!document.getElementById("cSoLoi").value) { showToast("Vui lòng nhập số lỗi", 2000); return; }
+    if (!state.selectedCatId) { showToast("Vui lòng chọn nhóm lỗi", 2000); return; }
+    if (!document.getElementById("cDefectGroup").value) { showToast("Vui lòng chọn mã lỗi", 2000); return; }
+  }
+  goToStep(n);
+}
+
+function prevStep(n) { goToStep(n); }
+
+function goToStep(n) {
+  state.currentStep = n;
+  document.querySelectorAll(".step-content").forEach(s => s.classList.remove("active"));
+  document.getElementById("step" + n).classList.add("active");
+  for (let i = 0; i < 3; i++) {
+    const dot = document.getElementById("dot" + i);
+    dot.className = "step-dot" + (i < n ? " done" : i === n ? " active" : "");
+  }
+}
+
+// ===== PHOTOS =====
+function takePhoto() { document.getElementById("photoInput").click(); }
+
+function handlePhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  showSpinner("Đang nén ảnh...");
+  compressImage(file, IMG_MAX_SIZE, IMG_QUALITY).then(dataUrl => {
+    hideSpinner();
+    state.photos.push({ dataUrl: dataUrl, uploaded: false, url: "" });
+    renderPhotos();
+  }).catch(err => { hideSpinner(); showToast("Lỗi: " + err.message, 3000); });
+  input.value = "";
+}
+
+function compressImage(file, maxSize, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = function() {
+      let w = img.width, h = img.height;
+      if (w > maxSize || h > maxSize) {
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => reject(new Error("Không đọc được ảnh"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function renderPhotos() {
+  const area = document.getElementById("photoArea");
+  area.innerHTML = "";
+  state.photos.forEach((p, i) => {
+    area.innerHTML += '<img class="photo-thumb" src="' + p.dataUrl + '" onclick="openLightbox(\'' + p.dataUrl + '\')"/>';
+  });
+  area.innerHTML += '<div class="photo-add" onclick="takePhoto()">📷</div>';
+}
+
+function openLightbox(src) {
+  document.getElementById("lightboxImg").src = src;
+  document.getElementById("lightbox").classList.add("show");
+}
+function closeLightbox() { document.getElementById("lightbox").classList.remove("show"); }
+
+// ===== UPLOAD PHOTOS =====
+async function uploadPhotos() {
+  const urls = [];
+  for (let i = 0; i < state.photos.length; i++) {
+    const p = state.photos[i];
+    if (p.uploaded && p.url) { urls.push(p.url); continue; }
+    showSpinner("Đang upload ảnh " + (i + 1) + "/" + state.photos.length + "...");
+    try {
+      const res = await apiPost({ action: "uploadPhoto", dataUrl: p.dataUrl, filename: "ng_" + Date.now() + "_" + i + ".jpg" });
+      if (res.result === "ok") { p.uploaded = true; p.url = res.url; urls.push(res.url); }
+      else { throw new Error(res.error); }
+    } catch(e) { hideSpinner(); showToast("Upload ảnh thất bại: " + e.message, 3000); return null; }
+  }
+  hideSpinner();
+  return urls;
+}
+
+// ===== SAVE REPORT =====
+// (defined below, after openContinue)
+
+function resetCreateForm() {
+  ["cLSX","cMaSP","cKH","cMoTa","cDVT","cSLYC","cSLKT","cSoLoi","cTyLe","cDefectDesc","cPAXuLy","cGhiChu"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  document.getElementById("cCongDoan").selectedIndex = 0;
+  document.getElementById("cMay").selectedIndex = 0;
+  document.getElementById("cCongNhan").selectedIndex = 0;
+  document.getElementById("cDefectGroup").innerHTML = '<option value="">-- Chọn nhóm lỗi trước --</option>';
+  document.getElementById("cCDGayLoi").selectedIndex = 0;
+  document.getElementById("cLSXInfo").textContent = "";
+  document.querySelectorAll("#cCatGroup .chip").forEach(c => c.classList.remove("active"));
+  state.photos = [];
+  state.selectedCatId = "";
+  state.currentStep = 0;
+  goToStep(0);
+  renderPhotos();
+}
+
+// ===== NAVIGATION =====
+function goCreate() {
+  resetCreateForm();
+  showScreen("screenCreate");
+}
+function cancelCreate() {
+  // Continue mode (từ QC) → quay về list, không lùi step
+  if (state.currentReport && state.currentReport.Status === "DRAFT") {
+    state.currentReport = null;
+    resetCreateForm();
+    showScreen("screenList");
+    loadReports();
+    return;
+  }
+  if (state.currentStep > 0) { prevStep(state.currentStep - 1); return; }
+  showScreen("screenList");
+  loadReports();
+}
+function backToList() { showScreen("screenList"); loadReports(); }
+
+// ===== CONTINUE MODE (từ QC → NG Report DRAFT đã tạo sẵn) =====
+async function openContinue(reportId) {
+  showScreen("screenCreate");
+  showSpinner("Đang tải NG Report...");
+
+  try {
+    const res = await apiGet("getNGReport", { id: reportId });
+    hideSpinner();
+    if (res.result !== "ok" || !res.report) {
+      showToast("Không tìm thấy report " + reportId, 3000);
+      showScreen("screenList"); loadReports();
+      return;
+    }
+
+    const r = res.report;
+    state.currentReport = r;
+
+    // Pre-fill form với data từ DRAFT
+    document.getElementById("cLSX").value = r.LSX || "";
+    document.getElementById("cMaSP").value = r.MaSP || "";
+    document.getElementById("cKH").value = r.KhachHang || "";
+    document.getElementById("cMoTa").value = r.MoTa || "";
+    document.getElementById("cDVT").value = r.DVT || "";
+    document.getElementById("cSLYC").value = r.SoLuongYeuCau || "";
+    document.getElementById("cCongDoan").value = r.CongDoanKiemTra || "";
+    document.getElementById("cMay").value = r.May || "";
+    document.getElementById("cCongNhan").value = r.CongNhanSX || "";
+    document.getElementById("cSLKT").value = r.SoLuongKiemTra || "";
+    document.getElementById("cSoLoi").value = r.SoLoi || "";
+    calcNG();
+
+    // Set category chip
+    if (r.DefectCategoryID) {
+      const chips = document.querySelectorAll("#cCatGroup .chip");
+      chips.forEach(ch => {
+        if (ch.dataset.id === r.DefectCategoryID) {
+          ch.classList.add("active");
+          state.selectedCatId = r.DefectCategoryID;
+          filterDefectGroups(r.DefectCategoryID);
+          // Set defect group after dropdown populated
+          setTimeout(() => { document.getElementById("cDefectGroup").value = r.DefectGroupID || ""; }, 50);
+        }
+      });
+    }
+
+    document.getElementById("cDefectDesc").value = r.DefectDescription || "";
+    document.getElementById("cCDGayLoi").value = r.CongDoanGayLoi || "";
+    document.getElementById("cPAXuLy").value = r.PhuongAnXuLy || "";
+    document.getElementById("cGhiChu").value = r.GhiChu || "";
+
+    if (r.LSX) {
+      document.getElementById("cLSXInfo").textContent = "✓ " + (r.MaSP || "") + " — " + (r.KhachHang || "");
+      document.getElementById("cLSXInfo").style.color = "var(--green)";
+    }
+
+    // Load ảnh đã có (từ inspection)
+    if (r.LinkAnh) {
+      const urls = r.LinkAnh.split("|").filter(u => u.trim());
+      urls.forEach(u => { state.photos.push({ dataUrl: u.trim(), uploaded: true, url: u.trim() }); });
+      renderPhotos();
+    }
+
+    // Nhảy thẳng bước 3 (ảnh & gửi)
+    goToStep(2);
+
+    showToast("NG Report " + reportId + " đã tạo sẵn — bổ sung ảnh và gửi", 4000);
+  } catch(e) {
+    hideSpinner();
+    showToast("Lỗi tải report", 3000);
+    showScreen("screenList"); loadReports();
+  }
+}
+
+// saveReport: xử lý cả mode tạo mới lẫn mode continue (DRAFT từ QC)
+async function saveReport(submitNow) {
+  // Nếu đang ở mode continue (có currentReport là DRAFT) → submit report đó
+  if (state.currentReport && state.currentReport.Status === "DRAFT" && state.currentReport.NGReportID) {
+    const reportId = state.currentReport.NGReportID;
+
+    // Upload ảnh mới (nếu có ảnh chưa upload)
+    let newLinkAnh = "";
+    const toUpload = state.photos.filter(p => !p.uploaded);
+    if (toUpload.length > 0) {
+      const urls = [];
+      for (let i = 0; i < state.photos.length; i++) {
+        const p = state.photos[i];
+        if (p.uploaded && p.url) { urls.push(p.url); continue; }
+        showSpinner("Đang upload ảnh " + (i + 1) + "/" + state.photos.length + "...");
+        try {
+          const res = await apiPost({ action: "uploadPhoto", dataUrl: p.dataUrl, filename: "ng_" + Date.now() + "_" + i + ".jpg" });
+          if (res.result === "ok") { p.uploaded = true; p.url = res.url; urls.push(res.url); }
+        } catch(e) {}
+      }
+      hideSpinner();
+      newLinkAnh = urls.join("|");
+
+      // Cập nhật ảnh vào report
+      if (newLinkAnh) {
+        await apiPost({ action: "updateNGReport", reportId: reportId, changes: { LinkAnh: newLinkAnh }, user: state.user });
+      }
+    }
+
+    if (submitNow) {
+      showSpinner("Đang gửi báo cáo...");
+      try {
+        const res = await apiPost({ action: "submitNGReport", reportId: reportId, user: state.user });
+        hideSpinner();
+        if (res.result === "ok") {
+          showToast("Đã gửi NG Report " + reportId, 3000);
+          state.currentReport = null;
+          showScreen("screenList");
+          loadReports();
+        } else {
+          showToast("Lỗi: " + res.error, 4000);
+        }
+      } catch(e) { hideSpinner(); showToast("Lỗi kết nối", 3000); }
+    } else {
+      showToast("Đã lưu nháp " + reportId, 3000);
+      state.currentReport = null;
+      showScreen("screenList");
+      loadReports();
+    }
+    return;
+  }
+
+  // Không phải continue mode → gọi logic tạo mới bình thường
+  // (inline lại logic gốc vì _origSaveReport sẽ gọi chính mình)
+  let linkAnh = "";
+  if (state.photos.length > 0) {
+    const urls = await uploadPhotos();
+    if (urls === null) return;
+    linkAnh = urls.join("|");
+  }
+
+  const defectSel = document.getElementById("cDefectGroup");
+  const defectOpt = defectSel.options[defectSel.selectedIndex];
+  const catChip = document.querySelector("#cCatGroup .chip.active");
+
+  const body = {
+    action: "createNGReport",
+    user: state.user,
+    submitNow: submitNow,
+    lsx: document.getElementById("cLSX").value.trim(),
+    maSP: document.getElementById("cMaSP").value,
+    khachHang: document.getElementById("cKH").value,
+    moTa: document.getElementById("cMoTa").value,
+    dvt: document.getElementById("cDVT").value,
+    soLuongYeuCau: document.getElementById("cSLYC").value,
+    congDoanKiemTra: document.getElementById("cCongDoan").value,
+    may: document.getElementById("cMay").value,
+    congNhanSX: document.getElementById("cCongNhan").value,
+    soLuongKiemTra: document.getElementById("cSLKT").value,
+    soLoi: document.getElementById("cSoLoi").value,
+    defectCategoryID: catChip ? catChip.dataset.id : "",
+    defectCategoryName: catChip ? catChip.dataset.name : "",
+    defectGroupID: defectSel.value,
+    defectGroupName: defectOpt ? defectOpt.dataset.name || "" : "",
+    defectDescription: document.getElementById("cDefectDesc").value.trim(),
+    congDoanGayLoi: document.getElementById("cCDGayLoi").value,
+    phuongAnXuLy: document.getElementById("cPAXuLy").value.trim(),
+    linkAnh: linkAnh,
+    ghiChu: document.getElementById("cGhiChu").value.trim()
+  };
+
+  showSpinner(submitNow ? "Đang gửi báo cáo..." : "Đang lưu nháp...");
+  try {
+    const res = await apiPost(body);
+    hideSpinner();
+    if (res.result === "ok") {
+      showToast(submitNow ? "Đã gửi báo cáo " + res.reportId : "Đã lưu nháp " + res.reportId, 3000);
+      resetCreateForm();
+      showScreen("screenList");
+      loadReports();
+    } else {
+      showToast("Lỗi: " + res.error, 4000);
+    }
+  } catch(e) { hideSpinner(); showToast("Lỗi kết nối", 3000); }
+}
+
+// ===== LOAD REPORTS LIST =====
+async function loadReports() {
+  const listEl = document.getElementById("reportList");
+  listEl.innerHTML = '<div class="empty-state"><span class="spin"></span> Đang tải...</div>';
+
+  const status = document.getElementById("filterStatus").value;
+  const from = document.getElementById("filterFrom").value;
+  const to = document.getElementById("filterTo").value;
+
+  // Convert date format yyyy-mm-dd → dd/mm/yyyy
+  let fromFmt = "", toFmt = "";
+  if (from) { const p = from.split("-"); fromFmt = p[2]+"/"+p[1]+"/"+p[0]; }
+  if (to) { const p = to.split("-"); toFmt = p[2]+"/"+p[1]+"/"+p[0]; }
+
+  try {
+    const data = await apiGet("listNGReports", { user: state.user, status: status, from: fromFmt, to: toFmt });
+    if (data.result !== "ok") { listEl.innerHTML = '<div class="empty-state">Lỗi: ' + esc(data.error) + '</div>'; return; }
+    if (!data.list || data.list.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">Chưa có NG Report nào</div>';
+      return;
+    }
+
+    listEl.innerHTML = "";
+    data.list.forEach(r => {
+      const card = document.createElement("div");
+      card.className = "report-card";
+      card.innerHTML =
+        '<div class="rc-header">' +
+          '<span class="rc-id">' + esc(r.NGReportID) + '</span>' +
+          '<span class="rc-status ' + esc(r.Status) + '">' + esc(STATUS_LABEL[r.Status] || r.Status) + '</span>' +
+        '</div>' +
+        '<div class="rc-body">' +
+          '<b>' + esc(r.LSX) + '</b> — ' + esc(r.MaSP) + ' | ' + esc(r.KhachHang) + '<br>' +
+          'Lỗi: <b>' + esc(r.DefectGroupName) + '</b> (' + r.SoLoi + ' lỗi) — NG ' + r.TyLeNG + '%<br>' +
+          '<span style="font-size:12px">' + esc(r.InspectionDate) + ' ' + esc(r.InspectionTime) + ' — ' + esc(r.DetectedBy) + '</span>' +
+        '</div>';
+      card.onclick = () => openDetail(r.NGReportID);
+      listEl.appendChild(card);
+    });
+  } catch(e) {
+    listEl.innerHTML = '<div class="empty-state">Lỗi kết nối</div>';
+  }
+}
+
+// ===== DETAIL =====
+async function openDetail(reportId) {
+  showScreen("screenDetail");
+  document.getElementById("detailTitle").textContent = reportId;
+  document.getElementById("detailContent").innerHTML = '<div class="empty-state"><span class="spin"></span> Đang tải...</div>';
+  document.getElementById("btnEditReport").style.display = "none";
+
+  try {
+    const [reportRes, auditRes] = await Promise.all([
+      apiGet("getNGReport", { id: reportId }),
+      apiGet("getAuditLog", { id: reportId })
+    ]);
+
+    if (reportRes.result !== "ok") {
+      document.getElementById("detailContent").innerHTML = '<div class="empty-state">Lỗi: ' + esc(reportRes.error) + '</div>';
+      return;
+    }
+
+    const r = reportRes.report;
+    state.currentReport = r;
+
+    // Show edit button for Supervisor
+    if (state.role === "SUPERVISOR") {
+      document.getElementById("btnEditReport").style.display = "block";
+    }
+
+    let html = '';
+
+    // Status header
+    html += '<div class="detail-section" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px">' +
+      '<span style="font-weight:700;font-size:15px;color:var(--teal)">' + esc(r.NGReportID) + '</span>' +
+      '<span class="rc-status ' + esc(r.Status) + '">' + esc(STATUS_LABEL[r.Status] || r.Status) + '</span>' +
+    '</div>';
+
+    // Report info
+    html += '<div class="detail-section">' +
+      '<div class="ds-title">Thông tin báo cáo</div>' +
+      '<div class="ds-row"><div class="ds-label">Ngày KT</div><div class="ds-val">' + esc(r.InspectionDate) + ' ' + esc(r.InspectionTime) + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">Người phát hiện</div><div class="ds-val">' + esc(r.DetectedBy) + '</div></div>' +
+    '</div>';
+
+    // Production info
+    html += '<div class="detail-section">' +
+      '<div class="ds-title">Thông tin sản xuất</div>' +
+      '<div class="ds-row"><div class="ds-label">LSX</div><div class="ds-val"><b>' + esc(r.LSX) + '</b></div></div>' +
+      '<div class="ds-row"><div class="ds-label">SP</div><div class="ds-val">' + esc(r.MaSP) + ' — ' + esc(r.KhachHang) + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">Mô tả SP</div><div class="ds-val">' + esc(r.MoTa) + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">CĐ kiểm tra</div><div class="ds-val">' + esc(r.CongDoanKiemTra) + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">Máy</div><div class="ds-val">' + esc(r.May) + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">CN SX</div><div class="ds-val">' + esc(r.CongNhanSX) + '</div></div>' +
+    '</div>';
+
+    // Defect info
+    html += '<div class="detail-section">' +
+      '<div class="ds-title">Thông tin lỗi</div>' +
+      '<div class="ds-row"><div class="ds-label">Nhóm lỗi</div><div class="ds-val"><b>' + esc(r.DefectCategoryName) + '</b> → ' + esc(r.DefectGroupName) + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">SL kiểm tra</div><div class="ds-val">' + r.SoLuongKiemTra + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">Số lỗi</div><div class="ds-val" style="color:var(--red);font-weight:700">' + r.SoLoi + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">Tỷ lệ NG</div><div class="ds-val" style="color:var(--red);font-weight:700">' + r.TyLeNG + '%</div></div>' +
+      '<div class="ds-row"><div class="ds-label">Mô tả</div><div class="ds-val">' + esc(r.DefectDescription) + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">CĐ gây lỗi</div><div class="ds-val">' + esc(r.CongDoanGayLoi) + '</div></div>' +
+      '<div class="ds-row"><div class="ds-label">PA xử lý</div><div class="ds-val">' + esc(r.PhuongAnXuLy) + '</div></div>' +
+    '</div>';
+
+    // Photos
+    if (r.LinkAnh) {
+      const photos = r.LinkAnh.split("|").filter(u => u.trim());
+      if (photos.length > 0) {
+        html += '<div class="detail-section"><div class="ds-title">Ảnh minh chứng</div><div class="photo-grid">';
+        photos.forEach(u => {
+          html += '<img class="photo-thumb" src="' + esc(u) + '" onclick="openLightbox(\'' + esc(u) + '\')"/>';
+        });
+        html += '</div></div>';
+      }
+    }
+
+    // Ghi chú
+    if (r.GhiChu) {
+      html += '<div class="detail-section"><div class="ds-title">Ghi chú</div><div style="font-size:14px">' + esc(r.GhiChu) + '</div></div>';
+    }
+
+    // Supervisor comment
+    if (r.SupervisorComment) {
+      html += '<div class="detail-section"><div class="ds-title">Nhận xét Supervisor</div>' +
+        '<div style="font-size:14px;white-space:pre-wrap">' + esc(r.SupervisorComment) + '</div></div>';
+    }
+
+    // Final conclusion
+    if (r.FinalConclusion) {
+      html += '<div class="detail-section" style="border-color:var(--green)"><div class="ds-title" style="color:var(--green)">Kết luận</div>' +
+        '<div style="font-size:14px">' + esc(r.FinalConclusion) + '</div>' +
+        '<div style="font-size:12px;color:var(--muted);margin-top:4px">Đóng bởi: ' + esc(r.ClosedBy) + ' — ' + fmtDate(r.ClosedAt) + '</div>' +
+      '</div>';
+    }
+
+    // DRAFT → Submit button
+    if (r.Status === "DRAFT" && r.DetectedBy === state.user) {
+      html += '<button class="btn green lg" style="margin-bottom:10px" onclick="submitDraft(\'' + esc(r.NGReportID) + '\')">📤 Gửi báo cáo</button>';
+    }
+
+    // Supervisor actions
+    if (state.role === "SUPERVISOR") {
+      html += '<div class="sv-section"><div class="sv-title">Supervisor</div>';
+
+      // Reply
+      html += '<div class="form-group"><label>Phản hồi</label><textarea id="svReply" rows="2" placeholder="Nhận xét, yêu cầu bổ sung..."></textarea></div>' +
+        '<button class="btn small amber" onclick="sendReply(\'' + esc(r.NGReportID) + '\')" style="margin-bottom:10px">💬 Gửi phản hồi</button>';
+
+      // Status change buttons
+      const s = r.Status;
+      if (s === "OPEN") {
+        html += '<button class="btn small teal" onclick="changeStatus(\'' + esc(r.NGReportID) + '\',\'UNDER_REVIEW\')">📋 Nhận xem xét</button>';
+      }
+      if (s === "UNDER_REVIEW") {
+        html += '<div class="form-group" style="margin-top:8px"><label class="required">Kết luận (bắt buộc khi đóng)</label><textarea id="svConclusion" rows="2" placeholder="Kết luận cuối cùng..."></textarea></div>' +
+          '<button class="btn small green" onclick="closeReport(\'' + esc(r.NGReportID) + '\')">✅ Đóng báo cáo</button>';
+      }
+      if (s === "CLOSED") {
+        html += '<button class="btn small amber" onclick="changeStatus(\'' + esc(r.NGReportID) + '\',\'REOPENED\')" style="margin-top:8px">🔓 Mở lại</button>';
+      }
+      if (s === "REOPENED") {
+        html += '<button class="btn small teal" onclick="changeStatus(\'' + esc(r.NGReportID) + '\',\'UNDER_REVIEW\')" style="margin-top:8px">📋 Xem xét lại</button>';
+      }
+      html += '</div>';
+    }
+
+    // Audit Log
+    const auditList = (auditRes.result === "ok" && auditRes.list) ? auditRes.list : [];
+    if (auditList.length > 0) {
+      html += '<div class="detail-section"><div class="ds-title">Lịch sử thay đổi</div>';
+      auditList.forEach(a => {
+        const actionLabel = { CREATE: "Tạo", STATUS_CHANGE: "Đổi trạng thái", EDIT: "Sửa", REPLY: "Phản hồi" };
+        html += '<div class="audit-item">' +
+          '<span class="audit-action">' + esc(actionLabel[a.action] || a.action) + '</span>: ' +
+          esc(a.fieldName) +
+          (a.oldValue ? ' <span style="color:var(--red);text-decoration:line-through">' + esc(a.oldValue) + '</span>' : '') +
+          (a.newValue ? ' → <b>' + esc(a.newValue) + '</b>' : '') +
+          '<div class="audit-time">' + esc(a.changedBy) + ' — ' + fmtDate(a.changedAt) + '</div>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    document.getElementById("detailContent").innerHTML = html;
+
+  } catch(e) {
+    document.getElementById("detailContent").innerHTML = '<div class="empty-state">Lỗi kết nối</div>';
+  }
+}
+
+// ===== ACTIONS =====
+async function submitDraft(reportId) {
+  if (!confirm("Gửi báo cáo " + reportId + "?")) return;
+  showSpinner("Đang gửi...");
+  try {
+    const res = await apiPost({ action: "submitNGReport", reportId: reportId, user: state.user });
+    hideSpinner();
+    if (res.result === "ok") { showToast("Đã gửi báo cáo", 3000); openDetail(reportId); }
+    else { showToast("Lỗi: " + res.error, 4000); }
+  } catch(e) { hideSpinner(); showToast("Lỗi kết nối", 3000); }
+}
+
+async function sendReply(reportId) {
+  const noiDung = document.getElementById("svReply").value.trim();
+  if (!noiDung) { showToast("Vui lòng nhập nội dung phản hồi", 2000); return; }
+
+  showSpinner("Đang gửi phản hồi...");
+  try {
+    const res = await apiPost({ action: "replyNG", reportId: reportId, noiDung: noiDung, user: state.user });
+    hideSpinner();
+    if (res.result === "ok") { showToast("Đã gửi phản hồi", 3000); openDetail(reportId); }
+    else { showToast("Lỗi: " + res.error, 4000); }
+  } catch(e) { hideSpinner(); showToast("Lỗi kết nối", 3000); }
+}
+
+async function changeStatus(reportId, newStatus) {
+  showSpinner("Đang cập nhật...");
+  try {
+    const res = await apiPost({ action: "changeNGStatus", reportId: reportId, newStatus: newStatus, user: state.user });
+    hideSpinner();
+    if (res.result === "ok") { showToast("Đã chuyển trạng thái → " + newStatus, 3000); openDetail(reportId); }
+    else { showToast("Lỗi: " + res.error, 4000); }
+  } catch(e) { hideSpinner(); showToast("Lỗi kết nối", 3000); }
+}
+
+async function closeReport(reportId) {
+  const conclusion = document.getElementById("svConclusion").value.trim();
+  if (!conclusion) { showToast("Bắt buộc nhập kết luận khi đóng báo cáo", 3000); return; }
+  if (!confirm("Đóng báo cáo " + reportId + "?")) return;
+
+  showSpinner("Đang đóng báo cáo...");
+  try {
+    const res = await apiPost({ action: "changeNGStatus", reportId: reportId, newStatus: "CLOSED", conclusion: conclusion, user: state.user });
+    hideSpinner();
+    if (res.result === "ok") { showToast("Đã đóng báo cáo", 3000); openDetail(reportId); }
+    else { showToast("Lỗi: " + res.error, 4000); }
+  } catch(e) { hideSpinner(); showToast("Lỗi kết nối", 3000); }
+}
+
+// ===== EDIT =====
+function goEdit() {
+  if (!state.currentReport) return;
+  const r = state.currentReport;
+
+  let html = '<div class="step-title">Sửa NG Report: ' + esc(r.NGReportID) + '</div>';
+
+  const fields = [
+    { key: "LSX", label: "LSX CT", type: "text" },
+    { key: "MaSP", label: "Mã SP", type: "text" },
+    { key: "KhachHang", label: "Khách hàng", type: "text" },
+    { key: "CongDoanKiemTra", label: "Công đoạn KT", type: "text" },
+    { key: "May", label: "Máy", type: "text" },
+    { key: "CongNhanSX", label: "Công nhân SX", type: "text" },
+    { key: "SoLuongKiemTra", label: "SL kiểm tra", type: "number" },
+    { key: "SoLoi", label: "Số lỗi", type: "number" },
+    { key: "DefectDescription", label: "Mô tả lỗi", type: "textarea" },
+    { key: "CongDoanGayLoi", label: "CĐ gây lỗi", type: "text" },
+    { key: "PhuongAnXuLy", label: "PA xử lý", type: "textarea" },
+    { key: "GhiChu", label: "Ghi chú", type: "textarea" }
+  ];
+
+  fields.forEach(f => {
+    const val = r[f.key] || "";
+    if (f.type === "textarea") {
+      html += '<div class="form-group"><label>' + f.label + '</label><textarea id="edit_' + f.key + '" rows="2">' + esc(val) + '</textarea></div>';
+    } else {
+      html += '<div class="form-group"><label>' + f.label + '</label><input id="edit_' + f.key + '" type="' + f.type + '" value="' + esc(val) + '"/></div>';
+    }
+  });
+
+  html += '<div class="row2"><button class="btn gray" onclick="cancelEdit()">Hủy</button><button class="btn green" onclick="saveEdit()">💾 Lưu</button></div>';
+
+  document.getElementById("editContent").innerHTML = html;
+  showScreen("screenEdit");
+}
+
+function cancelEdit() {
+  if (state.currentReport) { openDetail(state.currentReport.NGReportID); }
+  else { backToList(); }
+}
+
+async function saveEdit() {
+  if (!state.currentReport) return;
+  const r = state.currentReport;
+
+  const fields = ["LSX","MaSP","KhachHang","CongDoanKiemTra","May","CongNhanSX","SoLuongKiemTra","SoLoi","DefectDescription","CongDoanGayLoi","PhuongAnXuLy","GhiChu"];
+  const changes = {};
+
+  fields.forEach(f => {
+    const el = document.getElementById("edit_" + f);
+    if (!el) return;
+    const newVal = el.value.trim();
+    const oldVal = String(r[f] || "").trim();
+    if (newVal !== oldVal) changes[f] = newVal;
+  });
+
+  // Recalc TyLeNG if SoLuongKiemTra or SoLoi changed
+  if (changes.SoLuongKiemTra || changes.SoLoi) {
+    const slkt = parseFloat(changes.SoLuongKiemTra || r.SoLuongKiemTra) || 0;
+    const loi = parseFloat(changes.SoLoi || r.SoLoi) || 0;
+    changes.TyLeNG = slkt > 0 ? Math.round(loi / slkt * 10000) / 100 : 0;
+  }
+
+  if (Object.keys(changes).length === 0) { showToast("Không có thay đổi", 2000); return; }
+
+  showSpinner("Đang lưu...");
+  try {
+    const res = await apiPost({ action: "updateNGReport", reportId: r.NGReportID, changes: changes, user: state.user });
+    hideSpinner();
+    if (res.result === "ok") { showToast("Đã cập nhật", 3000); openDetail(r.NGReportID); }
+    else { showToast("Lỗi: " + res.error, 4000); }
+  } catch(e) { hideSpinner(); showToast("Lỗi kết nối", 3000); }
+}
+
+</script>
+</body>
+</html>
