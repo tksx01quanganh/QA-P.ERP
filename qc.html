@@ -352,7 +352,7 @@ input,select,textarea{font-family:inherit;font-size:16px}
 <script>
 // ===== CONFIG =====
 // ⚠ Sau khi deploy Code_QC.gs, dán URL vào đây
-const QC_URL = "https://script.google.com/macros/s/AKfycbw1tOGHRo1mSGIfKDJoGXtGXwb9hPfZMUIQA4ESAhiczYLyK0BEDLivCwg9BR6ah31W/exec";
+const QC_URL = "https://script.google.com/macros/s/AKfycbx2gRrRi-DQ2ghO_AoM7W7L1mKA-odKOMnK42gE8t8acyIb-CVV8DKzeZKGyvD_TMVg/exec";
 
 // ===== STATE =====
 const state = {
@@ -810,6 +810,7 @@ async function submitInspection() {
     let linkAnh = "";
     if (state.photos.length > 0) {
       const urls = [];
+      const names = [];
       const failedUploads = [];
       for (let i = 0; i < state.photos.length; i++) {
         showSpinner("Đang upload ảnh " + (i+1) + "/" + state.photos.length + "...");
@@ -830,6 +831,7 @@ async function submitInspection() {
           const upRes = await apiPost(upBody);
           if (upRes.result === "ok" && upRes.url) {
             urls.push(upRes.url);
+            names.push(upRes.filename || photoName);
           } else {
             failedUploads.push("Ảnh " + (i+1) + ": " + (upRes.error || "lỗi không rõ"));
           }
@@ -838,11 +840,12 @@ async function submitInspection() {
         }
       }
       linkAnh = urls.join(" | ");
+      const tenAnh = names.join(" | ");
 
-      // Bước 3: Cập nhật link ảnh vào bản ghi đã lưu
+      // Bước 3: Cập nhật link ảnh + tên ảnh vào bản ghi đã lưu
       if (linkAnh && kiemTraId) {
         try {
-          await apiPost({ action: "updateLinkAnh", kiemTraId: kiemTraId, linkAnh: linkAnh });
+          await apiPost({ action: "updateLinkAnh", kiemTraId: kiemTraId, linkAnh: linkAnh, tenAnh: tenAnh });
         } catch(ulErr) { console.error("updateLinkAnh error:", ulErr); }
       }
 
