@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0f766e" />
+<title>Thổi / In — QA-P.ERP</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{
+  --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
+  --amber:#d97706; --gray:#64748b; --bg:#f1f5f9; --card:#fff;
+  --txt:#0f172a; --muted:#64748b; --border:#e2e8f0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;height:100%;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:17px;line-height:1.4;}
+
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* topbar */
+.topbar{background:var(--teal);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:5;}
+.topbar .ttl{font-weight:700;font-size:16px;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+
+/* navrow */
+.navrow{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--card);border-bottom:1px solid var(--border);height:42px;}
+.navrow .icon-btn{background:var(--teal);font-size:16px;padding:4px 10px;border-radius:8px;}
+
+/* buttons */
+.btn{border:0;border-radius:12px;font-size:18px;font-weight:700;padding:16px 18px;cursor:pointer;width:100%;color:#fff;background:var(--teal);}
+.btn:active{transform:scale(.98);}
+.btn.lg{padding:20px;font-size:20px;}
+.btn.green{background:var(--green);}
+.btn.red{background:var(--red);}
+.btn.gray{background:var(--gray);}
+.btn.amber{background:var(--amber);}
+.btn.ghost{background:#fff;color:var(--teal);border:2px solid var(--teal);}
+.btn.small{width:auto;padding:8px 14px;font-size:14px;border-radius:10px;}
+.btn:disabled{opacity:.5;}
+
+/* picker */
+.picker-wrap{flex:1;overflow:auto;padding:16px;}
+.picker-sub{text-align:center;color:var(--muted);margin:0 0 10px;font-size:15px;}
+.search-box{width:100%;padding:13px;font-size:17px;border:2px solid var(--border);border-radius:12px;margin-bottom:10px;}
+.pick-list{display:flex;flex-direction:column;gap:10px;}
+.pick-btn{background:#fff;border:2px solid var(--border);border-radius:14px;padding:16px;text-align:left;cursor:pointer;width:100%;}
+.pick-btn:active{border-color:var(--teal);background:#ecfdf5;}
+.pick-btn .pb-name{font-size:19px;font-weight:700;color:var(--txt);}
+.pick-status{text-align:center;color:var(--muted);margin-top:24px;font-size:15px;}
+
+/* group cards (trang chính) */
+.group-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px;}
+.group-card h3{margin:0 0 12px;font-size:16px;color:var(--teal-d);}
+.group-card .btn{margin-bottom:10px;}
+.group-card .btn:last-child{margin-bottom:0;}
+
+/* scan screen */
+.session{display:flex;gap:10px;padding:12px 14px;background:var(--card);border-bottom:1px solid var(--border);}
+.slot{flex:1;border-radius:12px;padding:10px 12px;border:2px solid var(--border);background:#f8fafc;}
+.slot.filled{border-color:var(--teal);background:#ecfdf5;}
+.slot .lbl{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.slot .val{font-size:16px;font-weight:700;margin-top:3px;color:var(--txt);word-break:break-word;}
+.counter{text-align:center;padding:10px;font-size:16px;font-weight:600;color:var(--teal-d);background:#ecfeff;}
+.counter b{font-size:22px;}
+.hint{padding:12px 16px;text-align:center;font-size:15px;font-weight:600;min-height:20px;}
+.hint.ok{color:var(--green);}.hint.err{color:var(--red);}.hint.info{color:var(--teal-d);}
+#reader{width:100%;background:#000;min-height:240px;}
+#reader video{width:100%!important;height:auto!important;display:block;}
+.controls{padding:14px;display:flex;flex-direction:column;gap:12px;margin-top:auto;}
+.row2{display:flex;gap:12px;}
+.row2 .btn{flex:1;}
+
+/* manual input */
+.manual-row{display:flex;gap:8px;padding:0 14px;margin-bottom:8px;}
+.manual-row input{flex:1;padding:10px;font-size:16px;border:2px solid var(--border);border-radius:10px;}
+.manual-row input:focus{border-color:var(--teal);outline:none;}
+.manual-row .btn{flex:0 0 auto;width:auto;padding:10px 16px;font-size:16px;}
+
+/* list (items scanned) */
+.rowCard{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin:0 14px 10px;display:flex;align-items:center;gap:10px;}
+.seq-badge{flex-shrink:0;width:36px;text-align:center;font-size:13px;font-weight:800;color:var(--teal-d);background:#e0f2fe;border-radius:8px;padding:4px 0;}
+.rowCard .info{min-width:0;flex:1;}
+.rowCard .info .top{font-weight:700;font-size:15px;}
+.rowCard .info .sub{font-size:13px;color:var(--muted);word-break:break-all;margin-top:2px;}
+.del-btn{flex-shrink:0;background:var(--red);border:0;color:#fff;border-radius:10px;padding:10px 13px;font-size:18px;cursor:pointer;}
+
+/* kl input */
+.kl-section{padding:14px;background:var(--card);border-top:1px solid var(--border);}
+.kl-section label{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;display:block;}
+.kl-section input{width:100%;padding:14px;font-size:20px;font-weight:700;border:2px solid var(--border);border-radius:12px;text-align:center;}
+.kl-section input:focus{border-color:var(--teal);outline:none;}
+
+/* dashboard */
+.dash-wrap{flex:1;overflow:auto;padding:12px;}
+.sum-bar{display:flex;flex-wrap:wrap;gap:8px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px;}
+.sum-item{flex:1;min-width:80px;text-align:center;cursor:pointer;padding:6px 4px;border-radius:8px;}
+.sum-item.active{background:#fef3c7;}
+.sum-item .s-val{font-size:20px;font-weight:800;color:var(--teal-d);}
+.sum-item .s-lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;}
+.search-bar{margin-bottom:10px;}
+.search-bar input{width:100%;padding:11px;font-size:16px;border:1px solid var(--border);border-radius:10px;}
+
+table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
+.dash-tbl th{background:var(--teal);color:#fff;padding:8px 6px;text-align:left;position:sticky;top:0;font-size:12px;}
+.dash-tbl td{padding:8px 6px;border-bottom:1px solid var(--border);vertical-align:top;}
+.dash-tbl tr:nth-child(even){background:#f8fafc;}
+.dash-tbl .lsx-cell{font-weight:700;font-size:13px;cursor:pointer;color:var(--teal-d);word-break:break-all;max-width:90px;}
+.dash-tbl .kh-cell{font-size:12px;color:var(--muted);word-break:break-word;}
+.dash-tbl .num{text-align:right;font-weight:600;white-space:nowrap;}
+.dash-tbl .neg{color:var(--red);}
+.dash-tbl .zero{color:var(--green);}
+
+/* daily stats */
+.daterow{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+.daterow label{font-size:13px;font-weight:600;color:var(--muted);}
+.daterow input{padding:8px;font-size:15px;border:1px solid var(--border);border-radius:8px;flex:1;min-width:120px;}
+.daterow .btn{flex:0 0 auto;width:auto;padding:8px 14px;font-size:14px;border-radius:8px;}
+.daily-sum{display:flex;gap:8px;margin-bottom:10px;}
+.daily-chip{flex:1;text-align:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 4px;}
+.daily-chip .dv{font-size:18px;font-weight:800;color:var(--teal-d);}
+.daily-chip .dl{font-size:11px;color:var(--muted);}
+.group-row{background:var(--teal);color:#fff;font-weight:700;padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:14px;}
+.date-row{background:#e0f2fe;color:#0369a1;font-weight:600;padding:6px 12px;border-radius:6px;margin-bottom:4px;font-size:13px;}
+.may-row{padding:4px 12px 4px 28px;font-size:14px;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);cursor:pointer;}
+.may-row:active{background:#f0fdf4;}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;z-index:20;}
+.overlay.active{display:flex;}
+.modal{background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:85vh;display:flex;flex-direction:column;}
+.modal-head{padding:16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);}
+.modal-head h3{margin:0;font-size:17px;}
+.close-btn{background:var(--gray);border:0;color:#fff;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer;}
+.modal-body{flex:1;overflow:auto;padding:16px;}
+.hist-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.hist-tbl th{background:#f1f5f9;padding:6px;text-align:left;font-size:11px;color:var(--muted);}
+.hist-tbl td{padding:6px;border-bottom:1px solid var(--border);}
+.hist-warn{background:#fff3cd;}
+
+/* spinner */
+.spin{width:20px;height:20px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:-4px;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#1e293b;color:#fff;padding:10px 20px;border-radius:14px;font-size:15px;font-weight:600;opacity:0;transition:.25s;z-index:30;max-width:92vw;text-align:center;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* filter buttons */
+.filter-row{display:flex;gap:6px;margin-bottom:10px;}
+.fbtn{flex:1;padding:8px;border:2px solid var(--border);border-radius:10px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;text-align:center;}
+.fbtn.active{border-color:var(--teal);background:#ecfdf5;color:var(--teal-d);}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 1: Trang chính — chọn chức năng
+═══════════════════════════════════════ -->
+<section id="stepHome" class="screen active">
+  <div class="topbar">
+    <div class="ttl">Thổi / In</div>
+    <div style="display:flex;gap:6px">
+      <button class="icon-btn" onclick="goHome()">🏠</button>
+    </div>
+  </div>
+  <div class="picker-wrap">
+    <div class="group-card">
+      <h3>📝 Ghi nhận kết quả SX</h3>
+      <button class="btn" onclick="startSX('Thổi')">💨 Thổi</button>
+      <button class="btn" onclick="startSX('In')">🖨️ In</button>
+      <button class="btn ghost" onclick="openDashboard()">📊 Kiểm tra kết quả</button>
+      <button class="btn ghost" onclick="openDaily()">📈 Thống kê Sản lượng</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 2: Chọn Công nhân
+═══════════════════════════════════════ -->
+<section id="stepCN" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="showScreen('stepHome')">←</button>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl" id="cnTitle">Chọn Công nhân</div></div>
+  <div class="picker-wrap">
+    <input id="cnSearch" class="search-box" type="text" placeholder="Tìm công nhân..." oninput="filterCN()">
+    <div id="cnList" class="pick-list"></div>
+    <div id="cnStatus" class="pick-status"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 3: Chọn Máy
+═══════════════════════════════════════ -->
+<section id="stepMay" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="showScreen('stepCN')">←</button>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl" id="mayTitle">Chọn Máy</div></div>
+  <div class="picker-wrap">
+    <input id="maySearch" class="search-box" type="text" placeholder="Tìm máy..." oninput="filterMay()">
+    <div id="mayList" class="pick-list"></div>
+    <div id="mayStatus" class="pick-status"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 4: Scan QR + Nhập liệu
+═══════════════════════════════════════ -->
+<section id="stepScan" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="backFromScan()">←</button>
+    <button class="icon-btn" onclick="showScreen('stepHome')">🏠</button>
+  </div>
+  <div class="session">
+    <div class="slot filled"><div class="lbl">CN</div><div class="val" id="scanCN">—</div></div>
+    <div class="slot filled"><div class="lbl">Máy</div><div class="val" id="scanMay">—</div></div>
+    <div class="slot"><div class="lbl">Loại</div><div class="val" id="scanLoai">—</div></div>
+  </div>
+  <div class="counter">Đã quét: <b id="scanCount">0</b> mã</div>
+
+  <div id="reader"></div>
+  <div id="scanHint" class="hint info">Đưa mã QR vào khung hình</div>
+
+  <!-- Nhập tay -->
+  <div class="manual-row">
+    <input id="manualLsx" type="text" placeholder="LSX" inputmode="text">
+    <input id="manualKl" type="text" placeholder="KL" inputmode="decimal" style="max-width:100px">
+    <button class="btn small green" onclick="addManual()">＋</button>
+  </div>
+
+  <!-- Danh sách đã quét -->
+  <div id="scanItems" style="padding-top:8px;"></div>
+
+  <!-- KL cuộn -->
+  <div class="kl-section">
+    <label>Khối lượng cuộn (kg)</label>
+    <input id="klCuon" type="text" inputmode="decimal" placeholder="Nhập KL cuộn">
+  </div>
+
+  <div class="controls">
+    <div class="row2">
+      <button class="btn green" id="btnSend" onclick="submitSX()">✅ Gửi</button>
+      <button class="btn gray" onclick="clearScan()">🗑️ Xóa hết</button>
+    </div>
+    <button class="btn ghost small" onclick="switchCNMay()">Đổi CN / Máy</button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 5: Dashboard — Kiểm tra kết quả
+═══════════════════════════════════════ -->
+<section id="stepDash" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="showScreen('stepHome')">←</button>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl">📊 Kiểm tra kết quả</div></div>
+  <div class="dash-wrap">
+    <div class="sum-bar">
+      <div class="sum-item" id="sumTotal"><div class="s-val" id="svTotal">0</div><div class="s-lbl">Tổng LSX</div></div>
+      <div class="sum-item" id="sumDu"><div class="s-val" id="svDu">0</div><div class="s-lbl">Đã đủ</div></div>
+      <div class="sum-item" id="sumThieu" onclick="togglePending()"><div class="s-val" id="svThieu">0</div><div class="s-lbl">Còn thiếu</div></div>
+    </div>
+    <div class="search-bar"><input id="dashQ" type="text" placeholder="Tìm LSX / Khách hàng..." oninput="renderDash()"></div>
+    <div class="filter-row">
+      <div class="fbtn active" data-f="all" onclick="setDashFilter('all')">Tất cả</div>
+      <div class="fbtn" data-f="Thổi" onclick="setDashFilter('Thổi')">💨 Thổi</div>
+      <div class="fbtn" data-f="In" onclick="setDashFilter('In')">🖨️ In</div>
+    </div>
+    <div id="dashNote" style="font-size:12px;color:var(--muted);margin-bottom:8px;text-align:center;"></div>
+    <div style="overflow-x:auto;">
+      <table class="dash-tbl">
+        <thead><tr><th>LSX</th><th>KH</th><th style="text-align:right">KLYC</th><th style="text-align:right">Đã SX</th><th style="text-align:right">#</th></tr></thead>
+        <tbody id="dashBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 6: Thống kê Sản lượng
+═══════════════════════════════════════ -->
+<section id="stepDaily" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="showScreen('stepHome')">←</button>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl">📈 Thống kê Sản lượng</div></div>
+  <div class="dash-wrap">
+    <div class="daterow">
+      <label>Từ</label><input id="dFrom" type="date">
+      <label>Đến</label><input id="dTo" type="date">
+    </div>
+    <div class="daterow">
+      <button class="btn small" onclick="loadDaily()" style="flex:2">🔍 Xem báo cáo</button>
+      <button class="btn small gray" onclick="setToday()" style="flex:1">Hôm nay</button>
+      <button class="btn small gray" onclick="setYesterday()" style="flex:1">Hôm qua</button>
+    </div>
+    <div class="filter-row">
+      <div class="fbtn active" data-df="all" onclick="setDailyFilter('all')">Tất cả</div>
+      <div class="fbtn" data-df="Thổi" onclick="setDailyFilter('Thổi')">💨 Thổi</div>
+      <div class="fbtn" data-df="In" onclick="setDailyFilter('In')">🖨️ In</div>
+    </div>
+    <div class="daily-sum" id="dailySum" style="display:none"></div>
+    <div id="dailyStatus" class="pick-status"></div>
+    <div id="dailyBody"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     MODAL: Lịch sử LSX
+═══════════════════════════════════════ -->
+<div id="histOverlay" class="overlay" onclick="closeHist()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="histTitle">Lịch sử SX</h3>
+      <button class="close-btn" onclick="closeHist()">Đóng</button>
+    </div>
+    <div class="modal-body" id="histBody"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   CẤU HÌNH
+══════════════════════════════════════════════════ */
+const CONFIG = {
+  // URL backend trung tâm (Code.gs — cùng script với app chính)
+  API_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
+  DASH_LIMIT: 300,
+  SESSION_TTL: 8 * 3600 * 1000  // 8 giờ
+};
+
+/* ══════════════════════════════════════════════════
+   TRẠNG THÁI
+══════════════════════════════════════════════════ */
+let st = {
+  user: null, maNV: null, username: null,
+  loai: null,       // "Thổi" hoặc "In"
+  cn: null,         // tên CN
+  may: null,        // tên Máy
+  items: [],        // [{data, lsx, klyc}]
+};
+
+let masters = null; // {cnThoi, cnIn, mayThoi, mayIn}
+let dashData = [];
+let dashFilter = "all";
+let pendingOnly = false;
+let dailyData = null;
+let dailyFilter = "all";
+
+/* ══════════════════════════════════════════════════
+   SESSION — đọc từ app trung tâm
+══════════════════════════════════════════════════ */
+function checkSession(){
+  try {
+    const s = JSON.parse(localStorage.getItem("ghinhan_session") || "null");
+    if(!s || !s.username || !s.ts) return false;
+    if(Date.now() - s.ts > CONFIG.SESSION_TTL) return false;
+    st.user = s.user; st.maNV = s.maNV; st.username = s.username;
+    return true;
+  } catch(e){ return false; }
+}
+
+function goHome(){ window.location.href = "index.html"; }
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  if(id === "stepScan") startCamera();
+  else stopCamera();
+}
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function fmt(n){ const v=Math.round((n||0)*100)/100; return v%1===0?String(v):v.toFixed(2).replace(/0$/,""); }
+function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function yesterdayISO(){ const d=new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function dmy(s){ const p=String(s).split("-"); return p.length===3 ? p[2]+"/"+p[1]+"/"+p[0] : s; }
+function uuid(){ return 'xxxx-xxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16)) + '-' + Date.now().toString(36); }
+
+let toastTimer;
+function toast(msg, dur){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), dur||3000);
+}
+
+/* ══════════════════════════════════════════════════
+   ÂM THANH + RUNG
+══════════════════════════════════════════════════ */
+let audioCtx=null;
+function ac(){if(!audioCtx){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}} return audioCtx;}
+function tone(freq,dur,when,type){
+  const c=ac();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type||"sine";o.frequency.value=freq;
+  o.connect(g);g.connect(c.destination);
+  const t=c.currentTime+(when||0);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.start(t);o.stop(t+dur+0.02);
+}
+function buzz(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
+const FB={
+  single(){tone(880,.12);buzz(80);},
+  row(){tone(1175,.12,0);tone(1568,.14,.13);buzz([60,40,90]);},
+  error(){tone(200,.16,0,"square");tone(200,.16,.22,"square");buzz([40,40,40]);},
+  sendOk(){tone(784,.12,0);tone(1047,.18,.12);buzz(200);},
+  sendFail(){tone(196,.18,0,"square");tone(196,.18,.25,"square");tone(196,.18,.5,"square");buzz([100,60,100,60,100]);},
+};
+
+/* ══════════════════════════════════════════════════
+   API — gọi backend trung tâm
+   doGet: dùng JSONP (Apps Script không trả CORS header cho GET)
+   doPost: dùng fetch (POST qua redirect hoạt động bình thường)
+══════════════════════════════════════════════════ */
+let _jsonpSeq = 0;
+function api(action, params, timeoutMs){
+  return new Promise((resolve, reject) => {
+    const cb = "__ti_cb" + (++_jsonpSeq);
+    const s = document.createElement("script");
+    const timer = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, timeoutMs || 30000);
+    function cleanup(){ clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = data => { cleanup(); resolve(data); };
+    s.onerror = () => { cleanup(); reject(new Error("network")); };
+    let url = CONFIG.API_URL + "?action=" + action + "&callback=" + cb;
+    if(params) for(const k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
+    url += "&t=" + Date.now();
+    s.src = url;
+    document.body.appendChild(s);
+  });
+}
+
+async function apiPost(body){
+  const r = await fetch(CONFIG.API_URL, {
+    method: "POST",
+    headers: {"Content-Type":"text/plain;charset=utf-8"},
+    body: JSON.stringify(body),
+    redirect: "follow"
+  });
+  return r.json();
+}
+
+/* ══════════════════════════════════════════════════
+   LOAD MASTERS (CN/Máy)
+══════════════════════════════════════════════════ */
+async function loadMasters(){
+  if(masters) return;
+  try {
+    const r = await api("tksxMasters");
+    if(r.result === "ok") masters = r;
+    else toast("Lỗi tải danh sách CN/Máy");
+  } catch(e){
+    toast("Không kết nối được server");
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   GHI NHẬN SX — Flow: chọn Loại → CN → Máy → Scan
+══════════════════════════════════════════════════ */
+async function startSX(loai){
+  st.loai = loai;
+  st.items = [];
+  await loadMasters();
+  if(!masters) return;
+
+  document.getElementById("cnTitle").textContent = "Chọn Công nhân — " + loai;
+  renderCNList();
+  showScreen("stepCN");
+}
+
+function renderCNList(){
+  const list = st.loai === "Thổi" ? (masters.cnThoi||[]) : (masters.cnIn||[]);
+  const el = document.getElementById("cnList");
+  el.innerHTML = list.map(c =>
+    '<button class="pick-btn" onclick="selectCN(\'' + esc(c.ten) + '\')"><div class="pb-name">' + esc(c.ten) + '</div></button>'
+  ).join("");
+  document.getElementById("cnSearch").value = "";
+  document.getElementById("cnStatus").textContent = list.length ? "" : "Không có công nhân nào";
+}
+
+function filterCN(){
+  const q = document.getElementById("cnSearch").value.toLowerCase();
+  document.querySelectorAll("#cnList .pick-btn").forEach(b => {
+    b.style.display = b.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+}
+
+function selectCN(ten){
+  st.cn = ten;
+  document.getElementById("mayTitle").textContent = "Chọn Máy — " + st.loai;
+  renderMayList();
+  showScreen("stepMay");
+}
+
+function renderMayList(){
+  const list = st.loai === "Thổi" ? (masters.mayThoi||[]) : (masters.mayIn||[]);
+  const el = document.getElementById("mayList");
+  el.innerHTML = list.map(m =>
+    '<button class="pick-btn" onclick="selectMay(\'' + esc(m.ten) + '\')"><div class="pb-name">' + esc(m.ten) + '</div></button>'
+  ).join("");
+  document.getElementById("maySearch").value = "";
+  document.getElementById("mayStatus").textContent = list.length ? "" : "Không có máy nào";
+}
+
+function filterMay(){
+  const q = document.getElementById("maySearch").value.toLowerCase();
+  document.querySelectorAll("#mayList .pick-btn").forEach(b => {
+    b.style.display = b.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+}
+
+function selectMay(ten){
+  st.may = ten;
+  enterScanScreen();
+}
+
+function enterScanScreen(){
+  document.getElementById("scanCN").textContent = st.cn;
+  document.getElementById("scanMay").textContent = st.may;
+  document.getElementById("scanLoai").textContent = st.loai;
+  document.getElementById("klCuon").value = "";
+  updateScanCount();
+  renderScanItems();
+  showScreen("stepScan");
+}
+
+function backFromScan(){
+  stopCamera();
+  showScreen("stepMay");
+}
+
+function switchCNMay(){
+  stopCamera();
+  showScreen("stepCN");
+}
+
+/* ══════════════════════════════════════════════════
+   CAMERA / QR SCAN
+══════════════════════════════════════════════════ */
+let qr = null, scanning = false, lastScanText = "", lastScanTime = 0;
+
+function startCamera(){
+  if(scanning) return;
+  const el = document.getElementById("reader");
+  el.innerHTML = "";
+  try {
+    qr = new Html5Qrcode("reader");
+    qr.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 120 } },
+      onScanSuccess,
+      ()=>{}
+    ).then(()=>{ scanning=true; }).catch(e => {
+      document.getElementById("scanHint").textContent = "Không mở được camera";
+      document.getElementById("scanHint").className = "hint err";
+    });
+  }catch(e){}
+}
+
+function stopCamera(){
+  if(!scanning || !qr) return;
+  try{ qr.stop().then(()=>{ scanning=false; qr.clear(); }).catch(()=>{}); }catch(e){}
+  scanning = false;
+}
+
+function onScanSuccess(text){
+  const now = Date.now();
+  if(text === lastScanText && now - lastScanTime < 1500) return; // debounce
+  lastScanText = text; lastScanTime = now;
+  tryAddData(text);
+}
+
+function tryAddData(raw){
+  const s = String(raw).trim();
+  const parts = s.split("/");
+  if(parts.length < 2){
+    FB.error();
+    setHint("Sai định dạng: cần LSX/KL", "err");
+    return;
+  }
+  const lsx = parts[0].trim();
+  const kl = parseFloat(parts[1].replace(",", "."));
+  if(!lsx || isNaN(kl) || kl <= 0){
+    FB.error();
+    setHint("KL không hợp lệ: " + s, "err");
+    return;
+  }
+
+  st.items.push({ data: s, lsx: lsx, klyc: kl });
+  FB.single();
+  setHint("✓ " + lsx + " — " + kl + " kg", "ok");
+  updateScanCount();
+  renderScanItems();
+}
+
+function setHint(msg, cls){
+  const el = document.getElementById("scanHint");
+  el.textContent = msg; el.className = "hint " + (cls||"info");
+}
+
+function updateScanCount(){
+  document.getElementById("scanCount").textContent = st.items.length;
+}
+
+/* Nhập tay */
+function addManual(){
+  const lsx = document.getElementById("manualLsx").value.trim();
+  const kl = document.getElementById("manualKl").value.trim().replace(",",".");
+  if(!lsx){ toast("Nhập mã LSX"); return; }
+  if(!kl || isNaN(parseFloat(kl))){ toast("Nhập KL hợp lệ"); return; }
+  tryAddData(lsx + "/" + kl);
+  document.getElementById("manualLsx").value = "";
+  document.getElementById("manualKl").value = "";
+  document.getElementById("manualLsx").focus();
+}
+
+function renderScanItems(){
+  const el = document.getElementById("scanItems");
+  if(!st.items.length){ el.innerHTML=""; return; }
+  el.innerHTML = st.items.map((it, i) =>
+    '<div class="rowCard"><div class="seq-badge">' + (i+1) + '</div>' +
+    '<div class="info"><div class="top">' + esc(it.lsx) + '</div>' +
+    '<div class="sub">KL yêu cầu: ' + fmt(it.klyc) + ' kg</div></div>' +
+    '<button class="del-btn" onclick="removeItem(' + i + ')">✕</button></div>'
+  ).join("");
+}
+
+function removeItem(i){
+  st.items.splice(i, 1);
+  updateScanCount();
+  renderScanItems();
+}
+
+function clearScan(){
+  st.items = [];
+  updateScanCount();
+  renderScanItems();
+  document.getElementById("klCuon").value = "";
+  setHint("Đã xóa", "info");
+}
+
+/* ══════════════════════════════════════════════════
+   GỬI DỮ LIỆU
+══════════════════════════════════════════════════ */
+async function submitSX(){
+  if(!st.items.length){ toast("Chưa có mã nào"); return; }
+  const klRaw = document.getElementById("klCuon").value.trim().replace(",",".");
+  const klCuon = parseFloat(klRaw);
+  if(isNaN(klCuon) || klCuon <= 0){ toast("Nhập KL cuộn hợp lệ"); return; }
+
+  const btn = document.getElementById("btnSend");
+  const old = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Đang gửi...';
+
+  try {
+    const body = {
+      action: "tksxSubmit",
+      user: st.username,
+      loai: st.loai,
+      cn: st.cn,
+      may: st.may,
+      klCuon: klCuon,
+      items: st.items,
+      batchId: uuid(),
+      ts: new Date().toISOString()
+    };
+
+    const r = await apiPost(body);
+    if(r.result === "ok"){
+      FB.sendOk();
+      if(r.duplicate) toast("Đã gửi trước đó (trùng batch)");
+      else toast("Gửi thành công: " + (r.inserted||0) + " dòng");
+      st.items = [];
+      updateScanCount();
+      renderScanItems();
+      document.getElementById("klCuon").value = "";
+      setHint("Gửi thành công!", "ok");
+    } else {
+      FB.sendFail();
+      toast(r.error || "Gửi thất bại");
+    }
+  } catch(e){
+    FB.sendFail();
+    toast("Lỗi kết nối. Thử lại.");
+  }
+  btn.disabled = false; btn.innerHTML = old;
+}
+
+/* ══════════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════════ */
+async function openDashboard(){
+  showScreen("stepDash");
+  document.getElementById("dashBody").innerHTML = '<tr><td colspan="5" class="pick-status"><span class="spin"></span> Đang tải...</td></tr>';
+
+  try {
+    const r = await api("tksxDashboard");
+    if(r.result === "ok"){
+      dashData = r.rows || [];
+      renderDash();
+    } else {
+      document.getElementById("dashBody").innerHTML = '<tr><td colspan="5" class="pick-status" style="color:var(--red)">' + esc(r.error) + '</td></tr>';
+    }
+  } catch(e){
+    document.getElementById("dashBody").innerHTML = '<tr><td colspan="5" class="pick-status" style="color:var(--red)">Không kết nối được</td></tr>';
+  }
+}
+
+function setDashFilter(f){
+  dashFilter = f;
+  document.querySelectorAll(".filter-row .fbtn[data-f]").forEach(b => b.classList.toggle("active", b.dataset.f === f));
+  renderDash();
+}
+
+function togglePending(){
+  pendingOnly = !pendingOnly;
+  document.getElementById("sumThieu").classList.toggle("active", pendingOnly);
+  renderDash();
+}
+
+function renderDash(){
+  const q = (document.getElementById("dashQ").value || "").toLowerCase();
+  let filtered = dashData;
+  if(dashFilter !== "all") filtered = filtered.filter(r => r.loai === dashFilter);
+
+  const all = filtered;
+  const du = all.filter(r => r.conLai <= 0);
+  const thieu = all.filter(r => r.conLai > 0);
+
+  document.getElementById("svTotal").textContent = all.length;
+  document.getElementById("svDu").textContent = du.length;
+  document.getElementById("svThieu").textContent = thieu.length;
+
+  let display = pendingOnly ? thieu : all;
+  if(q) display = display.filter(r => r.lsx.toLowerCase().includes(q) || (r.kh||"").toLowerCase().includes(q));
+
+  const limit = q ? display.length : CONFIG.DASH_LIMIT;
+  const shown = display.slice(0, limit);
+
+  document.getElementById("dashNote").textContent = !q && display.length > limit
+    ? "Đang hiển thị " + limit + " LSX gần nhất (tổng " + display.length + ") — tìm kiếm sẽ lọc toàn bộ"
+    : "";
+
+  const body = document.getElementById("dashBody");
+  body.innerHTML = shown.map(r => {
+    const neg = r.conLai > 0 ? " neg" : (r.conLai === 0 ? " zero" : "");
+    return '<tr>' +
+      '<td class="lsx-cell" onclick="openHistory(\'' + esc(r.lsx) + '\')">▸ ' + esc(r.lsx) + '</td>' +
+      '<td class="kh-cell">' + esc(r.kh||"") + '</td>' +
+      '<td class="num">' + fmt(r.klyc) + '</td>' +
+      '<td class="num">' + fmt(r.tongSX) + '</td>' +
+      '<td class="num' + neg + '">' + fmt(r.conLai) + '</td>' +
+      '</tr>';
+  }).join("");
+}
+
+/* ══════════════════════════════════════════════════
+   HISTORY MODAL
+══════════════════════════════════════════════════ */
+async function openHistory(lsx){
+  document.getElementById("histTitle").textContent = "Lịch sử: " + lsx;
+  document.getElementById("histBody").innerHTML = '<div class="pick-status"><span class="spin"></span> Đang tải...</div>';
+  document.getElementById("histOverlay").classList.add("active");
+
+  try {
+    const r = await api("tksxHistory", { lsx });
+    if(r.result === "ok"){
+      const rows = r.rows || [];
+      if(!rows.length){
+        document.getElementById("histBody").innerHTML = '<div class="pick-status">Chưa có dữ liệu</div>';
+        return;
+      }
+      const total = rows.reduce((s,r) => s + (r.kqSX||0), 0);
+      let html = '<div style="font-weight:700;margin-bottom:8px">Tổng: ' + fmt(total) + ' kg (' + rows.length + ' lần)</div>';
+      html += '<table class="hist-tbl"><thead><tr><th>Thời gian</th><th>Tổ</th><th>CN</th><th>Máy</th><th style="text-align:right">KQ SX</th></tr></thead><tbody>';
+      rows.forEach(r => {
+        const cls = r.canhBao ? ' class="hist-warn"' : '';
+        html += '<tr' + cls + '><td>' + esc(r.time) + '</td><td>' + esc(r.loai) + '</td><td>' + esc(r.cn) + '</td><td>' + esc(r.may) + '</td><td style="text-align:right">' + fmt(r.kqSX) + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      document.getElementById("histBody").innerHTML = html;
+    }
+  } catch(e){
+    document.getElementById("histBody").innerHTML = '<div class="pick-status" style="color:var(--red)">Lỗi kết nối</div>';
+  }
+}
+
+function closeHist(){ document.getElementById("histOverlay").classList.remove("active"); }
+
+/* ══════════════════════════════════════════════════
+   THỐNG KÊ SẢN LƯỢNG
+══════════════════════════════════════════════════ */
+function openDaily(){
+  showScreen("stepDaily");
+  const today = todayISO();
+  document.getElementById("dFrom").value = today;
+  document.getElementById("dTo").value = today;
+  loadDaily();
+}
+
+function setToday(){ const t=todayISO(); document.getElementById("dFrom").value=t; document.getElementById("dTo").value=t; loadDaily(); }
+function setYesterday(){ const y=yesterdayISO(); document.getElementById("dFrom").value=y; document.getElementById("dTo").value=y; loadDaily(); }
+
+function setDailyFilter(f){
+  dailyFilter = f;
+  document.querySelectorAll(".filter-row .fbtn[data-df]").forEach(b => b.classList.toggle("active", b.dataset.df === f));
+  drawDaily();
+}
+
+async function loadDaily(){
+  const from = document.getElementById("dFrom").value;
+  const to = document.getElementById("dTo").value;
+  if(!from || !to){ toast("Chọn ngày"); return; }
+
+  document.getElementById("dailyStatus").innerHTML = '<span class="spin"></span> Đang tải...';
+  document.getElementById("dailyBody").innerHTML = "";
+  document.getElementById("dailySum").style.display = "none";
+
+  try {
+    const r = await api("tksxDaily", { from, to });
+    if(r.result === "ok"){
+      dailyData = r;
+      document.getElementById("dailyStatus").textContent = "";
+      drawDaily();
+    } else {
+      document.getElementById("dailyStatus").textContent = r.error || "Lỗi";
+    }
+  } catch(e){
+    document.getElementById("dailyStatus").textContent = "Không kết nối được";
+  }
+}
+
+function drawDaily(){
+  if(!dailyData) return;
+  let sx = dailyData.sx || [];
+  let sxd = dailyData.sxd || [];
+  if(dailyFilter !== "all"){
+    sx = sx.filter(r => r.loai === dailyFilter);
+    sxd = sxd.filter(r => r.loai === dailyFilter);
+  }
+
+  // Tổng
+  const tongThoi = (dailyData.sx||[]).filter(r=>r.loai==="Thổi").reduce((s,r)=>s+r.tong,0);
+  const tongIn   = (dailyData.sx||[]).filter(r=>r.loai==="In").reduce((s,r)=>s+r.tong,0);
+  const sumEl = document.getElementById("dailySum");
+  sumEl.style.display = "flex";
+  sumEl.innerHTML =
+    '<div class="daily-chip"><div class="dv">' + fmt(tongThoi) + '</div><div class="dl">💨 Thổi (kg)</div></div>' +
+    '<div class="daily-chip"><div class="dv">' + fmt(tongIn) + '</div><div class="dl">🖨️ In (kg)</div></div>';
+
+  // Nhóm: Tổ → Ngày → Máy
+  const groups = {};
+  sx.forEach(r => {
+    const gk = r.loai;
+    if(!groups[gk]) groups[gk] = {};
+    if(!groups[gk][r.ngay]) groups[gk][r.ngay] = {};
+    groups[gk][r.ngay][r.may] = (groups[gk][r.ngay][r.may]||0) + r.tong;
+  });
+
+  let html = "";
+  for(const loai of ["Thổi", "In"]){
+    if(!groups[loai]) continue;
+    const icon = loai === "Thổi" ? "💨" : "🖨️";
+    const totalG = Object.values(groups[loai]).reduce((s,days) => s + Object.values(days).reduce((a,b)=>a+b,0), 0);
+    html += '<div class="group-row">' + icon + ' ' + loai + ' — ' + fmt(totalG) + ' kg</div>';
+
+    const dates = Object.keys(groups[loai]).sort().reverse();
+    dates.forEach(ngay => {
+      const mays = groups[loai][ngay];
+      const dayTotal = Object.values(mays).reduce((a,b)=>a+b,0);
+      html += '<div class="date-row">📅 ' + dmy(ngay) + ' — ' + fmt(dayTotal) + ' kg</div>';
+      for(const may in mays){
+        html += '<div class="may-row"><span>' + esc(may) + '</span><span>' + fmt(mays[may]) + ' kg</span></div>';
+      }
+    });
+  }
+  document.getElementById("dailyBody").innerHTML = html || '<div class="pick-status">Không có dữ liệu</div>';
+}
+
+/* ══════════════════════════════════════════════════
+   NHẬP TAY — ENTER shortcuts
+══════════════════════════════════════════════════ */
+document.getElementById("manualLsx").addEventListener("keydown", e => {
+  if(e.key === "Enter"){ e.preventDefault(); document.getElementById("manualKl").focus(); }
+});
+document.getElementById("manualKl").addEventListener("keydown", e => {
+  if(e.key === "Enter"){ e.preventDefault(); addManual(); }
+});
+document.getElementById("klCuon").addEventListener("keydown", e => {
+  if(e.key === "Enter"){ e.preventDefault(); submitSX(); }
+});
+
+/* ══════════════════════════════════════════════════
+   KHỞI ĐỘNG
+══════════════════════════════════════════════════ */
+(function init(){
+  if(!checkSession()){
+    // Không có session → quay về app trung tâm đăng nhập
+    toast("Vui lòng đăng nhập từ trang chính");
+    setTimeout(() => { window.location.href = "index.html"; }, 1500);
+    return;
+  }
+
+  // Đọc mode từ URL: ?mode=sx → trang chính, ?mode=dashboard → dashboard
+  const urlMode = new URLSearchParams(window.location.search).get("mode");
+  if(urlMode === "dashboard"){
+    showScreen("stepHome"); // hiện tạm rồi mở dashboard
+    loadMasters();
+    openDashboard();
+  } else {
+    showScreen("stepHome");
+    loadMasters();
+  }
+})();
+</script>
+</body>
+</html>
