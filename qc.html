@@ -653,7 +653,10 @@ function setPhanDinh(val) {
   document.getElementById("ngSection").style.display = val === "NG" ? "block" : "none";
 }
 
-// ===== PHOTO =====
+// ===== PHOTO (có nén ảnh) =====
+const IMG_MAX_SIZE = 1200; // max chiều dài/rộng (px)
+const IMG_QUALITY  = 0.6;  // JPEG quality (0.0 – 1.0)
+
 function takePhoto() {
   document.getElementById("filePhoto").click();
 }
@@ -661,15 +664,43 @@ function takePhoto() {
 function onPhotoSelected(event) {
   const file = event.target.files[0];
   if (!file) return;
+  event.target.value = "";
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const dataUrl = e.target.result;
+  const origSize = (file.size / 1024).toFixed(0);
+  showSpinner("Đang nén ảnh (" + origSize + " KB)...");
+
+  compressImage(file, IMG_MAX_SIZE, IMG_QUALITY).then(dataUrl => {
+    hideSpinner();
+    const compSize = (dataUrl.length * 3 / 4 / 1024).toFixed(0);
+    console.log("Ảnh: " + origSize + " KB → ~" + compSize + " KB");
     state.photos.push({ dataUrl: dataUrl, filename: "qc_" + Date.now() + ".jpg" });
     renderPhotos();
-  };
-  reader.readAsDataURL(file);
-  event.target.value = ""; // reset để có thể chọn lại cùng file
+  }).catch(err => {
+    hideSpinner();
+    alert("Lỗi nén ảnh: " + err.message);
+  });
+}
+
+function compressImage(file, maxSize, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = function() {
+      let w = img.width, h = img.height;
+      // Resize nếu vượt maxSize
+      if (w > maxSize || h > maxSize) {
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else       { w = Math.round(w * maxSize / h); h = maxSize; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      resolve(dataUrl);
+    };
+    img.onerror = () => reject(new Error("Không đọc được ảnh"));
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 function renderPhotos() {
