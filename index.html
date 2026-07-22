@@ -670,6 +670,18 @@ const QUYEN_LABELS = {
 /* ── Cấu hình phân cấp chức năng (3 level) ── */
 /* Nếu module có FUNC_HIERARCHY, hiển thị nhóm cha → click → hiện chức năng con */
 const FUNC_HIERARCHY = {
+  PD: [
+    {
+      name: "Ghi nhận SX",
+      icon: "📝",
+      childUrls: ["index.html", "thoi-in.html?mode=sx"]
+    },
+    {
+      name: "Kiểm tra kết quả",
+      icon: "📊",
+      childUrls: ["tien-do.html", "thoi-in.html?mode=dashboard", "bao-cao-chuoi.html"]
+    }
+  ],
   WH: [
     {
       name: "Xuất hàng",
