@@ -807,8 +807,60 @@ async function submitInspection() {
     hideSpinner();
 
     if (res.result === "ok") {
-      alert("Đã ghi nhận " + phanDinh + " thành công!");
-      show("screenHome");
+      if (phanDinh === "NG") {
+        // Auto-tạo NG Report DRAFT với data từ kết quả kiểm tra
+        showSpinner("Đang tạo NG Report...");
+        try {
+          const catSel = document.getElementById("selCategory");
+          const grpSel = document.getElementById("selGroup");
+          const catId = catSel.value;
+          const catName = catId && catSel.selectedIndex > 0 ? catSel.options[catSel.selectedIndex].textContent.split(" - ").slice(1).join(" - ") : "";
+          const grpId = grpSel.value;
+          const grpName = grpId && grpSel.selectedIndex > 0 ? (grpSel.options[grpSel.selectedIndex].dataset.name || "") : "";
+
+          const ngBody = {
+            action: "createNGReport",
+            user: state.user,
+            submitNow: false,
+            lsx: p.lsxct || "",
+            maSP: p.masp || "",
+            khachHang: p.khachhang || "",
+            moTa: p.mota || "",
+            dvt: p.dvt || "",
+            soLuongYeuCau: p.soluong || 0,
+            congDoanKiemTra: viTriTen,
+            may: document.getElementById("selMay").value,
+            congNhanSX: document.getElementById("selCN").value,
+            soLuongKiemTra: parseFloat(slKT) || 0,
+            soLoi: parseFloat(document.getElementById("inpSoLoi").value) || 0,
+            defectCategoryID: catId,
+            defectCategoryName: catName,
+            defectGroupID: grpId,
+            defectGroupName: grpName,
+            defectDescription: document.getElementById("inpMoTaChiTiet").value.trim(),
+            congDoanGayLoi: document.getElementById("selCongDoanGayLoi").value,
+            phuongAnXuLy: document.getElementById("selPhuongAn").value,
+            linkAnh: linkAnh,
+            ghiChu: document.getElementById("inpGhiChu").value.trim()
+          };
+          const ngRes = await apiPost(ngBody);
+          hideSpinner();
+          if (ngRes.result === "ok" && ngRes.reportId) {
+            // Redirect sang ng-report.html ở bước ảnh & gửi
+            window.location.href = "ng-report.html?mode=continue&id=" + encodeURIComponent(ngRes.reportId);
+            return;
+          }
+        } catch(ngErr) {
+          hideSpinner();
+          console.error("Auto-create NG Report error:", ngErr);
+        }
+        // Fallback nếu tạo NG Report lỗi
+        alert("Đã ghi nhận NG. Tạo NG Report tự động thất bại — vui lòng tạo thủ công.");
+        show("screenHome");
+      } else {
+        alert("Đã ghi nhận " + phanDinh + " thành công!");
+        show("screenHome");
+      }
     } else {
       alert("Lỗi: " + (res.error || "Không xác định"));
     }
