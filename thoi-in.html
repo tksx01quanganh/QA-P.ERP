@@ -160,10 +160,9 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
 ═══════════════════════════════════════ -->
 <section id="stepHome" class="screen active">
   <div class="topbar">
-    <div class="ttl">Thổi / In</div>
-    <div style="display:flex;gap:6px">
-      <button class="icon-btn" onclick="goHome()">🏠</button>
-    </div>
+    <button class="icon-btn" onclick="goHome()" style="font-size:18px;padding:6px 10px">←</button>
+    <div class="ttl" style="flex:1;text-align:center">Thổi / In</div>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
   </div>
   <div class="picker-wrap">
     <div class="group-card">
@@ -172,6 +171,16 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
       <button class="btn" onclick="startSX('In')">🖨️ In</button>
       <button class="btn ghost" onclick="openDashboard()">📊 Kiểm tra kết quả</button>
       <button class="btn ghost" onclick="openDaily()">📈 Thống kê Sản lượng</button>
+    </div>
+    <div class="group-card">
+      <h3>🗑️ Nhập Phế</h3>
+      <button class="btn amber" onclick="startPhe('Thổi')">💨 Phế Thổi</button>
+      <button class="btn amber" onclick="startPhe('In')">🖨️ Phế In</button>
+    </div>
+    <div class="group-card">
+      <h3>📦 Chuyển Cuộn</h3>
+      <button class="btn green" onclick="startChuyen()">Chuyển cuộn sang Cắt</button>
+      <button class="btn ghost" onclick="openChuyenStat()">📈 Thống kê chuyển cuộn</button>
     </div>
   </div>
 </section>
@@ -313,6 +322,112 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
 </section>
 
 <!-- ═══════════════════════════════════════
+     SCREEN 7: Nhập Phế — chọn CN
+═══════════════════════════════════════ -->
+<section id="stepPheCN" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="showScreen('stepHome')">←</button>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl" id="pheCNTitle">Nhập Phế — Chọn CN</div></div>
+  <div class="picker-wrap">
+    <input id="pheCNSearch" class="search-box" type="text" placeholder="Tìm công nhân..." oninput="filterPheCN()">
+    <div id="pheCNList" class="pick-list"></div>
+  </div>
+</section>
+
+<!-- SCREEN 8: Nhập Phế — chọn Máy -->
+<section id="stepPheMay" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="showScreen('stepPheCN')">←</button>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl" id="pheMayTitle">Nhập Phế — Chọn Máy</div></div>
+  <div class="picker-wrap">
+    <input id="pheMaySearch" class="search-box" type="text" placeholder="Tìm máy..." oninput="filterPheMay()">
+    <div id="pheMayList" class="pick-list"></div>
+  </div>
+</section>
+
+<!-- SCREEN 9: Nhập Phế — nhập KL -->
+<section id="stepPheInput" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="showScreen('stepPheMay')">←</button>
+    <button class="icon-btn" onclick="showScreen('stepHome')">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl">🗑️ Nhập Phế</div></div>
+  <div class="session">
+    <div class="slot filled"><div class="lbl">CN</div><div class="val" id="pheCNVal">—</div></div>
+    <div class="slot filled"><div class="lbl">Máy</div><div class="val" id="pheMayVal">—</div></div>
+    <div class="slot"><div class="lbl">Loại</div><div class="val" id="pheLoaiVal">—</div></div>
+  </div>
+  <div class="picker-wrap">
+    <div class="kl-section" style="border:0;padding:0;margin-bottom:16px;">
+      <label>Phế trơn (kg)</label>
+      <input id="pheTron" type="text" inputmode="decimal" placeholder="0">
+    </div>
+    <div class="kl-section" style="border:0;padding:0;margin-bottom:16px;">
+      <label>Phế màu (kg)</label>
+      <input id="pheMau" type="text" inputmode="decimal" placeholder="0">
+    </div>
+    <button class="btn green" id="btnPhe" onclick="submitPhe()">✅ Gửi Phế</button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 10: Chuyển cuộn — Scan LSX
+═══════════════════════════════════════ -->
+<section id="stepChuyen" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="backFromChuyen()">←</button>
+    <button class="icon-btn" onclick="showScreen('stepHome')">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl">📦 Chuyển cuộn sang Cắt</div></div>
+  <div class="counter">Đã quét: <b id="ccCount">0</b> cuộn</div>
+
+  <div id="ccReader"></div>
+  <div id="ccHint" class="hint info">Quét mã LSX (mỗi lần quét = 1 cuộn)</div>
+
+  <div class="manual-row">
+    <input id="ccManual" type="text" placeholder="Nhập mã LSX" inputmode="text">
+    <button class="btn small green" onclick="addChuyenManual()">＋</button>
+  </div>
+
+  <div id="ccItems" style="padding-top:8px;"></div>
+
+  <div class="controls">
+    <button class="btn green" id="btnChuyen" onclick="submitChuyen()">✅ Xác nhận chuyển cuộn</button>
+    <button class="btn gray" onclick="clearChuyen()">🗑️ Xóa hết</button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 11: Thống kê chuyển cuộn
+═══════════════════════════════════════ -->
+<section id="stepChuyenStat" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="showScreen('stepHome')">←</button>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl">📈 Thống kê chuyển cuộn</div></div>
+  <div class="dash-wrap">
+    <div class="daterow">
+      <label>Từ</label><input id="ccFrom" type="date">
+      <label>Đến</label><input id="ccTo" type="date">
+    </div>
+    <div class="daterow">
+      <button class="btn small" onclick="loadChuyenStat()" style="flex:2">🔍 Xem báo cáo</button>
+      <button class="btn small gray" onclick="setCCToday()" style="flex:1">Hôm nay</button>
+      <button class="btn small gray" onclick="setCCYesterday()" style="flex:1">Hôm qua</button>
+    </div>
+    <div class="search-bar"><input id="ccStatQ" type="text" placeholder="Tìm LSX..." oninput="renderChuyenStat()"></div>
+    <div class="daily-sum" id="ccStatSum" style="display:none"></div>
+    <div id="ccStatStatus" class="pick-status"></div>
+    <div id="ccStatBody"></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
      MODAL: Lịch sử LSX
 ═══════════════════════════════════════ -->
 <div id="histOverlay" class="overlay" onclick="closeHist()">
@@ -380,6 +495,7 @@ function showScreen(id){
   document.getElementById(id).classList.add("active");
   if(id === "stepScan") startCamera();
   else stopCamera();
+  if(id !== "stepChuyen") stopCCCamera();
 }
 
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
@@ -891,6 +1007,327 @@ function drawDaily(){
 }
 
 /* ══════════════════════════════════════════════════
+   NHẬP PHẾ — Flow: chọn Loại → CN → Máy → nhập KL → Gửi
+══════════════════════════════════════════════════ */
+var phe = { loai: "", cn: "", may: "" };
+
+async function startPhe(loai){
+  phe.loai = loai;
+  phe.cn = ""; phe.may = "";
+  await loadMasters();
+  if(!masters) return;
+
+  document.getElementById("pheCNTitle").textContent = "Nhập Phế " + loai + " — Chọn CN";
+  renderPheCNList();
+  showScreen("stepPheCN");
+}
+
+function renderPheCNList(){
+  var list = phe.loai === "Thổi" ? (masters.cnThoi||[]) : (masters.cnIn||[]);
+  var el = document.getElementById("pheCNList");
+  el.innerHTML = list.map(function(c){
+    return '<button class="pick-btn" onclick="selectPheCN(\'' + esc(c.ten) + '\')"><div class="pb-name">' + esc(c.ten) + '</div></button>';
+  }).join("");
+  document.getElementById("pheCNSearch").value = "";
+}
+
+function filterPheCN(){
+  var q = document.getElementById("pheCNSearch").value.toLowerCase();
+  document.querySelectorAll("#pheCNList .pick-btn").forEach(function(b){
+    b.style.display = b.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+}
+
+function selectPheCN(ten){
+  phe.cn = ten;
+  document.getElementById("pheMayTitle").textContent = "Nhập Phế " + phe.loai + " — Chọn Máy";
+  renderPheMayList();
+  showScreen("stepPheMay");
+}
+
+function renderPheMayList(){
+  var list = phe.loai === "Thổi" ? (masters.mayThoi||[]) : (masters.mayIn||[]);
+  var el = document.getElementById("pheMayList");
+  el.innerHTML = list.map(function(m){
+    return '<button class="pick-btn" onclick="selectPheMay(\'' + esc(m.ten) + '\')"><div class="pb-name">' + esc(m.ten) + '</div></button>';
+  }).join("");
+  document.getElementById("pheMaySearch").value = "";
+}
+
+function filterPheMay(){
+  var q = document.getElementById("pheMaySearch").value.toLowerCase();
+  document.querySelectorAll("#pheMayList .pick-btn").forEach(function(b){
+    b.style.display = b.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+}
+
+function selectPheMay(ten){
+  phe.may = ten;
+  document.getElementById("pheCNVal").textContent = phe.cn;
+  document.getElementById("pheMayVal").textContent = phe.may;
+  document.getElementById("pheLoaiVal").textContent = phe.loai;
+  document.getElementById("pheTron").value = "";
+  document.getElementById("pheMau").value = "";
+  showScreen("stepPheInput");
+}
+
+async function submitPhe(){
+  var tron = parseFloat((document.getElementById("pheTron").value||"").replace(",",".")) || 0;
+  var mau  = parseFloat((document.getElementById("pheMau").value||"").replace(",",".")) || 0;
+  if(tron <= 0 && mau <= 0){ toast("Nhập ít nhất 1 loại phế"); return; }
+
+  var btn = document.getElementById("btnPhe");
+  var old = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Đang gửi...';
+
+  try {
+    var r = await apiPost({
+      action: "tksxSubmitPhe",
+      user: st.username,
+      loai: phe.loai,
+      cn: phe.cn,
+      may: phe.may,
+      pheTron: tron,
+      pheMau: mau,
+      ts: new Date().toISOString()
+    });
+    if(r.result === "ok"){
+      FB.sendOk();
+      toast("Gửi phế thành công!");
+      document.getElementById("pheTron").value = "";
+      document.getElementById("pheMau").value = "";
+    } else {
+      FB.sendFail();
+      toast(r.error || "Gửi thất bại");
+    }
+  } catch(e){
+    FB.sendFail();
+    toast("Lỗi kết nối. Thử lại.");
+  }
+  btn.disabled = false; btn.innerHTML = old;
+}
+
+/* ══════════════════════════════════════════════════
+   CHUYỂN CUỘN — Scan QR LSX, mỗi lần quét = 1 cuộn
+══════════════════════════════════════════════════ */
+var ccItems = []; // danh sách LSX đã quét (cho phép trùng)
+var ccScanner = null, ccScanning = false, ccLastText = "", ccLastTime = 0;
+
+function startChuyen(){
+  ccItems = [];
+  updateCCCount();
+  renderCCItems();
+  document.getElementById("ccManual").value = "";
+  document.getElementById("ccHint").textContent = "Quét mã LSX (mỗi lần quét = 1 cuộn)";
+  document.getElementById("ccHint").className = "hint info";
+  showScreen("stepChuyen");
+  startCCCamera();
+}
+
+function backFromChuyen(){
+  stopCCCamera();
+  showScreen("stepHome");
+}
+
+function startCCCamera(){
+  if(ccScanning) return;
+  var el = document.getElementById("ccReader");
+  el.innerHTML = "";
+  try {
+    ccScanner = new Html5Qrcode("ccReader");
+    ccScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 120 } },
+      onCCScan,
+      function(){}
+    ).then(function(){ ccScanning = true; }).catch(function(e){
+      document.getElementById("ccHint").textContent = "Không mở được camera";
+      document.getElementById("ccHint").className = "hint err";
+    });
+  } catch(e){}
+}
+
+function stopCCCamera(){
+  if(!ccScanning || !ccScanner) return;
+  try { ccScanner.stop().then(function(){ ccScanning = false; ccScanner.clear(); }).catch(function(){}); } catch(e){}
+  ccScanning = false;
+}
+
+function onCCScan(text){
+  var now = Date.now();
+  if(text === ccLastText && now - ccLastTime < 1500) return;
+  ccLastText = text; ccLastTime = now;
+  addChuyenItem(text);
+}
+
+function addChuyenItem(raw){
+  var s = String(raw).trim();
+  // QR có thể là "LSX/KL" hoặc chỉ "LSX" — lấy phần trước dấu /
+  var lsx = s.split("/")[0].trim();
+  if(!lsx){
+    FB.error();
+    document.getElementById("ccHint").textContent = "Mã không hợp lệ";
+    document.getElementById("ccHint").className = "hint err";
+    return;
+  }
+  ccItems.push(lsx);
+  FB.single();
+  document.getElementById("ccHint").textContent = "✓ " + lsx + " (cuộn #" + ccItems.filter(function(x){ return x === lsx; }).length + ")";
+  document.getElementById("ccHint").className = "hint ok";
+  updateCCCount();
+  renderCCItems();
+}
+
+function addChuyenManual(){
+  var v = document.getElementById("ccManual").value.trim();
+  if(!v){ toast("Nhập mã LSX"); return; }
+  addChuyenItem(v);
+  document.getElementById("ccManual").value = "";
+  document.getElementById("ccManual").focus();
+}
+
+function updateCCCount(){
+  document.getElementById("ccCount").textContent = ccItems.length;
+}
+
+function renderCCItems(){
+  var el = document.getElementById("ccItems");
+  if(!ccItems.length){ el.innerHTML = ""; return; }
+  // Đảo ngược để item mới nhất lên đầu
+  el.innerHTML = ccItems.slice().reverse().map(function(lsx, ri){
+    var i = ccItems.length - 1 - ri;
+    return '<div class="rowCard"><div class="seq-badge">' + (i+1) + '</div>' +
+      '<div class="info"><div class="top">' + esc(lsx) + '</div></div>' +
+      '<button class="del-btn" onclick="removeCCItem(' + i + ')">✕</button></div>';
+  }).join("");
+}
+
+function removeCCItem(i){
+  ccItems.splice(i, 1);
+  updateCCCount();
+  renderCCItems();
+}
+
+function clearChuyen(){
+  ccItems = [];
+  updateCCCount();
+  renderCCItems();
+  document.getElementById("ccHint").textContent = "Đã xóa";
+  document.getElementById("ccHint").className = "hint info";
+}
+
+async function submitChuyen(){
+  if(!ccItems.length){ toast("Chưa quét mã nào"); return; }
+
+  var btn = document.getElementById("btnChuyen");
+  var old = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Đang gửi...';
+
+  try {
+    var r = await apiPost({
+      action: "tksxSubmitChuyen",
+      user: st.username,
+      items: ccItems,
+      ts: new Date().toISOString()
+    });
+    if(r.result === "ok"){
+      FB.sendOk();
+      var details = r.details || [];
+      var msg = "Chuyển " + (r.inserted||0) + " cuộn thành công!";
+      var warns = details.filter(function(d){ return d.ghiChu; });
+      if(warns.length) msg += " (" + warns.length + " cảnh báo)";
+      toast(msg, 4000);
+
+      // Hiển thị kết quả
+      var el = document.getElementById("ccItems");
+      el.innerHTML = details.map(function(d, idx){
+        var cls = d.ghiChu ? ' style="border-color:var(--amber)"' : '';
+        return '<div class="rowCard"' + cls + '><div class="seq-badge">' + (idx+1) + '</div>' +
+          '<div class="info"><div class="top">' + esc(d.lsx) + '</div>' +
+          '<div class="sub">' + (d.kl > 0 ? 'KL: ' + fmt(d.kl) + ' kg' : esc(d.ghiChu || "KL: 0")) + '</div></div></div>';
+      }).join("");
+
+      ccItems = [];
+      updateCCCount();
+    } else {
+      FB.sendFail();
+      toast(r.error || "Gửi thất bại");
+    }
+  } catch(e){
+    FB.sendFail();
+    toast("Lỗi kết nối. Thử lại.");
+  }
+  btn.disabled = false; btn.innerHTML = old;
+}
+
+/* ══════════════════════════════════════════════════
+   THỐNG KÊ CHUYỂN CUỘN
+══════════════════════════════════════════════════ */
+var ccStatData = null;
+
+function openChuyenStat(){
+  showScreen("stepChuyenStat");
+  var today = todayISO();
+  document.getElementById("ccFrom").value = today;
+  document.getElementById("ccTo").value = today;
+  loadChuyenStat();
+}
+
+function setCCToday(){ var t = todayISO(); document.getElementById("ccFrom").value = t; document.getElementById("ccTo").value = t; loadChuyenStat(); }
+function setCCYesterday(){ var y = yesterdayISO(); document.getElementById("ccFrom").value = y; document.getElementById("ccTo").value = y; loadChuyenStat(); }
+
+async function loadChuyenStat(){
+  var from = document.getElementById("ccFrom").value;
+  var to   = document.getElementById("ccTo").value;
+  if(!from || !to){ toast("Chọn ngày"); return; }
+
+  document.getElementById("ccStatStatus").innerHTML = '<span class="spin"></span> Đang tải...';
+  document.getElementById("ccStatBody").innerHTML = "";
+  document.getElementById("ccStatSum").style.display = "none";
+
+  try {
+    var r = await api("tksxChuyenStat", { from: from, to: to });
+    if(r.result === "ok"){
+      ccStatData = r;
+      document.getElementById("ccStatStatus").textContent = "";
+      renderChuyenStat();
+    } else {
+      document.getElementById("ccStatStatus").textContent = r.error || "Lỗi";
+    }
+  } catch(e){
+    document.getElementById("ccStatStatus").textContent = "Không kết nối được";
+  }
+}
+
+function renderChuyenStat(){
+  if(!ccStatData) return;
+  var rows = ccStatData.rows || [];
+  var q = (document.getElementById("ccStatQ").value || "").toLowerCase();
+  if(q) rows = rows.filter(function(r){ return r.lsx.toLowerCase().includes(q); });
+
+  var sumEl = document.getElementById("ccStatSum");
+  sumEl.style.display = "flex";
+  sumEl.innerHTML =
+    '<div class="daily-chip"><div class="dv">' + (ccStatData.tongCuon||0) + '</div><div class="dl">📦 Tổng cuộn</div></div>' +
+    '<div class="daily-chip"><div class="dv">' + fmt(ccStatData.tongKL||0) + '</div><div class="dl">⚖️ Tổng KL (kg)</div></div>';
+
+  if(!rows.length){
+    document.getElementById("ccStatBody").innerHTML = '<div class="pick-status">Không có dữ liệu</div>';
+    return;
+  }
+
+  var html = '<table class="hist-tbl"><thead><tr><th>Thời gian</th><th>LSX</th><th style="text-align:right">KL (kg)</th><th>Ghi chú</th></tr></thead><tbody>';
+  rows.forEach(function(r){
+    var cls = r.ghiChu ? ' class="hist-warn"' : '';
+    html += '<tr' + cls + '><td>' + esc(r.time) + '</td><td>' + esc(r.lsx) + '</td><td style="text-align:right">' + fmt(r.kl) + '</td><td>' + esc(r.ghiChu) + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById("ccStatBody").innerHTML = html;
+}
+
+/* ══════════════════════════════════════════════════
    NHẬP TAY — ENTER shortcuts
 ══════════════════════════════════════════════════ */
 document.getElementById("manualLsx").addEventListener("keydown", e => {
@@ -901,6 +1338,15 @@ document.getElementById("manualKl").addEventListener("keydown", e => {
 });
 document.getElementById("klCuon").addEventListener("keydown", e => {
   if(e.key === "Enter"){ e.preventDefault(); submitSX(); }
+});
+document.getElementById("pheTron").addEventListener("keydown", e => {
+  if(e.key === "Enter"){ e.preventDefault(); document.getElementById("pheMau").focus(); }
+});
+document.getElementById("pheMau").addEventListener("keydown", e => {
+  if(e.key === "Enter"){ e.preventDefault(); submitPhe(); }
+});
+document.getElementById("ccManual").addEventListener("keydown", e => {
+  if(e.key === "Enter"){ e.preventDefault(); addChuyenManual(); }
 });
 
 /* ══════════════════════════════════════════════════
