@@ -929,10 +929,17 @@ function setDefaultDates() {
 }
 
 function buildTraCuuDropdowns(md) {
+  // Người kiểm tra
+  const inspectors = md.inspectors || [];
+  const selIns = document.getElementById("fInspector");
+  inspectors.forEach(name => { const o = document.createElement("option"); o.value = name; o.textContent = name; selIns.appendChild(o); });
+
+  // Vị trí kiểm tra
   const procs = md.processes || [];
   const selVT = document.getElementById("fViTriTC");
   procs.forEach(p => { const o = document.createElement("option"); o.value = p.ten; o.textContent = p.ten; selVT.appendChild(o); });
 
+  // Công đoạn gây lỗi
   const selCD = document.getElementById("fCDGayLoi");
   procs.forEach(p => { const o = document.createElement("option"); o.value = p.ten; o.textContent = p.ten; selCD.appendChild(o); });
 }
