@@ -650,7 +650,8 @@ const FUNC_HIERARCHY = {
     {
       name: "Tra cứu kết quả",
       icon: "📊",
-      childUrls: ["qc.html?mode=tracuu"]
+      childUrls: [],
+      directUrl: "qc.html?mode=tracuu"
     }
   ]
 };
@@ -731,7 +732,13 @@ function openModuleFuncs(modCode, group){
     const usedUrls = new Set();
     const parentItems = [];
 
+    const directItems = []; // hierarchy items có directUrl (navigate thẳng, không cần permission)
+
     hierarchy.forEach(h => {
+      if (h.directUrl) {
+        directItems.push(h);
+        return;
+      }
       const children = group.funcs.filter(p => {
         const u = (p.url || "").trim().toLowerCase();
         return h.childUrls.some(cu => u === cu || u.startsWith(cu + "?"));
@@ -745,7 +752,7 @@ function openModuleFuncs(modCode, group){
       !usedUrls.has((p.url || "").trim().toLowerCase())
     );
 
-    const totalItems = parentItems.length + ungrouped.length;
+    const totalItems = parentItems.length + directItems.length + ungrouped.length;
     document.getElementById("funcSubtitle").textContent = totalItems + " chức năng";
 
     // Render nhóm cha (click → mở sub-func)
@@ -759,6 +766,19 @@ function openModuleFuncs(modCode, group){
           '<div class="func-desc" style="color:var(--teal)">' + ph.children.length + ' chức năng con ▸</div>' +
         '</div>';
       btn.onclick = () => openSubFuncs(mod, ph);
+      list.appendChild(btn);
+    });
+
+    // Render directUrl items (navigate thẳng, không cần permission riêng)
+    directItems.forEach(di => {
+      const btn = document.createElement("button");
+      btn.className = "func-btn";
+      btn.innerHTML =
+        '<div class="func-icon">' + (di.icon || mod.icon || "📋") + '</div>' +
+        '<div class="func-info">' +
+          '<div class="func-name">' + esc(di.name) + '</div>' +
+        '</div>';
+      btn.onclick = () => { window.location.href = di.directUrl; };
       list.appendChild(btn);
     });
 
