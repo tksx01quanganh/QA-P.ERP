@@ -945,6 +945,12 @@ async function openDetail(reportId) {
     }
 
     // Final conclusion
+    if (r.Disposition) {
+      const dispLabels = { OK: "✅ OK — Chấp nhận", REWORK: "🔄 Làm lại", SCRAP: "❌ Hủy", CONCESSION: "🤝 Nhượng bộ" };
+      const dispColor = { OK: "var(--green)", REWORK: "#d97706", SCRAP: "var(--red)", CONCESSION: "#6366f1" };
+      html += '<div style="margin:8px 0;padding:8px 12px;border-radius:8px;background:' + (r.Disposition === "OK" ? "#dcfce7" : r.Disposition === "SCRAP" ? "#fee2e2" : "#fef9c3") + ';font-weight:600;color:' + (dispColor[r.Disposition] || "#333") + ';font-size:15px">' +
+        (dispLabels[r.Disposition] || r.Disposition) + '</div>';
+    }
     if (r.FinalConclusion) {
       html += '<div class="detail-section" style="border-color:var(--green)"><div class="ds-title" style="color:var(--green)">Kết luận</div>' +
         '<div style="font-size:14px">' + esc(r.FinalConclusion) + '</div>' +
@@ -971,7 +977,15 @@ async function openDetail(reportId) {
         html += '<button class="btn small teal" onclick="changeStatus(\'' + esc(r.NGReportID) + '\',\'UNDER_REVIEW\')">📋 Nhận xem xét</button>';
       }
       if (s === "UNDER_REVIEW") {
-        html += '<div class="form-group" style="margin-top:8px"><label class="required">Kết luận (bắt buộc khi đóng)</label><textarea id="svConclusion" rows="2" placeholder="Kết luận cuối cùng..."></textarea></div>' +
+        html += '<div class="form-group" style="margin-top:8px"><label class="required">Kết quả xử lý</label>' +
+          '<select id="svDisposition" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px">' +
+          '<option value="">-- Chọn --</option>' +
+          '<option value="OK">✅ OK — Đã sửa, chấp nhận</option>' +
+          '<option value="REWORK">🔄 REWORK — Làm lại</option>' +
+          '<option value="SCRAP">❌ SCRAP — Hủy</option>' +
+          '<option value="CONCESSION">🤝 CONCESSION — Nhượng bộ</option>' +
+          '</select></div>' +
+          '<div class="form-group"><label class="required">Kết luận (bắt buộc khi đóng)</label><textarea id="svConclusion" rows="2" placeholder="Kết luận cuối cùng..."></textarea></div>' +
           '<button class="btn small green" onclick="closeReport(\'' + esc(r.NGReportID) + '\')">✅ Đóng báo cáo</button>';
       }
       if (s === "CLOSED") {
@@ -1043,13 +1057,16 @@ async function changeStatus(reportId, newStatus) {
 }
 
 async function closeReport(reportId) {
+  const disposition = document.getElementById("svDisposition").value;
   const conclusion = document.getElementById("svConclusion").value.trim();
+  if (!disposition) { showToast("Bắt buộc chọn kết quả xử lý", 3000); return; }
   if (!conclusion) { showToast("Bắt buộc nhập kết luận khi đóng báo cáo", 3000); return; }
-  if (!confirm("Đóng báo cáo " + reportId + "?")) return;
+  const dispLabel = { OK: "OK", REWORK: "Làm lại", SCRAP: "Hủy", CONCESSION: "Nhượng bộ" };
+  if (!confirm("Đóng báo cáo " + reportId + "?\nKết quả: " + (dispLabel[disposition] || disposition))) return;
 
   showSpinner("Đang đóng báo cáo...");
   try {
-    const res = await apiPost({ action: "changeNGStatus", reportId: reportId, newStatus: "CLOSED", conclusion: conclusion, user: state.user });
+    const res = await apiPost({ action: "changeNGStatus", reportId: reportId, newStatus: "CLOSED", disposition: disposition, conclusion: conclusion, user: state.user });
     hideSpinner();
     if (res.result === "ok") { showToast("Đã đóng báo cáo", 3000); openDetail(reportId); }
     else { showToast("Lỗi: " + res.error, 4000); }
