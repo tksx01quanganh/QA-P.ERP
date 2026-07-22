@@ -684,8 +684,8 @@ function setPhanDinh(val) {
 }
 
 // ===== PHOTO (có nén ảnh) =====
-const IMG_MAX_SIZE = 1200; // max chiều dài/rộng (px)
-const IMG_QUALITY  = 0.6;  // JPEG quality (0.0 – 1.0)
+const IMG_MAX_SIZE = 800;  // max chiều dài/rộng (px) — giảm từ 1200 để upload nhanh hơn
+const IMG_QUALITY  = 0.5;  // JPEG quality — giảm từ 0.6 để file nhỏ hơn (~80-120KB)
 
 function takePhoto() {
   document.getElementById("filePhoto").click();
@@ -806,43 +806,33 @@ async function submitInspection() {
     // Lấy KiemTraID (nếu backend mới trả ids)
     const kiemTraId = (res.ids && res.ids.length > 0) ? res.ids[0] : "";
 
-    // Bước 2: Upload ảnh
+    // Bước 2: Upload ảnh SONG SONG (tất cả cùng lúc, nhanh hơn gấp N lần)
     let linkAnh = "";
     if (state.photos.length > 0) {
-      const urls = [];
-      const names = [];
-      const failedUploads = [];
-      for (let i = 0; i < state.photos.length; i++) {
-        showSpinner("Đang upload ảnh " + (i+1) + "/" + state.photos.length + "...");
-        try {
-          const seq = ("00" + (i + 1)).slice(-2);
-          const photoName = kiemTraId
-            ? (kiemTraId + "-" + seq + ".jpg")
-            : ("qc_" + Date.now() + "_" + seq + ".jpg");
-          const upBody = {
-            action: "uploadPhoto",
-            dataUrl: state.photos[i].dataUrl,
-            filename: photoName
-          };
-          if (kiemTraId) {
-            upBody.prefix = kiemTraId;
-            upBody.seq = seq;
-          }
-          const upRes = await apiPost(upBody);
-          if (upRes.result === "ok" && upRes.url) {
-            urls.push(upRes.url);
-            names.push(upRes.filename || photoName);
-          } else {
-            failedUploads.push("Ảnh " + (i+1) + ": " + (upRes.error || "lỗi không rõ"));
-          }
-        } catch(ue) {
-          failedUploads.push("Ảnh " + (i+1) + ": " + String(ue));
-        }
-      }
+      showSpinner("Đang upload " + state.photos.length + " ảnh...");
+      const uploadPromises = state.photos.map((photo, i) => {
+        const seq = ("00" + (i + 1)).slice(-2);
+        const photoName = kiemTraId
+          ? (kiemTraId + "-" + seq + ".jpg")
+          : ("qc_" + Date.now() + "_" + seq + ".jpg");
+        const upBody = { action: "uploadPhoto", dataUrl: photo.dataUrl, filename: photoName };
+        if (kiemTraId) { upBody.prefix = kiemTraId; upBody.seq = seq; }
+        return apiPost(upBody)
+          .then(r => r.result === "ok" && r.url ? { url: r.url, name: r.filename || photoName } : { error: "Ảnh " + (i+1) + ": " + (r.error || "lỗi") })
+          .catch(e => ({ error: "Ảnh " + (i+1) + ": " + String(e) }));
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const urls = [], names = [], failedUploads = [];
+      results.forEach(r => {
+        if (r.url) { urls.push(r.url); names.push(r.name); }
+        else { failedUploads.push(r.error); }
+      });
+
       linkAnh = urls.join(" | ");
       const tenAnh = names.join(" | ");
 
-      // Bước 3: Cập nhật link ảnh + tên ảnh vào bản ghi đã lưu
+      // Bước 3: Cập nhật link ảnh + tên ảnh vào bản ghi
       if (linkAnh && kiemTraId) {
         try {
           await apiPost({ action: "updateLinkAnh", kiemTraId: kiemTraId, linkAnh: linkAnh, tenAnh: tenAnh });
