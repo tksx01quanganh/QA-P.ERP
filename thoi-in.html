@@ -956,6 +956,7 @@ async function loadDaily(){
 
 function drawDaily(){
   if(!dailyData) return;
+
   let sx = dailyData.sx || [];
   let pheArr = dailyData.phe || [];
   if(dailyFilter !== "all"){
