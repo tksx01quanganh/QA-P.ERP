@@ -1107,7 +1107,8 @@ function renderList(list) {
           (r.congDoanGayLoi ? " · CĐ: " + esc(r.congDoanGayLoi) : "") + '</span>';
       }
       html += '<div class="detail-meta"><b>' + esc(r.phanDinh) + '</b> · ' +
-        esc(r.ngay) + ' ' + esc(r.gio) + ' · NV: <b>' + esc(r.inspector) + '</b>' +
+        esc(r.ngay) + ' ' + esc(r.gio) +
+        ' · NV: <b>' + esc(r.inspector) + '</b>' +
         ' · CĐ KT: ' + esc(r.congDoanKT || "") +
         (r.may ? ' · Máy: ' + esc(r.may) : '') +
         ' · SL KT: ' + (r.slKiemTra || 0) +
