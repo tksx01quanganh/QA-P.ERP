@@ -197,17 +197,21 @@ input,select,textarea{font-family:inherit;font-size:16px}
       <select id="selViTri" onchange="onViTriChange()"><option value="">-- Chọn --</option></select>
     </div>
 
-    <!-- Máy (SX) — có ô tìm kiếm -->
+    <!-- Máy (SX) — tìm kiếm + chọn cùng 1 dòng -->
     <div class="form-group" id="grpMay" style="display:none">
       <label>Máy (SX)</label>
-      <input type="text" id="searchMay" placeholder="Gõ để tìm máy..." oninput="filterMay()" style="margin-bottom:6px;font-size:14px;padding:8px 10px"/>
-      <select id="selMay"><option value="">-- Chọn vị trí trước --</option></select>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="searchMay" placeholder="Gõ tìm máy..." oninput="filterMay()" style="flex:1;font-size:14px;padding:8px 10px"/>
+        <select id="selMay" style="flex:1"><option value="">-- Chọn máy --</option></select>
+      </div>
     </div>
-    <!-- Công nhân SX — có ô tìm kiếm -->
+    <!-- Công nhân SX — tìm kiếm + chọn cùng 1 dòng -->
     <div class="form-group" id="grpCN" style="display:none">
       <label>Công nhân SX</label>
-      <input type="text" id="searchCN" placeholder="Gõ để tìm công nhân..." oninput="filterCN()" style="margin-bottom:6px;font-size:14px;padding:8px 10px"/>
-      <select id="selCN"><option value="">-- Chọn vị trí trước --</option></select>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="searchCN" placeholder="Gõ tìm CN..." oninput="filterCN()" style="flex:1;font-size:14px;padding:8px 10px"/>
+        <select id="selCN" style="flex:1"><option value="">-- Chọn CN --</option></select>
+      </div>
     </div>
 
     <!-- SL kiểm tra, Số lỗi -->
@@ -259,13 +263,6 @@ input,select,textarea{font-family:inherit;font-size:16px}
         <label>Phương án xử lý</label>
         <select id="selPhuongAn">
           <option value="">-- Chọn --</option>
-          <option value="Rework">Rework</option>
-          <option value="Sort">Sort (phân loại)</option>
-          <option value="Hold">Hold (tạm giữ)</option>
-          <option value="Scrap">Scrap (hủy)</option>
-          <option value="Chấp nhận sử dụng">Chấp nhận sử dụng</option>
-          <option value="Trả NCC">Trả NCC</option>
-          <option value="Chờ quyết định">Chờ quyết định</option>
         </select>
       </div>
 
@@ -448,7 +445,7 @@ async function loadMasterData() {
       try {
         const c = JSON.parse(cached);
         if (c.ts && Date.now() - c.ts < 600000) {
-          state.masterData = c.data; buildViTriSelect(); buildCategorySelect();
+          state.masterData = c.data; buildViTriSelect(); buildCategorySelect(); buildPhuongAnSelect();
           if (state.mode === "tracuu") { buildTraCuuDropdowns(c.data); buildCategoryChips(c.data.categories); }
           return;
         }
@@ -461,6 +458,7 @@ async function loadMasterData() {
       localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: res }));
       buildViTriSelect();
       buildCategorySelect();
+      buildPhuongAnSelect();
       if (state.mode === "tracuu") { buildTraCuuDropdowns(res); buildCategoryChips(res.categories); }
     }
   } catch(e) { console.error("Load master data failed:", e); }
@@ -530,6 +528,10 @@ function filterMay() {
     ? state._filteredMachines.filter(m => (m.ma + " " + m.ten).toLowerCase().includes(q))
     : state._filteredMachines;
   renderMayOptions(filtered);
+  // Auto-select nếu chỉ còn 1 kết quả
+  if (q && filtered.length === 1) {
+    document.getElementById("selMay").selectedIndex = 1;
+  }
 }
 
 function filterCN() {
@@ -539,6 +541,19 @@ function filterCN() {
     ? state._filteredWorkers.filter(w => (w.ma + " " + w.ten).toLowerCase().includes(q))
     : state._filteredWorkers;
   renderCNOptions(filtered);
+  // Auto-select nếu chỉ còn 1 kết quả
+  if (q && filtered.length === 1) {
+    document.getElementById("selCN").selectedIndex = 1;
+  }
+}
+
+function buildPhuongAnSelect() {
+  if (!state.masterData || !state.masterData.phuongAnOptions) return;
+  const sel = document.getElementById("selPhuongAn");
+  sel.innerHTML = '<option value="">-- Chọn --</option>';
+  state.masterData.phuongAnOptions.forEach(pa => {
+    sel.innerHTML += '<option value="' + esc(pa) + '">' + esc(pa) + '</option>';
+  });
 }
 
 function buildCategorySelect() {
@@ -847,58 +862,8 @@ async function submitInspection() {
     hideSpinner();
 
     if (res.result === "ok") {
-      if (phanDinh === "NG") {
-        // Auto-tạo NG Report DRAFT
-        showSpinner("Đang tạo NG Report...");
-        try {
-          const catSel = document.getElementById("selCategory");
-          const grpSel = document.getElementById("selGroup");
-          const catId = catSel.value;
-          const catName = catId && catSel.selectedIndex > 0 ? catSel.options[catSel.selectedIndex].textContent.split(" - ").slice(1).join(" - ") : "";
-          const grpId = grpSel.value;
-          const grpName = grpId && grpSel.selectedIndex > 0 ? (grpSel.options[grpSel.selectedIndex].dataset.name || "") : "";
-
-          const ngBody = {
-            action: "createNGReport",
-            user: state.user,
-            submitNow: false,
-            lsx: p.lsxct || "",
-            maSP: p.masp || "",
-            khachHang: p.khachhang || "",
-            moTa: p.mota || "",
-            dvt: p.dvt || "",
-            soLuongYeuCau: p.soluong || 0,
-            congDoanKiemTra: viTriTen,
-            may: document.getElementById("selMay").value,
-            congNhanSX: document.getElementById("selCN").value,
-            soLuongKiemTra: parseFloat(slKT) || 0,
-            soLoi: parseFloat(document.getElementById("inpSoLoi").value) || 0,
-            defectCategoryID: catId,
-            defectCategoryName: catName,
-            defectGroupID: grpId,
-            defectGroupName: grpName,
-            defectDescription: document.getElementById("inpMoTaChiTiet").value.trim(),
-            congDoanGayLoi: document.getElementById("selCongDoanGayLoi").value,
-            phuongAnXuLy: document.getElementById("selPhuongAn").value,
-            linkAnh: linkAnh,
-            ghiChu: document.getElementById("inpGhiChu").value.trim()
-          };
-          const ngRes = await apiPost(ngBody);
-          hideSpinner();
-          if (ngRes.result === "ok" && ngRes.reportId) {
-            window.location.href = "ng-report.html?mode=continue&id=" + encodeURIComponent(ngRes.reportId);
-            return;
-          }
-        } catch(ngErr) {
-          hideSpinner();
-          console.error("Auto-create NG Report error:", ngErr);
-        }
-        alert("Đã ghi nhận NG. Tạo NG Report tự động thất bại — vui lòng tạo thủ công.");
-        show("screenHome");
-      } else {
-        alert("Đã ghi nhận " + phanDinh + " thành công!");
-        show("screenHome");
-      }
+      alert("Đã ghi nhận " + phanDinh + " thành công!");
+      show("screenHome");
     } else {
       alert("Lỗi: " + (res.error || "Không xác định"));
     }
