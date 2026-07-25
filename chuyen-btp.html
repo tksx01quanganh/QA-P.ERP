@@ -87,6 +87,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .hint.info{background:#e0f2fe;color:#0369a1;}
 .hint.ok{background:#dcfce7;color:#15803d;}
 .hint.err{background:#fef2f2;color:var(--red);}
+
+/* over-qty warning overlay */
+.ow-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;}
+.ow-box{background:#fff;border:4px solid var(--red);border-radius:18px;padding:20px;max-width:380px;width:100%;text-align:center;}
+.ow-icon{font-size:52px;line-height:1;margin-bottom:6px;}
+.ow-title{font-size:20px;font-weight:900;color:var(--red);margin-bottom:14px;letter-spacing:.5px;}
+.ow-detail{background:#fef2f2;border-radius:12px;padding:10px 14px;margin-bottom:12px;text-align:left;}
+.ow-row{display:flex;justify-content:space-between;padding:4px 0;font-size:16px;}
+.ow-row-vuot{border-top:2px solid var(--red);margin-top:4px;padding-top:8px;}
+.ow-val{font-weight:800;font-size:18px;}
+.ow-val.red{color:var(--red);}
+.ow-msg{font-size:15px;color:var(--txt);margin-bottom:14px;font-weight:600;}
+.ow-btns{display:flex;flex-direction:column;gap:0;}
+
+/* shake animation */
+@keyframes shake{
+  0%,100%{transform:translateX(0);}
+  10%,30%,50%,70%,90%{transform:translateX(-6px);}
+  20%,40%,60%,80%{transform:translateX(6px);}
+}
+.shake .ow-box{animation:shake .5s ease-in-out;}
 </style>
 </head>
 <body>
@@ -171,6 +192,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div id="emptyHint" class="hint info">Nhập mã LSX để bắt đầu</div>
   </div>
 </section>
+
+<!-- OVER QTY WARNING -->
+<div id="overQtyWarning" class="ow-overlay" style="display:none;">
+  <div class="ow-box">
+    <div class="ow-icon">⚠️</div>
+    <div class="ow-title">CẢNH BÁO VƯỢT SỐ LƯỢNG</div>
+    <div class="ow-detail">
+      <div class="ow-row"><span>SL còn lại:</span><span id="owConLai" class="ow-val">0</span></div>
+      <div class="ow-row"><span>SL chuyển:</span><span id="owSlChuyen" class="ow-val red">0</span></div>
+      <div class="ow-row ow-row-vuot"><span>Vượt:</span><span id="owVuot" class="ow-val red">0</span></div>
+    </div>
+    <div class="ow-msg">Bạn có chắc chắn muốn chuyển vượt số lượng yêu cầu?</div>
+    <div class="ow-btns">
+      <button class="btn red" onclick="confirmOverQty()">XÁC NHẬN CHUYỂN</button>
+      <button class="btn gray" onclick="hideOverQtyWarning()" style="margin-top:8px;">Hủy</button>
+    </div>
+  </div>
+</div>
 
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
@@ -517,7 +556,7 @@ function setSubmitHint(msg, type){
   }
 }
 
-async function doSubmit(){
+async function doSubmit(confirmOverQty){
   const d = st.selectedLSX;
   if(!d){
     setSubmitHint("Vui lòng chọn LSX trước", "err");
@@ -541,12 +580,6 @@ async function doSubmit(){
     return;
   }
 
-  const conLai = d.conLai != null ? d.conLai : 0;
-  if(sl > conLai){
-    setSubmitHint("Số lượng chuyển (" + fmtNum(sl) + ") vượt quá SL còn lại (" + fmtNum(conLai) + ")", "err");
-    return;
-  }
-
   const ghiChu = document.getElementById("ghiChu").value.trim();
 
   const btn = document.getElementById("submitBtn");
@@ -554,6 +587,7 @@ async function doSubmit(){
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Đang gửi...';
   setSubmitHint("");
+  hideOverQtyWarning();
 
   try {
     const res = await apiPost({
@@ -568,15 +602,23 @@ async function doSubmit(){
       ghiChu: ghiChu,
       from: fromCD,
       to: toCD,
-      transferType: getSelectedTransferType()
+      transferType: getSelectedTransferType(),
+      confirmOverQty: !!confirmOverQty
     });
 
     btn.disabled = false;
     btn.textContent = oldTxt;
 
+    if(res.result === "confirm_over"){
+      // Hiện cảnh báo vượt SL
+      showOverQtyWarning(res.conLai, sl);
+      return;
+    }
+
     if(res.result === "ok"){
       const trxId = res.trxId || res.id || "";
-      alert("Thành công!\n\nMã giao dịch: " + trxId + "\nLSX: " + d.lsxct + "\nSố lượng: " + fmtNum(sl));
+      const overNote = res.overQty ? "\n⚠️ VƯỢT SỐ LƯỢNG YÊU CẦU" : "";
+      alert("Thành công!\n\nMã giao dịch: " + trxId + "\nLSX: " + d.lsxct + "\nSố lượng: " + fmtNum(sl) + overNote);
       toast("Đã gửi thành công!", 2500);
       resetForm();
     } else {
@@ -587,6 +629,57 @@ async function doSubmit(){
     btn.textContent = oldTxt;
     setSubmitHint("Lỗi kết nối máy chủ. Kiểm tra mạng và thử lại.", "err");
   }
+}
+
+/* ══════════════════════════════════════════════════
+   CANH BAO VUOT SO LUONG
+══════════════════════════════════════════════════ */
+function showOverQtyWarning(conLai, slChuyen){
+  const el = document.getElementById("overQtyWarning");
+  document.getElementById("owConLai").textContent = fmtNum(conLai);
+  document.getElementById("owSlChuyen").textContent = fmtNum(slChuyen);
+  document.getElementById("owVuot").textContent = fmtNum(slChuyen - conLai);
+  el.style.display = "block";
+  el.classList.add("shake");
+  setTimeout(() => el.classList.remove("shake"), 600);
+  // Rung điện thoại
+  try { if(navigator.vibrate) navigator.vibrate([200,100,200,100,300]); } catch(e){}
+  // Âm thanh cảnh báo
+  playWarningBeep();
+}
+
+function hideOverQtyWarning(){
+  document.getElementById("overQtyWarning").style.display = "none";
+}
+
+function confirmOverQty(){
+  hideOverQtyWarning();
+  doSubmit(true);
+}
+
+function playWarningBeep(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Beep 1
+    const o1 = ctx.createOscillator(); const g1 = ctx.createGain();
+    o1.type = "square"; o1.frequency.value = 800;
+    g1.gain.value = 0.3;
+    o1.connect(g1); g1.connect(ctx.destination);
+    o1.start(ctx.currentTime); o1.stop(ctx.currentTime + 0.15);
+    // Beep 2
+    const o2 = ctx.createOscillator(); const g2 = ctx.createGain();
+    o2.type = "square"; o2.frequency.value = 1000;
+    g2.gain.value = 0.3;
+    o2.connect(g2); g2.connect(ctx.destination);
+    o2.start(ctx.currentTime + 0.2); o2.stop(ctx.currentTime + 0.35);
+    // Beep 3 (dài hơn)
+    const o3 = ctx.createOscillator(); const g3 = ctx.createGain();
+    o3.type = "square"; o3.frequency.value = 1200;
+    g3.gain.value = 0.35;
+    o3.connect(g3); g3.connect(ctx.destination);
+    o3.start(ctx.currentTime + 0.4); o3.stop(ctx.currentTime + 0.7);
+    setTimeout(() => ctx.close(), 1000);
+  } catch(e){}
 }
 
 /* ══════════════════════════════════════════════════
