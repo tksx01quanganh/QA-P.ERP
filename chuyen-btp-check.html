@@ -78,6 +78,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .trx-detail{font-size:14px;display:flex;justify-content:space-between;gap:8px;}
 .trx-detail .qty{font-weight:800;font-size:16px;color:var(--green);}
 .trx-detail .user{color:var(--muted);}
+.trx-machines{font-size:13px;color:var(--muted);margin-top:3px;}
+.trx-machines span{font-weight:600;color:var(--teal-d);}
 .trx-note{font-size:13px;color:var(--muted);margin-top:3px;font-style:italic;}
 .trx-note.warn{color:var(--red);font-weight:600;font-style:normal;}
 
@@ -415,6 +417,7 @@ function showDetail(idx){
         '<span>' + esc(t.from) + ' → ' + esc(t.to) + '</span>' +
         '<span class="qty">' + fmtNum(t.slChuyen) + '</span>' +
       '</div>' +
+      ((t.fromMachine || t.toMachine) ? '<div class="trx-machines">Máy: <span>' + esc(t.fromMachine || "—") + '</span> → <span>' + esc(t.toMachine || "—") + '</span></div>' : '') +
       (t.ghiChu ? '<div class="trx-note' + (hasWarn ? ' warn' : '') + '">' + esc(t.ghiChu) + '</div>' : '') +
     '</div>';
   });
