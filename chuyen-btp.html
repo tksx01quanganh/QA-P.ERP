@@ -145,7 +145,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <button class="icon-btn" onclick="logout()" title="Đăng xuất">🚪</button>
   </div>
 
-  <!-- Transfer config: CĐ đi, CĐ đến, Loại chuyển giao -->
+  <!-- Transfer config: CĐ đi/máy, CĐ đến/máy, Loại chuyển giao -->
   <div class="transfer-config" id="transferConfig">
     <div class="tc-row">
       <div class="tc-field">
@@ -153,8 +153,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <select id="selFromCD" onchange="onConfigChange()"></select>
       </div>
       <div class="tc-field">
+        <label>Máy (nơi đi)</label>
+        <select id="selFromMachine"></select>
+      </div>
+    </div>
+    <div class="tc-row">
+      <div class="tc-field">
         <label>Công đoạn đến</label>
         <select id="selToCD" onchange="onConfigChange()"></select>
+      </div>
+      <div class="tc-field">
+        <label>Máy (nơi đến)</label>
+        <select id="selToMachine"></select>
       </div>
     </div>
     <div class="tc-row">
@@ -232,6 +242,7 @@ let st = {
   user: null, maNV: null, username: null,
   congDoans: [],
   transferTypes: [],
+  machines: {},  // { "maCongDoan": [{code, name}] }
   selectedLSX: null
 };
 
@@ -273,7 +284,7 @@ function checkSession(){
 
 function logout(){
   st.user = null; st.maNV = null; st.username = null;
-  st.selectedLSX = null; st.congDoans = []; st.transferTypes = [];
+  st.selectedLSX = null; st.congDoans = []; st.transferTypes = []; st.machines = {};
   show("screenLogin");
   document.getElementById("loginPass").value = "";
   loginSetErr("");
@@ -387,6 +398,7 @@ async function loadRoutes(){
     if(r.result === "ok"){
       st.congDoans = r.congDoans || [];
       st.transferTypes = r.transferTypes || [];
+      st.machines = r.machines || {};
     }
   } catch(e){
     toast("Không tải được danh mục. Kiểm tra mạng.");
@@ -401,7 +413,6 @@ async function loadRoutes(){
     ).join("");
     fromSel.innerHTML = opts;
     toSel.innerHTML = opts;
-    // Default: CĐ đi = đầu tiên, CĐ đến = thứ 2 (nếu có)
     if(st.congDoans.length > 1) toSel.selectedIndex = 1;
   } else {
     fromSel.innerHTML = '<option value="CAT">Cắt</option>';
@@ -418,7 +429,24 @@ async function loadRoutes(){
     ttSel.innerHTML = '<option value="BTP">Bán thành phẩm</option>';
   }
 
+  updateMachineDropdowns();
   updateTitle();
+}
+
+function updateMachineDropdowns(){
+  populateMachineSelect("selFromMachine", getSelectedFrom());
+  populateMachineSelect("selToMachine", getSelectedTo());
+}
+
+function populateMachineSelect(selId, processCode){
+  const sel = document.getElementById(selId);
+  const list = st.machines[processCode] || [];
+  if(list.length > 0){
+    sel.innerHTML = '<option value="">-- Chọn máy --</option>' +
+      list.map(m => '<option value="' + esc(m.code) + '">' + esc(m.name) + '</option>').join("");
+  } else {
+    sel.innerHTML = '<option value="">Không có máy</option>';
+  }
 }
 
 function getSelectedFrom(){ return document.getElementById("selFromCD").value; }
@@ -435,6 +463,7 @@ function getSelectedToName(){
 }
 
 function onConfigChange(){
+  updateMachineDropdowns();
   updateTitle();
   resetForm();
 }
@@ -605,6 +634,8 @@ async function doSubmit(confirmOverQty){
       from: fromCD,
       to: toCD,
       transferType: getSelectedTransferType(),
+      fromMachine: document.getElementById("selFromMachine").value || "",
+      toMachine: document.getElementById("selToMachine").value || "",
       confirmOverQty: !!confirmOverQty
     });
 
