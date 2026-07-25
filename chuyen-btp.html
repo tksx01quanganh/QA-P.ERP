@@ -68,10 +68,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .ic-value.red{color:var(--red);}
 .ic-value.green{color:var(--green);}
 
-/* route selector */
-.route-bar{padding:8px 14px;background:var(--card);border-bottom:1px solid var(--border);}
-.route-bar select{width:100%;padding:10px 12px;font-size:16px;font-weight:600;border:2px solid var(--border);border-radius:10px;background:#fff;font-family:inherit;}
-.route-bar select:focus{border-color:var(--teal);outline:none;}
+/* transfer config bar */
+.transfer-config{padding:10px 14px;background:var(--card);border-bottom:1px solid var(--border);}
+.tc-row{display:flex;gap:8px;margin-bottom:8px;}
+.tc-row:last-child{margin-bottom:0;}
+.tc-field{flex:1;min-width:0;}
+.tc-field.full{flex:1 1 100%;}
+.tc-field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;}
+.tc-field select{width:100%;padding:9px 10px;font-size:15px;font-weight:600;border:2px solid var(--border);border-radius:10px;background:#fff;font-family:inherit;}
+.tc-field select:focus{border-color:var(--teal);outline:none;}
 
 /* toast */
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#1e293b;color:#fff;padding:10px 20px;border-radius:14px;font-size:15px;font-weight:600;opacity:0;transition:.25s;z-index:30;max-width:92vw;text-align:center;pointer-events:none;}
@@ -117,9 +122,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <button class="icon-btn" onclick="logout()" title="Đăng xuất">&#x1F6AA;</button>
   </div>
 
-  <!-- Route selector (hidden if only 1 route) -->
-  <div class="route-bar" id="routeBar" style="display:none;">
-    <select id="routeSelect" onchange="onRouteChange()"></select>
+  <!-- Transfer config: CĐ đi, CĐ đến, Loại chuyển giao -->
+  <div class="transfer-config" id="transferConfig">
+    <div class="tc-row">
+      <div class="tc-field">
+        <label>Công đoạn đi</label>
+        <select id="selFromCD" onchange="onConfigChange()"></select>
+      </div>
+      <div class="tc-field">
+        <label>Công đoạn đến</label>
+        <select id="selToCD" onchange="onConfigChange()"></select>
+      </div>
+    </div>
+    <div class="tc-row">
+      <div class="tc-field full">
+        <label>Loại chuyển giao</label>
+        <select id="selTransferType" onchange="onConfigChange()"></select>
+      </div>
+    </div>
   </div>
 
   <div class="picker-wrap">
@@ -169,8 +189,8 @@ const CONFIG = {
 ══════════════════════════════════════════════════ */
 let st = {
   user: null, maNV: null, username: null,
-  routes: [],
-  selectedRoute: null,
+  congDoans: [],
+  transferTypes: [],
   selectedLSX: null
 };
 
@@ -212,7 +232,7 @@ function checkSession(){
 
 function logout(){
   st.user = null; st.maNV = null; st.username = null;
-  st.selectedLSX = null; st.routes = [];
+  st.selectedLSX = null; st.congDoans = []; st.transferTypes = [];
   show("screenLogin");
   document.getElementById("loginPass").value = "";
   loginSetErr("");
@@ -323,48 +343,63 @@ async function enterMain(){
 async function loadRoutes(){
   try {
     const r = await api("tksxTransferRoutes");
-    if(r.result === "ok" && r.routes && r.routes.length > 0){
-      st.routes = r.routes;
-      if(st.routes.length === 1){
-        st.selectedRoute = st.routes[0];
-        document.getElementById("routeBar").style.display = "none";
-        updateTitle();
-      } else {
-        const sel = document.getElementById("routeSelect");
-        sel.innerHTML = st.routes.map((rt, i) =>
-          '<option value="' + i + '">' + esc(rt.fromName + " → " + rt.toName) + '</option>'
-        ).join("");
-        st.selectedRoute = st.routes[0];
-        document.getElementById("routeBar").style.display = "block";
-        updateTitle();
-      }
-    } else {
-      // Fallback: default route
-      st.routes = [{from:"CAT", to:"TCO", label:"Cắt → Thủ công", transferType:"BTP"}];
-      st.selectedRoute = st.routes[0];
-      document.getElementById("routeBar").style.display = "none";
-      updateTitle();
+    if(r.result === "ok"){
+      st.congDoans = r.congDoans || [];
+      st.transferTypes = r.transferTypes || [];
     }
   } catch(e){
-    toast("Không tải được tuyến chuyển. Dùng mặc định.");
-    st.routes = [{from:"CAT", to:"TCO", label:"Cắt → Thủ công", transferType:"BTP"}];
-    st.selectedRoute = st.routes[0];
-    updateTitle();
+    toast("Không tải được danh mục. Kiểm tra mạng.");
   }
+
+  // Populate CĐ đi + CĐ đến
+  const fromSel = document.getElementById("selFromCD");
+  const toSel = document.getElementById("selToCD");
+  if(st.congDoans.length > 0){
+    const opts = st.congDoans.map(cd =>
+      '<option value="' + esc(cd.code) + '">' + esc(cd.name) + '</option>'
+    ).join("");
+    fromSel.innerHTML = opts;
+    toSel.innerHTML = opts;
+    // Default: CĐ đi = đầu tiên, CĐ đến = thứ 2 (nếu có)
+    if(st.congDoans.length > 1) toSel.selectedIndex = 1;
+  } else {
+    fromSel.innerHTML = '<option value="CAT">Cắt</option>';
+    toSel.innerHTML = '<option value="TCO">Thủ công</option>';
+  }
+
+  // Populate Loại chuyển giao
+  const ttSel = document.getElementById("selTransferType");
+  if(st.transferTypes.length > 0){
+    ttSel.innerHTML = st.transferTypes.map(tt =>
+      '<option value="' + esc(tt.code) + '">' + esc(tt.name + (tt.desc ? " — " + tt.desc : "")) + '</option>'
+    ).join("");
+  } else {
+    ttSel.innerHTML = '<option value="BTP">Bán thành phẩm</option>';
+  }
+
+  updateTitle();
 }
 
-function onRouteChange(){
-  const idx = parseInt(document.getElementById("routeSelect").value);
-  st.selectedRoute = st.routes[idx];
+function getSelectedFrom(){ return document.getElementById("selFromCD").value; }
+function getSelectedTo(){ return document.getElementById("selToCD").value; }
+function getSelectedTransferType(){ return document.getElementById("selTransferType").value; }
+
+function getSelectedFromName(){
+  const sel = document.getElementById("selFromCD");
+  return sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : sel.value;
+}
+function getSelectedToName(){
+  const sel = document.getElementById("selToCD");
+  return sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : sel.value;
+}
+
+function onConfigChange(){
   updateTitle();
   resetForm();
 }
 
 function updateTitle(){
-  const rt = st.selectedRoute;
-  if(!rt) return;
-  var label = (rt.fromName || rt.from) + " → " + (rt.toName || rt.to);
-  document.getElementById("topTitle").textContent = "Chuyển BTP: " + label;
+  document.getElementById("topTitle").textContent = "Chuyển BTP: " + getSelectedFromName() + " → " + getSelectedToName();
 }
 
 /* ══════════════════════════════════════════════════
@@ -391,11 +426,10 @@ async function searchLSX(query){
   resultsEl.classList.add("show");
 
   try {
-    const rt = st.selectedRoute;
     const r = await api("tksxSearchTransfer", {
       lsx: query,
-      from: rt.from,
-      to: rt.to
+      from: getSelectedFrom(),
+      to: getSelectedTo()
     });
     if(r.result === "ok" && r.items && r.items.length > 0){
       resultsEl.innerHTML = r.items.map((item, i) =>
@@ -485,13 +519,18 @@ function setSubmitHint(msg, type){
 
 async function doSubmit(){
   const d = st.selectedLSX;
-  const rt = st.selectedRoute;
   if(!d){
     setSubmitHint("Vui lòng chọn LSX trước", "err");
     return;
   }
-  if(!rt){
-    setSubmitHint("Chưa có tuyến chuyển", "err");
+  const fromCD = getSelectedFrom();
+  const toCD = getSelectedTo();
+  if(!fromCD || !toCD){
+    setSubmitHint("Vui lòng chọn công đoạn đi và đến", "err");
+    return;
+  }
+  if(fromCD === toCD){
+    setSubmitHint("Công đoạn đi và đến không được giống nhau", "err");
     return;
   }
 
@@ -527,9 +566,9 @@ async function doSubmit(){
       soluong: d.soluong || 0,
       slChuyen: sl,
       ghiChu: ghiChu,
-      from: rt.from,
-      to: rt.to,
-      transferType: rt.transferType || "BTP"
+      from: fromCD,
+      to: toCD,
+      transferType: getSelectedTransferType()
     });
 
     btn.disabled = false;
