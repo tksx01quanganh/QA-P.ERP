@@ -255,6 +255,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
           <div class="func-desc">Chỉ quét QR — KL thực tế tự động = KL (QR)</div>
         </div>
       </button>
+      <button class="func-btn" onclick="selectBranch('TI')">
+        <div class="func-icon">🎞️</div>
+        <div class="func-info">
+          <div class="func-name">Thổi / In</div>
+          <div class="func-desc">Chỉ quét QR — KL thực tế tự động = KL (QR)</div>
+        </div>
+      </button>
     </div>
   </div>
 </section>
@@ -461,9 +468,9 @@ let state = {
   branchLocked: false, // true = nhánh đến từ phân quyền (?branch= trong ChucNang) → không cho quay về màn chọn nhánh
 };
 
-const BRANCH_LABEL = { CT: "Cắt / Thủ công", GTB: "Giấy / Thùng / Bìa" };
+const BRANCH_LABEL = { CT: "Cắt / Thủ công", GTB: "Giấy / Thùng / Bìa", TI: "Thổi / In" };
 // Nhánh → các tổ được phép. Máy/CN CHƯA gán tổ (ws trống) hiện ở mọi nhánh (không chặn nhầm).
-const BRANCH_WS = { CT: ["CAT","TCO"], GTB: ["GTB"] };
+const BRANCH_WS = { CT: ["CAT","TCO"], GTB: ["GTB"], TI: ["THO","INT"] };
 
 function byBranch(list){
   const allow = BRANCH_WS[state.branch];
@@ -926,9 +933,9 @@ function selectFunction(p){
       showToast("Bạn chỉ có quyền Xem, không có quyền Tạo dữ liệu", 3000);
       return;
     }
-    // Chức năng có ?branch=CT|GTB (VD: PD_A01 → index.html?branch=CT) → vào thẳng nhánh đó.
+    // Chức năng có ?branch=CT|GTB|TI (VD: PD_A01 → index.html?branch=CT) → vào thẳng nhánh đó.
     // URL không có branch (kiểu cũ PD_GNSX) → hiện màn hình chọn nhánh.
-    const m = /[?&]branch=(CT|GTB)\b/i.exec(url);
+    const m = /[?&]branch=(CT|GTB|TI)\b/i.exec(url);
     if(m){
       state.branchLocked = true;   // nhánh do phân quyền quyết định → nút ← về menu, không về màn chọn nhánh
       selectBranch(m[1].toUpperCase());
@@ -1140,7 +1147,7 @@ function enterScan(){
   refreshSession();
   refreshCount();
   show("screenScan");
-  setHint("info", state.branch === "GTB"
+  setHint("info", (state.branch === "GTB" || state.branch === "TI")
     ? "Bấm \"Bắt đầu quét\" — KL thực tế sẽ tự lấy theo QR, không cần nhập tay"
     : "Bấm \"Bắt đầu quét\" để mở camera");
   document.getElementById("btnScanNext").textContent="Bắt đầu quét";
@@ -1261,7 +1268,7 @@ function handleSP(text){
 
   // Nhánh GTB (Giấy/Thùng/Bìa): KL thực tế = KL(QR), không cần nhập tay.
   // Sau mỗi lần quét GIỮ KHÓA — phải bấm "Quét tiếp" mới nhận QR mới (tránh quét liên tục ngoài ý muốn)
-  if(state.branch === "GTB"){
+  if(state.branch === "GTB" || state.branch === "TI"){
     const klQR = numVN(parts[3]);
     if(!isNaN(klQR) && klQR > 0){
       row.kl = klQR;
