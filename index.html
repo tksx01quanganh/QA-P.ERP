@@ -255,13 +255,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
           <div class="func-desc">Chỉ quét QR — KL thực tế tự động = KL (QR)</div>
         </div>
       </button>
-      <button class="func-btn" onclick="selectBranch('TI')">
-        <div class="func-icon">🎞️</div>
-        <div class="func-info">
-          <div class="func-name">Thổi / In</div>
-          <div class="func-desc">Chỉ quét QR — KL thực tế tự động = KL (QR)</div>
-        </div>
-      </button>
     </div>
   </div>
 </section>
@@ -679,9 +672,14 @@ const QUYEN_LABELS = {
 const FUNC_HIERARCHY = {
   PD: [
     {
-      name: "Ghi nhận SX",
+      name: "Ghi nhận SX Thành phẩm",
       icon: "📝",
-      childUrls: ["index.html", "thoi-in.html?mode=sx"]
+      childUrls: ["index.html"]
+    },
+    {
+      name: "Ghi nhận SX Bán thành phẩm",
+      icon: "🎞️",
+      childUrls: ["thoi-in.html?mode=sx"]
     },
     {
       name: "Kiểm tra kết quả",
