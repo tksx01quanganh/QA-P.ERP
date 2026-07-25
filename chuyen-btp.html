@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0f766e"/>
+<title>Chuyển BTP — QA-P.ERP</title>
+<style>
+:root{
+  --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
+  --amber:#d97706; --gray:#64748b; --bg:#f1f5f9; --card:#fff;
+  --txt:#0f172a; --muted:#64748b; --border:#e2e8f0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;height:100%;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:17px;line-height:1.4;}
+
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* topbar */
+.topbar{background:var(--teal);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:5;}
+.topbar .ttl{font-weight:700;font-size:16px;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.topbar .user-info{font-size:13px;opacity:.85;white-space:nowrap;}
+.icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+
+/* buttons */
+.btn{border:0;border-radius:12px;font-size:18px;font-weight:700;padding:16px 18px;cursor:pointer;width:100%;color:#fff;background:var(--teal);}
+.btn:active{transform:scale(.98);}
+.btn.lg{padding:20px;font-size:20px;}
+.btn.green{background:var(--green);}
+.btn.red{background:var(--red);}
+.btn.gray{background:var(--gray);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* spinner */
+.spin{width:20px;height:20px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:-4px;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* form */
+.picker-wrap{flex:1;overflow:auto;padding:16px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+.field input,.field select,.field textarea{width:100%;padding:12px 14px;font-size:17px;border:2px solid var(--border);border-radius:12px;outline:none;background:#fff;font-family:inherit;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal);}
+.field textarea{resize:vertical;min-height:60px;font-size:16px;}
+.manual-err{display:none;color:var(--red);font-size:14px;font-weight:600;padding:6px 0;}
+
+/* search dropdown */
+.search-wrap{position:relative;}
+.search-results{position:absolute;top:100%;left:0;right:0;background:#fff;border:2px solid var(--teal);border-top:0;border-radius:0 0 12px 12px;max-height:260px;overflow-y:auto;z-index:10;display:none;}
+.search-results.show{display:block;}
+.sr-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;}
+.sr-item:active{background:#ecfdf5;}
+.sr-item:last-child{border-bottom:0;}
+.sr-item .sr-lsx{font-weight:700;font-size:16px;color:var(--teal-d);}
+.sr-item .sr-sub{font-size:13px;color:var(--muted);margin-top:2px;}
+.sr-empty{padding:14px;text-align:center;color:var(--muted);font-size:14px;}
+.sr-loading{padding:14px;text-align:center;color:var(--muted);font-size:14px;}
+
+/* info card */
+.info-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;}
+.info-card.filled{border-color:var(--teal);background:#f0fdfa;}
+.ic-row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);}
+.ic-row:last-child{border-bottom:0;}
+.ic-label{font-size:13px;color:var(--muted);font-weight:600;flex-shrink:0;margin-right:8px;}
+.ic-value{font-size:15px;font-weight:700;text-align:right;word-break:break-word;}
+.ic-value.red{color:var(--red);}
+.ic-value.green{color:var(--green);}
+
+/* route selector */
+.route-bar{padding:8px 14px;background:var(--card);border-bottom:1px solid var(--border);}
+.route-bar select{width:100%;padding:10px 12px;font-size:16px;font-weight:600;border:2px solid var(--border);border-radius:10px;background:#fff;font-family:inherit;}
+.route-bar select:focus{border-color:var(--teal);outline:none;}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#1e293b;color:#fff;padding:10px 20px;border-radius:14px;font-size:15px;font-weight:600;opacity:0;transition:.25s;z-index:30;max-width:92vw;text-align:center;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* hint */
+.hint{padding:10px 14px;border-radius:10px;font-size:14px;text-align:center;margin:8px 0;}
+.hint.info{background:#e0f2fe;color:#0369a1;}
+.hint.ok{background:#dcfce7;color:#15803d;}
+.hint.err{background:#fef2f2;color:var(--red);}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 1: Đăng nhập
+════════════════════════════════════════════ -->
+<section id="screenLogin" class="screen active">
+  <div class="topbar"><div class="ttl">Chuyển BTP</div></div>
+  <div class="picker-wrap">
+    <div class="field">
+      <label>Username</label>
+      <input id="loginUser" type="text" autocapitalize="none" autocomplete="username" placeholder="VD: tuyenpv"/>
+    </div>
+    <div class="field">
+      <label>Mật khẩu</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu"/>
+    </div>
+    <div id="loginErr" class="manual-err"></div>
+    <button id="loginBtn" class="btn lg green" onclick="doLogin()" style="margin-top:6px">Đăng nhập</button>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 2: Form chuyển BTP
+════════════════════════════════════════════ -->
+<section id="screenMain" class="screen">
+  <div class="topbar">
+    <div style="min-width:0;flex:1;">
+      <div class="ttl" id="topTitle">Chuyển BTP: Cắt → Thủ công</div>
+      <div class="user-info" id="topUser"></div>
+    </div>
+    <button class="icon-btn" onclick="logout()" title="Đăng xuất">&#x1F6AA;</button>
+  </div>
+
+  <!-- Route selector (hidden if only 1 route) -->
+  <div class="route-bar" id="routeBar" style="display:none;">
+    <select id="routeSelect" onchange="onRouteChange()"></select>
+  </div>
+
+  <div class="picker-wrap">
+    <!-- LSX Search -->
+    <div class="field search-wrap">
+      <label>Tìm LSX</label>
+      <input id="lsxInput" type="text" placeholder="Nhập mã LSX..." oninput="onLsxInput()" autocomplete="off"/>
+      <div id="searchResults" class="search-results"></div>
+    </div>
+
+    <!-- Info card -->
+    <div id="infoCard" class="info-card" style="display:none;"></div>
+
+    <!-- Transfer input -->
+    <div id="transferSection" style="display:none;">
+      <div class="field">
+        <label>Số lượng chuyển</label>
+        <input id="slChuyen" type="number" min="0" step="1" inputmode="numeric" placeholder="Nhập số lượng"/>
+      </div>
+      <div class="field">
+        <label>Ghi chú</label>
+        <textarea id="ghiChu" placeholder="Ghi chú (không bắt buộc)"></textarea>
+      </div>
+      <button id="submitBtn" class="btn lg green" onclick="doSubmit()">GỬI</button>
+      <div id="submitHint" class="hint" style="display:none;"></div>
+    </div>
+
+    <!-- Hint khi chưa chọn LSX -->
+    <div id="emptyHint" class="hint info">Nhập mã LSX để bắt đầu</div>
+  </div>
+</section>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   CAU HINH
+══════════════════════════════════════════════════ */
+const CONFIG = {
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyVwFqJqOr9KhYHIM9RRssFIpZyB2MNhcA3gyAGDCj8T6v3Gl4IiYfb1s7rddJTwH_u/exec",
+  SESSION_TTL: 8 * 3600 * 1000
+};
+
+/* ══════════════════════════════════════════════════
+   TRANG THAI
+══════════════════════════════════════════════════ */
+let st = {
+  user: null, maNV: null, username: null,
+  routes: [],
+  selectedRoute: null,
+  selectedLSX: null
+};
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function fmtNum(n){ return n == null ? "0" : Number(n).toLocaleString("vi-VN"); }
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+let toastTimer;
+function toast(msg, dur){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), dur || 3000);
+}
+
+function goHome(){ window.location.href = "index.html"; }
+
+/* ══════════════════════════════════════════════════
+   SESSION
+══════════════════════════════════════════════════ */
+function checkSession(){
+  try {
+    const s = JSON.parse(localStorage.getItem("ghinhan_session") || "null");
+    if(!s || !s.username || !s.ts) return false;
+    if(Date.now() - s.ts > CONFIG.SESSION_TTL) return false;
+    st.user = s.user;
+    st.maNV = s.maNV;
+    st.username = s.username;
+    return true;
+  } catch(e){ return false; }
+}
+
+function logout(){
+  st.user = null; st.maNV = null; st.username = null;
+  st.selectedLSX = null; st.routes = [];
+  show("screenLogin");
+  document.getElementById("loginPass").value = "";
+  loginSetErr("");
+  prefillLastUsername();
+}
+
+function prefillLastUsername(){
+  const last = localStorage.getItem("qa_last_username");
+  if(last) document.getElementById("loginUser").value = last;
+}
+
+/* ══════════════════════════════════════════════════
+   API
+══════════════════════════════════════════════════ */
+let _jsonpSeq = 0;
+function api(action, params, timeoutMs){
+  return new Promise((resolve, reject) => {
+    const cb = "__btp_cb" + (++_jsonpSeq);
+    const s = document.createElement("script");
+    const timer = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, timeoutMs || 30000);
+    function cleanup(){ clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = data => { cleanup(); resolve(data); };
+    s.onerror = () => { cleanup(); reject(new Error("network")); };
+    let url = CONFIG.APPS_SCRIPT_URL + "?action=" + action + "&callback=" + cb;
+    if(params) for(const k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
+    url += "&t=" + Date.now();
+    s.src = url;
+    document.body.appendChild(s);
+  });
+}
+
+async function apiPost(body){
+  const r = await fetch(CONFIG.APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: {"Content-Type":"text/plain;charset=utf-8"},
+    body: JSON.stringify(body),
+    redirect: "follow"
+  });
+  return r.json();
+}
+
+/* ══════════════════════════════════════════════════
+   DANG NHAP
+══════════════════════════════════════════════════ */
+function loginSetErr(msg){
+  const el = document.getElementById("loginErr");
+  if(msg){ el.textContent = msg; el.style.display = "block"; }
+  else { el.textContent = ""; el.style.display = "none"; }
+}
+
+async function doLogin(){
+  const username = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value;
+  loginSetErr("");
+
+  if(!username || !password){
+    loginSetErr("Vui lòng nhập đủ Username và Mật khẩu");
+    return;
+  }
+
+  const btn = document.getElementById("loginBtn");
+  const oldTxt = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Đang đăng nhập...';
+
+  try {
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: {"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({action:"login", username, password}),
+      redirect: "follow"
+    });
+    const out = await res.json();
+    if(out.result === "ok"){
+      st.user = out.ten || username;
+      st.maNV = out.maNV || "";
+      st.username = out.username || username;
+      localStorage.setItem("qa_last_username", username);
+      document.getElementById("loginPass").value = "";
+      btn.disabled = false; btn.textContent = oldTxt;
+
+      localStorage.setItem("ghinhan_session", JSON.stringify({
+        user: st.user, maNV: st.maNV, username: st.username,
+        permissions: out.permissions || [], ts: Date.now()
+      }));
+
+      enterMain();
+    } else {
+      loginSetErr(out.error || "Đăng nhập thất bại");
+      btn.disabled = false; btn.textContent = oldTxt;
+    }
+  } catch(e){
+    loginSetErr("Không kết nối được máy chủ. Kiểm tra mạng và thử lại.");
+    btn.disabled = false; btn.textContent = oldTxt;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   MAN HINH CHINH
+══════════════════════════════════════════════════ */
+async function enterMain(){
+  document.getElementById("topUser").textContent = st.user || st.username || "";
+  show("screenMain");
+  resetForm();
+  await loadRoutes();
+}
+
+async function loadRoutes(){
+  try {
+    const r = await api("tksxTransferRoutes");
+    if(r.result === "ok" && r.routes && r.routes.length > 0){
+      st.routes = r.routes;
+      if(st.routes.length === 1){
+        st.selectedRoute = st.routes[0];
+        document.getElementById("routeBar").style.display = "none";
+        updateTitle();
+      } else {
+        const sel = document.getElementById("routeSelect");
+        sel.innerHTML = st.routes.map((rt, i) =>
+          '<option value="' + i + '">' + esc(rt.fromName + " → " + rt.toName) + '</option>'
+        ).join("");
+        st.selectedRoute = st.routes[0];
+        document.getElementById("routeBar").style.display = "block";
+        updateTitle();
+      }
+    } else {
+      // Fallback: default route
+      st.routes = [{from:"CAT", to:"TCO", label:"Cắt → Thủ công", transferType:"BTP"}];
+      st.selectedRoute = st.routes[0];
+      document.getElementById("routeBar").style.display = "none";
+      updateTitle();
+    }
+  } catch(e){
+    toast("Không tải được tuyến chuyển. Dùng mặc định.");
+    st.routes = [{from:"CAT", to:"TCO", label:"Cắt → Thủ công", transferType:"BTP"}];
+    st.selectedRoute = st.routes[0];
+    updateTitle();
+  }
+}
+
+function onRouteChange(){
+  const idx = parseInt(document.getElementById("routeSelect").value);
+  st.selectedRoute = st.routes[idx];
+  updateTitle();
+  resetForm();
+}
+
+function updateTitle(){
+  const rt = st.selectedRoute;
+  if(!rt) return;
+  var label = (rt.fromName || rt.from) + " → " + (rt.toName || rt.to);
+  document.getElementById("topTitle").textContent = "Chuyển BTP: " + label;
+}
+
+/* ══════════════════════════════════════════════════
+   TIM KIEM LSX (debounced)
+══════════════════════════════════════════════════ */
+let searchTimer = null;
+let searchAbort = null;
+
+function onLsxInput(){
+  const q = document.getElementById("lsxInput").value.trim();
+  clearTimeout(searchTimer);
+
+  if(q.length < 2){
+    hideSearchResults();
+    return;
+  }
+
+  searchTimer = setTimeout(() => searchLSX(q), 400);
+}
+
+async function searchLSX(query){
+  const resultsEl = document.getElementById("searchResults");
+  resultsEl.innerHTML = '<div class="sr-loading"><span class="spin"></span> Đang tìm...</div>';
+  resultsEl.classList.add("show");
+
+  try {
+    const rt = st.selectedRoute;
+    const r = await api("tksxSearchTransfer", {
+      lsx: query,
+      from: rt.from,
+      to: rt.to
+    });
+    if(r.result === "ok" && r.items && r.items.length > 0){
+      resultsEl.innerHTML = r.items.map((item, i) =>
+        '<div class="sr-item" onclick="selectLSX(' + i + ')" data-idx="' + i + '">' +
+          '<div class="sr-lsx">' + esc(item.lsxct) + '</div>' +
+          '<div class="sr-sub">' + esc(item.khachhang || "") + ' — ' + esc(item.masp || "") + '</div>' +
+        '</div>'
+      ).join("");
+      resultsEl._data = r.items;
+    } else if(r.result === "ok"){
+      resultsEl.innerHTML = '<div class="sr-empty">Không tìm thấy LSX phù hợp</div>';
+      resultsEl._data = [];
+    } else {
+      resultsEl.innerHTML = '<div class="sr-empty" style="color:var(--red)">' + esc(r.error || "Lỗi tìm kiếm") + '</div>';
+      resultsEl._data = [];
+    }
+  } catch(e){
+    resultsEl.innerHTML = '<div class="sr-empty" style="color:var(--red)">Lỗi kết nối</div>';
+    resultsEl._data = [];
+  }
+}
+
+function hideSearchResults(){
+  const el = document.getElementById("searchResults");
+  el.classList.remove("show");
+  el.innerHTML = "";
+  el._data = [];
+}
+
+function selectLSX(idx){
+  const resultsEl = document.getElementById("searchResults");
+  const data = resultsEl._data;
+  if(!data || !data[idx]) return;
+
+  st.selectedLSX = data[idx];
+  document.getElementById("lsxInput").value = st.selectedLSX.lsxct;
+  hideSearchResults();
+  renderInfoCard();
+  showTransferSection();
+}
+
+/* ══════════════════════════════════════════════════
+   HIEN THI THONG TIN LSX
+══════════════════════════════════════════════════ */
+function renderInfoCard(){
+  const d = st.selectedLSX;
+  if(!d) return;
+
+  const conLai = d.conLai != null ? d.conLai : 0;
+  const conLaiClass = conLai <= 0 ? ' red' : ' green';
+
+  document.getElementById("infoCard").innerHTML =
+    '<div class="ic-row"><span class="ic-label">LSX</span><span class="ic-value">' + esc(d.lsxct) + '</span></div>' +
+    '<div class="ic-row"><span class="ic-label">Mã sản phẩm</span><span class="ic-value">' + esc(d.masp || "") + '</span></div>' +
+    '<div class="ic-row"><span class="ic-label">Khách hàng</span><span class="ic-value">' + esc(d.khachhang || "") + '</span></div>' +
+    '<div class="ic-row"><span class="ic-label">Mô tả SP</span><span class="ic-value">' + esc(d.mota || "") + '</span></div>' +
+    '<div class="ic-row"><span class="ic-label">SL yêu cầu</span><span class="ic-value">' + fmtNum(d.soluong) + '</span></div>' +
+    '<div class="ic-row"><span class="ic-label">SL đã chuyển</span><span class="ic-value">' + fmtNum(d.daChuyen) + '</span></div>' +
+    '<div class="ic-row"><span class="ic-label">SL còn lại</span><span class="ic-value' + conLaiClass + '">' + fmtNum(conLai) + '</span></div>';
+
+  document.getElementById("infoCard").style.display = "block";
+  document.getElementById("infoCard").classList.add("filled");
+}
+
+function showTransferSection(){
+  document.getElementById("transferSection").style.display = "block";
+  document.getElementById("emptyHint").style.display = "none";
+  document.getElementById("slChuyen").value = "";
+  document.getElementById("ghiChu").value = "";
+  setSubmitHint("");
+  document.getElementById("slChuyen").focus();
+}
+
+/* ══════════════════════════════════════════════════
+   GUI (Submit)
+══════════════════════════════════════════════════ */
+function setSubmitHint(msg, type){
+  const el = document.getElementById("submitHint");
+  if(msg){
+    el.textContent = msg;
+    el.className = "hint " + (type || "err");
+    el.style.display = "block";
+  } else {
+    el.style.display = "none";
+  }
+}
+
+async function doSubmit(){
+  const d = st.selectedLSX;
+  const rt = st.selectedRoute;
+  if(!d){
+    setSubmitHint("Vui lòng chọn LSX trước", "err");
+    return;
+  }
+  if(!rt){
+    setSubmitHint("Chưa có tuyến chuyển", "err");
+    return;
+  }
+
+  const slRaw = document.getElementById("slChuyen").value.trim();
+  const sl = parseInt(slRaw, 10);
+  if(!slRaw || isNaN(sl) || sl <= 0){
+    setSubmitHint("Số lượng chuyển phải > 0", "err");
+    return;
+  }
+
+  const conLai = d.conLai != null ? d.conLai : 0;
+  if(sl > conLai){
+    setSubmitHint("Số lượng chuyển (" + fmtNum(sl) + ") vượt quá SL còn lại (" + fmtNum(conLai) + ")", "err");
+    return;
+  }
+
+  const ghiChu = document.getElementById("ghiChu").value.trim();
+
+  const btn = document.getElementById("submitBtn");
+  const oldTxt = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Đang gửi...';
+  setSubmitHint("");
+
+  try {
+    const res = await apiPost({
+      action: "tksxSubmitTransfer",
+      user: st.user || st.username,
+      lsx: d.lsxct,
+      masp: d.masp || "",
+      khachhang: d.khachhang || "",
+      mota: d.mota || "",
+      soluong: d.soluong || 0,
+      slChuyen: sl,
+      ghiChu: ghiChu,
+      from: rt.from,
+      to: rt.to,
+      transferType: rt.transferType || "BTP"
+    });
+
+    btn.disabled = false;
+    btn.textContent = oldTxt;
+
+    if(res.result === "ok"){
+      const trxId = res.trxId || res.id || "";
+      alert("Thành công!\n\nMã giao dịch: " + trxId + "\nLSX: " + d.lsxct + "\nSố lượng: " + fmtNum(sl));
+      toast("Đã gửi thành công!", 2500);
+      resetForm();
+    } else {
+      setSubmitHint(res.error || "Gửi thất bại. Vui lòng thử lại.", "err");
+    }
+  } catch(e){
+    btn.disabled = false;
+    btn.textContent = oldTxt;
+    setSubmitHint("Lỗi kết nối máy chủ. Kiểm tra mạng và thử lại.", "err");
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   RESET FORM
+══════════════════════════════════════════════════ */
+function resetForm(){
+  st.selectedLSX = null;
+  document.getElementById("lsxInput").value = "";
+  hideSearchResults();
+  document.getElementById("infoCard").style.display = "none";
+  document.getElementById("infoCard").classList.remove("filled");
+  document.getElementById("infoCard").innerHTML = "";
+  document.getElementById("transferSection").style.display = "none";
+  document.getElementById("emptyHint").style.display = "block";
+  document.getElementById("slChuyen").value = "";
+  document.getElementById("ghiChu").value = "";
+  setSubmitHint("");
+}
+
+/* ══════════════════════════════════════════════════
+   CLICK NGOAI DONG SEARCH RESULTS
+══════════════════════════════════════════════════ */
+document.addEventListener("click", function(e){
+  const wrap = document.querySelector(".search-wrap");
+  if(wrap && !wrap.contains(e.target)){
+    hideSearchResults();
+  }
+});
+
+/* ══════════════════════════════════════════════════
+   ENTER KEY HANDLERS
+══════════════════════════════════════════════════ */
+function onEnterKey(fn){ return function(e){ if(e.key === "Enter"){ e.preventDefault(); fn(); } }; }
+
+document.getElementById("loginUser").addEventListener("keydown", onEnterKey(function(){
+  document.getElementById("loginPass").focus();
+}));
+document.getElementById("loginPass").addEventListener("keydown", onEnterKey(doLogin));
+document.getElementById("slChuyen").addEventListener("keydown", onEnterKey(doSubmit));
+
+/* ══════════════════════════════════════════════════
+   KHOI DONG
+══════════════════════════════════════════════════ */
+(function init(){
+  if(checkSession()){
+    enterMain();
+  } else {
+    show("screenLogin");
+    prefillLastUsername();
+    const userEl = document.getElementById("loginUser");
+    setTimeout(function(){
+      (userEl.value ? document.getElementById("loginPass") : userEl).focus();
+    }, 150);
+  }
+})();
+</script>
+</body>
+</html>
