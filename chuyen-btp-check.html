@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0f766e"/>
+<title>Kiểm tra chuyển BTP — QA-P.ERP</title>
+<style>
+:root{
+  --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
+  --amber:#d97706; --gray:#64748b; --bg:#f1f5f9; --card:#fff;
+  --txt:#0f172a; --muted:#64748b; --border:#e2e8f0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;height:100%;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:17px;line-height:1.4;}
+
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* topbar */
+.topbar{background:var(--teal);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:5;}
+.topbar .ttl{font-weight:700;font-size:16px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.topbar .user-info{font-size:13px;opacity:.85;white-space:nowrap;}
+.icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+
+/* buttons */
+.btn{border:0;border-radius:12px;font-size:18px;font-weight:700;padding:16px 18px;cursor:pointer;width:100%;color:#fff;background:var(--teal);}
+.btn:active{transform:scale(.98);}
+.btn.green{background:var(--green);}
+.btn.gray{background:var(--gray);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* spinner */
+.spin{width:20px;height:20px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:sp .8s linear infinite;vertical-align:-4px;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.spin-dark{border-color:rgba(0,0,0,.15);border-top-color:var(--teal);}
+
+/* form */
+.content{flex:1;overflow:auto;padding:16px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;}
+.field input,.field select{width:100%;padding:10px 12px;font-size:16px;border:2px solid var(--border);border-radius:10px;outline:none;background:#fff;font-family:inherit;}
+.field input:focus,.field select:focus{border-color:var(--teal);}
+.row2{display:flex;gap:8px;}
+.row2 .field{flex:1;min-width:0;}
+
+/* filter bar */
+.filter-bar{padding:10px 14px;background:var(--card);border-bottom:1px solid var(--border);}
+.filter-bar .row2{margin-bottom:8px;}
+.filter-bar .row2:last-child{margin-bottom:0;}
+
+/* summary */
+.summary{padding:10px 14px;background:#e0f2fe;border-bottom:1px solid var(--border);font-size:14px;color:#0369a1;font-weight:600;display:flex;justify-content:space-between;}
+
+/* list items */
+.lsx-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s;}
+.lsx-card:active{border-color:var(--teal);background:#f0fdfa;}
+.lsx-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.lsx-code{font-weight:800;font-size:17px;color:var(--teal-d);}
+.lsx-count{font-size:13px;color:var(--muted);font-weight:600;}
+.lsx-sub{font-size:14px;color:var(--muted);}
+.lsx-stats{display:flex;gap:14px;margin-top:6px;font-size:14px;font-weight:600;}
+.lsx-stats .green{color:var(--green);}
+.lsx-stats .amber{color:var(--amber);}
+
+/* detail view */
+.detail-header{background:#f0fdfa;border:2px solid var(--teal);border-radius:14px;padding:14px;margin-bottom:12px;}
+.dh-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);}
+.dh-row:last-child{border-bottom:0;}
+.dh-label{font-size:13px;color:var(--muted);font-weight:600;}
+.dh-value{font-size:15px;font-weight:700;text-align:right;}
+
+.trx-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;}
+.trx-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.trx-id{font-weight:700;font-size:14px;color:var(--teal-d);}
+.trx-date{font-size:13px;color:var(--muted);}
+.trx-detail{font-size:14px;display:flex;justify-content:space-between;gap:8px;}
+.trx-detail .qty{font-weight:800;font-size:16px;color:var(--green);}
+.trx-detail .user{color:var(--muted);}
+.trx-note{font-size:13px;color:var(--muted);margin-top:3px;font-style:italic;}
+.trx-note.warn{color:var(--red);font-weight:600;font-style:normal;}
+
+/* empty */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:15px;}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#1e293b;color:#fff;padding:10px 20px;border-radius:14px;font-size:15px;font-weight:600;opacity:0;transition:.25s;z-index:30;max-width:92vw;text-align:center;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 1: Đăng nhập
+════════════════════════════════════════════ -->
+<section id="screenLogin" class="screen active">
+  <div class="topbar"><div class="ttl">Kiểm tra chuyển BTP</div></div>
+  <div class="content">
+    <div class="field">
+      <label>Username</label>
+      <input id="loginUser" type="text" autocapitalize="none" autocomplete="username" placeholder="VD: tuyenpv"/>
+    </div>
+    <div class="field">
+      <label>Mật khẩu</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu"/>
+    </div>
+    <div id="loginErr" style="display:none;color:var(--red);font-size:14px;font-weight:600;padding:6px 0;"></div>
+    <button id="loginBtn" class="btn green" onclick="doLogin()" style="margin-top:6px">Đăng nhập</button>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 2: Danh sách (filter + results)
+════════════════════════════════════════════ -->
+<section id="screenList" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="history.back()" style="font-size:18px;padding:6px 10px">←</button>
+    <div class="ttl">📋 Kiểm tra chuyển BTP</div>
+    <button class="icon-btn" onclick="goHome()" title="Trang chủ">🏠</button>
+  </div>
+
+  <div class="filter-bar">
+    <div class="row2">
+      <div class="field">
+        <label>Công đoạn đi</label>
+        <select id="fFrom"><option value="">-- Tất cả --</option></select>
+      </div>
+      <div class="field">
+        <label>Công đoạn đến</label>
+        <select id="fTo"><option value="">-- Tất cả --</option></select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Từ ngày</label>
+        <input id="fDateFrom" type="date"/>
+      </div>
+      <div class="field">
+        <label>Đến ngày</label>
+        <input id="fDateTo" type="date"/>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>LSX</label>
+      <input id="fLSX" type="text" placeholder="Nhập mã LSX (không bắt buộc)"/>
+    </div>
+    <button class="btn" onclick="doSearch()" style="margin-top:10px;padding:12px;font-size:16px;">🔍 Tìm kiếm</button>
+  </div>
+
+  <div id="searchSummary" class="summary" style="display:none;">
+    <span id="sumText">0 LSX — 0 lần chuyển</span>
+    <span id="sumQty">0</span>
+  </div>
+
+  <div class="content" id="listContent">
+    <div class="empty">Chọn bộ lọc và bấm Tìm kiếm</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 3: Chi tiết LSX
+════════════════════════════════════════════ -->
+<section id="screenDetail" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="showScreen('screenList')" style="font-size:18px;padding:6px 10px">←</button>
+    <div class="ttl" id="detailTitle">Chi tiết LSX</div>
+    <button class="icon-btn" onclick="goHome()" title="Trang chủ">🏠</button>
+  </div>
+  <div class="content" id="detailContent"></div>
+</section>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════════ */
+const CONFIG = {
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
+  SESSION_TTL: 8 * 3600 * 1000
+};
+
+let st = { user: null, maNV: null, username: null, groups: [] };
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function fmtNum(n){ return n == null ? "0" : Number(n).toLocaleString("vi-VN"); }
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+function goHome(){ window.location.href = "index.html"; }
+
+let toastTimer;
+function toast(msg, dur){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), dur || 3000);
+}
+
+/* ══════════════════════════════════════════════════
+   SESSION
+══════════════════════════════════════════════════ */
+function checkSession(){
+  try {
+    const s = JSON.parse(localStorage.getItem("ghinhan_session") || "null");
+    if(!s || !s.username || !s.ts) return false;
+    if(Date.now() - s.ts > CONFIG.SESSION_TTL) return false;
+    st.user = s.user; st.maNV = s.maNV; st.username = s.username;
+    return true;
+  } catch(e){ return false; }
+}
+
+function prefillLastUsername(){
+  const last = localStorage.getItem("qa_last_username");
+  if(last) document.getElementById("loginUser").value = last;
+}
+
+/* ══════════════════════════════════════════════════
+   API (JSONP)
+══════════════════════════════════════════════════ */
+let _seq = 0;
+function api(action, params, timeoutMs){
+  return new Promise((resolve, reject) => {
+    const cb = "__chk_cb" + (++_seq);
+    const s = document.createElement("script");
+    const timer = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, timeoutMs || 30000);
+    function cleanup(){ clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = data => { cleanup(); resolve(data); };
+    s.onerror = () => { cleanup(); reject(new Error("network")); };
+    let url = CONFIG.APPS_SCRIPT_URL + "?action=" + action + "&callback=" + cb;
+    if(params) for(const k in params){ if(params[k]) url += "&" + k + "=" + encodeURIComponent(params[k]); }
+    url += "&t=" + Date.now();
+    s.src = url;
+    document.body.appendChild(s);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════════════ */
+async function doLogin(){
+  const username = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value;
+  const errEl = document.getElementById("loginErr");
+  errEl.style.display = "none";
+
+  if(!username || !password){
+    errEl.textContent = "Vui lòng nhập đủ Username và Mật khẩu";
+    errEl.style.display = "block";
+    return;
+  }
+
+  const btn = document.getElementById("loginBtn");
+  const oldTxt = btn.textContent;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Đang đăng nhập...';
+
+  try {
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: {"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({action:"login", username, password}),
+      redirect: "follow"
+    });
+    const out = await res.json();
+    if(out.result === "ok"){
+      st.user = out.ten || username;
+      st.maNV = out.maNV || "";
+      st.username = out.username || username;
+      localStorage.setItem("qa_last_username", username);
+      localStorage.setItem("ghinhan_session", JSON.stringify({
+        user: st.user, maNV: st.maNV, username: st.username,
+        permissions: out.permissions || [], ts: Date.now()
+      }));
+      document.getElementById("loginPass").value = "";
+      btn.disabled = false; btn.textContent = oldTxt;
+      enterMain();
+    } else {
+      errEl.textContent = out.error || "Đăng nhập thất bại";
+      errEl.style.display = "block";
+      btn.disabled = false; btn.textContent = oldTxt;
+    }
+  } catch(e){
+    errEl.textContent = "Không kết nối được máy chủ";
+    errEl.style.display = "block";
+    btn.disabled = false; btn.textContent = oldTxt;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   MAIN
+══════════════════════════════════════════════════ */
+async function enterMain(){
+  showScreen("screenList");
+  await loadFilters();
+  // Default: ngày hôm nay
+  const today = new Date().toISOString().substring(0,10);
+  document.getElementById("fDateFrom").value = today;
+  document.getElementById("fDateTo").value = today;
+}
+
+async function loadFilters(){
+  try {
+    const r = await api("tksxTransferRoutes");
+    if(r.result === "ok" && r.congDoans){
+      const fromSel = document.getElementById("fFrom");
+      const toSel = document.getElementById("fTo");
+      r.congDoans.forEach(cd => {
+        const o1 = '<option value="' + esc(cd.code) + '">' + esc(cd.name) + '</option>';
+        fromSel.innerHTML += o1;
+        toSel.innerHTML += o1;
+      });
+    }
+  } catch(e){
+    toast("Không tải được danh mục");
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   SEARCH
+══════════════════════════════════════════════════ */
+async function doSearch(){
+  const listEl = document.getElementById("listContent");
+  listEl.innerHTML = '<div class="empty"><span class="spin spin-dark"></span> Đang tìm kiếm...</div>';
+  document.getElementById("searchSummary").style.display = "none";
+
+  try {
+    const r = await api("tksxTransferHistory", {
+      from: document.getElementById("fFrom").value,
+      to: document.getElementById("fTo").value,
+      date: document.getElementById("fDateFrom").value,
+      dateTo: document.getElementById("fDateTo").value,
+      lsx: document.getElementById("fLSX").value.trim()
+    }, 45000);
+
+    if(r.result !== "ok"){
+      listEl.innerHTML = '<div class="empty" style="color:var(--red)">' + esc(r.error || "Lỗi") + '</div>';
+      return;
+    }
+
+    st.groups = r.groups || [];
+
+    if(st.groups.length === 0){
+      listEl.innerHTML = '<div class="empty">Không tìm thấy dữ liệu chuyển BTP</div>';
+      return;
+    }
+
+    // Summary
+    let totalQty = 0, totalTrx = 0;
+    st.groups.forEach(g => { totalQty += g.tongChuyen; totalTrx += g.soLanChuyen; });
+    document.getElementById("sumText").textContent = st.groups.length + " LSX — " + totalTrx + " lần chuyển";
+    document.getElementById("sumQty").textContent = "Tổng: " + fmtNum(totalQty);
+    document.getElementById("searchSummary").style.display = "flex";
+
+    // Render list
+    listEl.innerHTML = st.groups.map((g, i) =>
+      '<div class="lsx-card" onclick="showDetail(' + i + ')">' +
+        '<div class="lsx-head">' +
+          '<span class="lsx-code">' + esc(g.lsx) + '</span>' +
+          '<span class="lsx-count">' + g.soLanChuyen + ' lần</span>' +
+        '</div>' +
+        '<div class="lsx-sub">' + esc(g.khachhang || "") + ' — ' + esc(g.masp || "") + '</div>' +
+        '<div class="lsx-stats">' +
+          '<span>YC: ' + fmtNum(g.slYeuCau) + '</span>' +
+          '<span class="green">Đã chuyển: ' + fmtNum(g.tongChuyen) + '</span>' +
+          (g.tongChuyen > g.slYeuCau ? '<span class="amber">⚠️ Vượt</span>' : '') +
+        '</div>' +
+      '</div>'
+    ).join("");
+
+  } catch(e){
+    listEl.innerHTML = '<div class="empty" style="color:var(--red)">Lỗi kết nối. Kiểm tra mạng và thử lại.</div>';
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   DETAIL
+══════════════════════════════════════════════════ */
+function showDetail(idx){
+  const g = st.groups[idx];
+  if(!g) return;
+
+  document.getElementById("detailTitle").textContent = "Chi tiết: " + g.lsx;
+
+  const conLai = Math.max(0, g.slYeuCau - g.tongChuyen);
+  const isOver = g.tongChuyen > g.slYeuCau;
+
+  let html = '<div class="detail-header">' +
+    '<div class="dh-row"><span class="dh-label">LSX</span><span class="dh-value">' + esc(g.lsx) + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Mã SP</span><span class="dh-value">' + esc(g.masp || "") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Khách hàng</span><span class="dh-value">' + esc(g.khachhang || "") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Mô tả SP</span><span class="dh-value">' + esc(g.mota || "") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">SL yêu cầu</span><span class="dh-value">' + fmtNum(g.slYeuCau) + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Tổng đã chuyển</span><span class="dh-value" style="color:' + (isOver ? 'var(--red)' : 'var(--green)') + '">' + fmtNum(g.tongChuyen) + (isOver ? ' ⚠️' : '') + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Số lần chuyển</span><span class="dh-value">' + g.soLanChuyen + '</span></div>' +
+  '</div>';
+
+  html += '<div style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Lịch sử giao dịch</div>';
+
+  g.transactions.forEach(t => {
+    const hasWarn = t.ghiChu.indexOf("[VƯỢT SL]") !== -1;
+    html += '<div class="trx-card">' +
+      '<div class="trx-top">' +
+        '<span class="trx-id">' + esc(t.trxId) + '</span>' +
+        '<span class="trx-date">' + esc(t.timestamp) + '</span>' +
+      '</div>' +
+      '<div class="trx-detail">' +
+        '<span class="user">👤 ' + esc(t.user) + '</span>' +
+        '<span>' + esc(t.from) + ' → ' + esc(t.to) + '</span>' +
+        '<span class="qty">' + fmtNum(t.slChuyen) + '</span>' +
+      '</div>' +
+      (t.ghiChu ? '<div class="trx-note' + (hasWarn ? ' warn' : '') + '">' + esc(t.ghiChu) + '</div>' : '') +
+    '</div>';
+  });
+
+  document.getElementById("detailContent").innerHTML = html;
+  showScreen("screenDetail");
+}
+
+/* ══════════════════════════════════════════════════
+   ENTER KEY
+══════════════════════════════════════════════════ */
+function onEnterKey(fn){ return function(e){ if(e.key === "Enter"){ e.preventDefault(); fn(); } }; }
+document.getElementById("loginUser").addEventListener("keydown", onEnterKey(function(){ document.getElementById("loginPass").focus(); }));
+document.getElementById("loginPass").addEventListener("keydown", onEnterKey(doLogin));
+document.getElementById("fLSX").addEventListener("keydown", onEnterKey(doSearch));
+
+/* ══════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════ */
+(function init(){
+  if(checkSession()){
+    enterMain();
+  } else {
+    showScreen("screenLogin");
+    prefillLastUsername();
+    const u = document.getElementById("loginUser");
+    setTimeout(function(){ (u.value ? document.getElementById("loginPass") : u).focus(); }, 150);
+  }
+})();
+</script>
+</body>
+</html>
