@@ -43,7 +43,7 @@ body{background:var(--bg);color:var(--txt);}
 
 /* cards */
 .wrap{padding:8px 12px 20px;}
-.card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;transition:border-color .15s;}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;transition:border-color .15s;cursor:pointer;}
 .card:active{border-color:var(--teal);}
 .card-head{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
 .c-lsx{font-weight:800;font-size:14px;word-break:break-all;font-family:ui-monospace,Consolas,monospace;color:var(--teal-d);}
@@ -89,6 +89,43 @@ body{background:var(--bg);color:var(--txt);}
 .load-bar{height:3px;background:transparent;position:fixed;top:49px;left:0;right:0;z-index:11;}
 .load-bar.active{background:linear-gradient(90deg,transparent,var(--teal),transparent);animation:loadSlide 1.5s infinite;}
 @keyframes loadSlide{0%{background-position:-200px 0}100%{background-position:200px 0}}
+
+/* ═══ MODAL ═══ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;width:100%;max-width:600px;max-height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column;animation:slideUp .25s ease-out;}
+@keyframes slideUp{from{transform:translateY(40%);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-head{display:flex;align-items:center;gap:8px;padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.modal-head .m-title{flex:1;font-weight:800;font-size:15px;color:var(--teal-d);font-family:ui-monospace,Consolas,monospace;word-break:break-all;}
+.modal-head .m-close{background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:8px;}
+.modal-head .m-close:active{background:var(--bg);}
+.modal-body{overflow-y:auto;padding:12px 16px 24px;flex:1;}
+
+/* detail sections */
+.det-section{margin-bottom:16px;}
+.det-title{font-size:13px;font-weight:700;color:var(--teal);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.det-title .dt-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--bg);color:var(--muted);}
+.det-summary{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin-bottom:8px;padding:6px 10px;background:var(--bg);border-radius:8px;}
+.det-summary b{color:var(--txt);}
+.det-day{border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;}
+.det-day-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fafbfc;cursor:pointer;font-size:12px;user-select:none;}
+.det-day-head:active{background:#f1f5f9;}
+.det-day-head .dd-date{font-weight:700;color:var(--txt);}
+.det-day-head .dd-info{flex:1;color:var(--muted);font-size:11px;}
+.det-day-head .dd-kg{font-weight:700;font-size:12px;color:var(--teal-d);}
+.det-day-head .dd-arrow{color:var(--muted);font-size:14px;transition:transform .2s;}
+.det-day.open .dd-arrow{transform:rotate(90deg);}
+.det-day-rows{display:none;padding:4px 12px 8px;}
+.det-day.open .det-day-rows{display:block;}
+.det-row{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:11px;flex-wrap:wrap;}
+.det-row:last-child{border-bottom:none;}
+.det-row .dr-time{color:var(--muted);width:46px;flex-shrink:0;}
+.det-row .dr-cn{font-weight:600;color:var(--txt);}
+.det-row .dr-may{color:var(--teal);font-size:10px;}
+.det-row .dr-val{margin-left:auto;font-weight:700;font-size:12px;white-space:nowrap;}
+.det-row .dr-cuon{color:var(--muted);font-size:10px;margin-left:4px;}
+.det-loading{text-align:center;padding:20px;color:var(--muted);font-size:13px;}
+.det-empty{text-align:center;padding:12px;color:#cbd5e1;font-size:12px;}
 </style>
 </head>
 <body>
@@ -103,7 +140,7 @@ body{background:var(--bg);color:var(--txt);}
 
 <div class="search-area">
   <div class="search-row">
-    <input id="q" class="search-box" type="text" placeholder="Tìm LSX / Khách hàng / Mã SP..." oninput="debounceRender()">
+    <input id="q" class="search-box" type="text" placeholder="Tìm LSX / Mã SP..." oninput="debounceRender()">
   </div>
   <div class="filter-row">
     <select id="fKH" onchange="render()">
@@ -119,6 +156,19 @@ body{background:var(--bg);color:var(--txt);}
 <div class="wrap" id="list"></div>
 
 <div id="toast" class="toast"></div>
+
+<!-- ═══ MODAL CHI TIẾT ═══ -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="m-title" id="mTitle"></span>
+      <button class="m-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="mBody">
+      <div class="det-loading"><span class="spin"></span> Đang tải chi tiết...</div>
+    </div>
+  </div>
+</div>
 
 <script>
 const CONFIG = {
@@ -410,10 +460,12 @@ function render(){
     '<span class="chip chuasx">' + nChuaSX + ' chưa SX</span>';
 
   let shown = data.filter(e => {
+    // Text search: chỉ tìm trong LSX + Mã SP + Mô tả (không tìm KH)
     if(q){
-      const haystack = (e.lsx + " " + e.lsxct + " " + e.kh + " " + e.masp + " " + e.mota + " " + e.cl).toLowerCase();
+      const haystack = (e.lsx + " " + e.lsxct + " " + e.masp + " " + e.mota + " " + e.cl).toLowerCase();
       if(!haystack.includes(q)) return false;
     }
+    // Dropdown KH: filter độc lập
     if(fKH && (e.kh || "").toLowerCase() !== fKH.toLowerCase()) return false;
     if(fThieu && e._st === "du") return false;
     if(fXuat && e.ygh && e.ygh.length > 0) return false;
@@ -430,7 +482,7 @@ function render(){
   }
 
   let html = "";
-  shown.forEach(e => {
+  shown.forEach((e, idx) => {
     // Badge
     let badge;
     if(e._st === "chuasx") badge = '<span class="badge b-none">Chưa SX</span>';
@@ -444,7 +496,7 @@ function render(){
     if(e.cl) meta.push(esc(e.cl));
     if(e.ng) meta.push('Giao: <b>' + esc(e.ng) + '</b>');
 
-    html += '<div class="card">' +
+    html += '<div class="card" onclick="openDetail(\'' + esc(e.lsx).replace(/'/g,"\\'") + '\')">' +
       '<div class="card-head">' +
         '<span class="c-lsx">' + esc(e.lsx) + '</span>' +
         (e.kh ? '<span class="c-kh">' + esc(e.kh) + '</span>' : '') +
@@ -465,6 +517,254 @@ function render(){
     html += '<div class="more-note">Hiển thị ' + CONFIG.RENDER_LIMIT + '/' + total + ' — dùng ô tìm kiếm để lọc.</div>';
   }
   listEl.innerHTML = html;
+}
+
+/* ═══ MODAL CHI TIẾT ═══ */
+function openModal(){
+  document.getElementById("modalOverlay").classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+function closeModal(){
+  document.getElementById("modalOverlay").classList.remove("show");
+  document.body.style.overflow = "";
+}
+
+async function openDetail(lsx){
+  const mTitle = document.getElementById("mTitle");
+  const mBody = document.getElementById("mBody");
+
+  // Tìm item trong data
+  const item = data.find(e => e.lsx === lsx);
+
+  mTitle.textContent = lsx;
+  mBody.innerHTML = '<div class="det-loading"><span class="spin"></span> Đang tải chi tiết...</div>';
+  openModal();
+
+  // Load 2 nguồn song song: lsxDetail (TP) + tksxHistory (Thổi/In)
+  let tpData = null, tiData = null;
+  try{
+    const [tp, ti] = await Promise.all([
+      fetch(CONFIG.CENTRAL_URL + "?action=lsxDetail&lsx=" + encodeURIComponent(lsx) + "&t=" + Date.now())
+        .then(r => r.json()).catch(() => null),
+      jsonp(CONFIG.TKSX_URL + "?action=tksxHistory&lsx=" + encodeURIComponent(lsx), 20000)
+        .catch(() => null)
+    ]);
+    tpData = tp;
+    tiData = ti;
+  }catch(e){}
+
+  renderDetail(lsx, item, tpData, tiData);
+}
+
+function renderDetail(lsx, item, tpData, tiData){
+  const mBody = document.getElementById("mBody");
+  let html = "";
+
+  // ── Info header ──
+  if(item){
+    let infoItems = [];
+    if(item.kh) infoItems.push('KH: <b>' + esc(item.kh) + '</b>');
+    if(item.masp) infoItems.push('SP: <b>' + esc(item.masp) + '</b>');
+    if(item.mota) infoItems.push(esc(item.mota));
+    if(item.ng) infoItems.push('Giao: <b>' + esc(item.ng) + '</b>');
+    if(infoItems.length){
+      html += '<div class="det-summary">' + infoItems.join(' · ') + '</div>';
+    }
+  }
+
+  // ── THỔI/IN ──
+  const tiRows = (tiData && tiData.rows) || [];
+  if(tiRows.length > 0){
+    // Tách Thổi vs In
+    const thoiRows = tiRows.filter(r => isThoi(r.loai));
+    const inRows = tiRows.filter(r => !isThoi(r.loai));
+
+    if(thoiRows.length) html += buildTISection("Thổi", thoiRows);
+    if(inRows.length) html += buildTISection("In", inRows);
+  } else {
+    html += '<div class="det-section"><div class="det-title">Thổi / In</div><div class="det-empty">Chưa có dữ liệu Thổi/In</div></div>';
+  }
+
+  // ── THÀNH PHẨM (Cắt/TC/GTB) ──
+  const tpScans = (tpData && tpData.scans) || [];
+  if(tpScans.length > 0){
+    // Group by WS
+    const wsGroups = {};
+    tpScans.forEach(s => {
+      const ws = mapWS(s.ws);
+      if(!wsGroups[ws]) wsGroups[ws] = [];
+      wsGroups[ws].push(s);
+    });
+
+    const wsOrder = ["Cắt/TC", "GTB", "Khác"];
+    wsOrder.forEach(ws => {
+      if(!wsGroups[ws]) return;
+      html += buildTPSection(ws, wsGroups[ws]);
+    });
+    // Nếu không phân biệt WS (tất cả trống)
+    if(Object.keys(wsGroups).length === 1 && wsGroups["Khác"]){
+      // Đã render ở trên rồi, nhưng đổi title thành "Thành phẩm"
+    }
+  } else {
+    html += '<div class="det-section"><div class="det-title">Thành phẩm</div><div class="det-empty">Chưa có dữ liệu thành phẩm</div></div>';
+  }
+
+  mBody.innerHTML = html;
+
+  // Bind toggle events
+  mBody.querySelectorAll(".det-day-head").forEach(el => {
+    el.addEventListener("click", () => {
+      el.parentElement.classList.toggle("open");
+    });
+  });
+}
+
+function mapWS(ws){
+  const w = String(ws||"").toUpperCase();
+  if(w === "CAT" || w === "TCO" || w === "CT") return "Cắt/TC";
+  if(w === "GTB") return "GTB";
+  if(!w) return "Khác";
+  return w;
+}
+
+function buildTISection(label, rows){
+  // Gom theo ngày SX (hoặc ngày từ time nếu ngaySX trống)
+  const dayMap = {};
+  let totalKG = 0, totalCuon = 0;
+  const machineSet = {}, cnSet = {};
+
+  rows.forEach(r => {
+    const day = r.ngaySX || extractDate(r.time);
+    if(!dayMap[day]) dayMap[day] = { kg:0, cuon:0, rows:[], machines:{}, cns:{} };
+    const d = dayMap[day];
+    d.kg += r.kqSX || 0;
+    d.cuon++;
+    d.rows.push(r);
+    if(r.may) { d.machines[r.may] = true; machineSet[r.may] = true; }
+    if(r.cn) { d.cns[r.cn] = true; cnSet[r.cn] = true; }
+    totalKG += r.kqSX || 0;
+    totalCuon++;
+  });
+
+  // Sort ngày mới nhất trước
+  const days = Object.keys(dayMap).sort((a,b) => compareDateStr(b,a));
+
+  let html = '<div class="det-section">';
+  html += '<div class="det-title">' + esc(label) + ' <span class="dt-badge">' + totalCuon + ' cuộn · ' + fmt(totalKG) + ' kg</span></div>';
+  html += '<div class="det-summary">' +
+    'Máy: <b>' + Object.keys(machineSet).join(", ") + '</b> · ' +
+    'CN: <b>' + Object.keys(cnSet).join(", ") + '</b>' +
+    '</div>';
+
+  days.forEach(day => {
+    const d = dayMap[day];
+    html += '<div class="det-day">' +
+      '<div class="det-day-head">' +
+        '<span class="dd-date">' + esc(day) + '</span>' +
+        '<span class="dd-info">' + d.cuon + ' cuộn · ' + Object.keys(d.machines).join(", ") + '</span>' +
+        '<span class="dd-kg">' + fmt(d.kg) + ' kg</span>' +
+        '<span class="dd-arrow">&#9654;</span>' +
+      '</div>' +
+      '<div class="det-day-rows">';
+
+    d.rows.forEach(r => {
+      html += '<div class="det-row">' +
+        '<span class="dr-time">' + extractTime(r.time) + '</span>' +
+        '<span class="dr-cn">' + esc(r.cn) + '</span>' +
+        '<span class="dr-may">' + esc(r.may) + '</span>' +
+        '<span class="dr-val">' + fmt(r.kqSX) + ' kg</span>' +
+        (r.klCuon ? '<span class="dr-cuon">(cuộn ' + fmt(r.klCuon) + ')</span>' : '') +
+      '</div>';
+    });
+
+    html += '</div></div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+function buildTPSection(label, scans){
+  // Gom theo ngày
+  const dayMap = {};
+  let totalSL = 0, totalKG = 0;
+  const machineSet = {}, cnSet = {};
+
+  scans.forEach(s => {
+    const day = extractDate(s.time);
+    if(!dayMap[day]) dayMap[day] = { sl:0, kg:0, rows:[], machines:{}, cns:{} };
+    const d = dayMap[day];
+    d.sl += s.sl || 0;
+    d.kg += s.klQR || 0;
+    d.rows.push(s);
+    if(s.mayTen || s.may) { const m = s.mayTen || s.may; d.machines[m] = true; machineSet[m] = true; }
+    if(s.cnTen || s.cn) { const c = s.cnTen || s.cn; d.cns[c] = true; cnSet[c] = true; }
+    totalSL += s.sl || 0;
+    totalKG += s.klQR || 0;
+  });
+
+  const days = Object.keys(dayMap).sort((a,b) => compareDateStr(b,a));
+
+  const titleLabel = label === "Khác" ? "Thành phẩm" : label;
+  let html = '<div class="det-section">';
+  html += '<div class="det-title">' + esc(titleLabel) + ' <span class="dt-badge">' + scans.length + ' lần · ' + fmt(totalSL) + ' SL · ' + fmt(totalKG) + ' kg</span></div>';
+  html += '<div class="det-summary">' +
+    'Máy: <b>' + (Object.keys(machineSet).join(", ") || "—") + '</b> · ' +
+    'CN: <b>' + (Object.keys(cnSet).join(", ") || "—") + '</b>' +
+    '</div>';
+
+  days.forEach(day => {
+    const d = dayMap[day];
+    html += '<div class="det-day">' +
+      '<div class="det-day-head">' +
+        '<span class="dd-date">' + esc(day) + '</span>' +
+        '<span class="dd-info">' + d.rows.length + ' lần · ' + Object.keys(d.machines).join(", ") + '</span>' +
+        '<span class="dd-kg">' + fmt(d.sl) + ' SL · ' + fmt(d.kg) + ' kg</span>' +
+        '<span class="dd-arrow">&#9654;</span>' +
+      '</div>' +
+      '<div class="det-day-rows">';
+
+    d.rows.forEach(s => {
+      html += '<div class="det-row">' +
+        '<span class="dr-time">' + extractTime(s.time) + '</span>' +
+        '<span class="dr-cn">' + esc(s.cnTen || s.cn || "") + '</span>' +
+        '<span class="dr-may">' + esc(s.mayTen || s.may || "") + '</span>' +
+        '<span class="dr-val">' + fmt(s.sl) + ' SL · ' + fmt(s.klQR) + ' kg</span>' +
+      '</div>';
+    });
+
+    html += '</div></div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+/* ═══ Date helpers ═══ */
+function extractDate(timeStr){
+  // "dd/MM/yyyy HH:mm:ss" → "dd/MM/yyyy"
+  const s = String(timeStr || "");
+  const m = /^(\d{1,2}\/\d{1,2}\/\d{4})/.exec(s);
+  return m ? m[1] : s.substring(0, 10);
+}
+
+function extractTime(timeStr){
+  // "dd/MM/yyyy HH:mm:ss" → "HH:mm"
+  const s = String(timeStr || "");
+  const m = /(\d{1,2}:\d{2})(:\d{2})?/.exec(s);
+  return m ? m[1] : "";
+}
+
+function compareDateStr(a, b){
+  // Compare "dd/MM/yyyy" strings → sort mới nhất trước
+  const pa = parseDMY(a), pb = parseDMY(b);
+  return pa - pb;
+}
+
+function parseDMY(s){
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
+  if(!m) return 0;
+  return new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1])).getTime();
 }
 
 /* ═══ BOOT ═══ */
