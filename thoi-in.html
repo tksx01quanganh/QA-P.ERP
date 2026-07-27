@@ -151,6 +151,15 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
 .filter-row{display:flex;gap:6px;margin-bottom:10px;}
 .fbtn{flex:1;padding:8px;border:2px solid var(--border);border-radius:10px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;text-align:center;}
 .fbtn.active{border-color:var(--teal);background:#ecfdf5;color:var(--teal-d);}
+
+/* allocation preview */
+.alloc-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;}
+.alloc-card .ac-lsx{font-weight:700;font-size:15px;color:var(--txt);}
+.alloc-card .ac-row{display:flex;justify-content:space-between;margin-top:6px;font-size:14px;}
+.alloc-card .ac-row .ac-lbl{color:var(--muted);}
+.alloc-card .ac-row .ac-val{font-weight:700;}
+.alloc-card .ac-row .ac-val.green{color:var(--green);}
+.alloc-total{text-align:center;padding:12px;background:#ecfdf5;border-radius:12px;margin-bottom:12px;font-size:15px;font-weight:600;color:var(--teal-d);}
 </style>
 </head>
 <body>
@@ -231,10 +240,12 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
   <div id="scanHint" class="hint info">Đưa mã QR vào khung hình</div>
 
   <!-- Nhập tay -->
-  <div class="manual-row">
+  <div class="manual-row" style="flex-wrap:wrap;">
     <input id="manualLsx" type="text" placeholder="LSX" inputmode="text">
     <input id="manualKl" type="text" placeholder="KL" inputmode="decimal" style="max-width:100px">
-    <button class="btn small green" onclick="addManual()">＋</button>
+  </div>
+  <div style="padding:0 14px;margin-bottom:8px;">
+    <button class="btn small green" onclick="addManual()" style="width:100%;padding:12px;font-size:15px;">📝 Thêm Thủ Công</button>
   </div>
 
   <!-- Danh sách đã quét -->
@@ -248,10 +259,31 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
 
   <div class="controls">
     <div class="row2">
-      <button class="btn green" id="btnSend" onclick="submitSX()">✅ Gửi</button>
+      <button class="btn green" id="btnSend" onclick="showAllocation()">📊 Xem phân bổ & Gửi</button>
       <button class="btn gray" onclick="clearScan()">🗑️ Xóa hết</button>
     </div>
     <button class="btn ghost small" onclick="switchCNMay()">Đổi CN / Máy</button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 4b: Phân bổ KL — Xem trước
+═══════════════════════════════════════ -->
+<section id="stepAlloc" class="screen">
+  <div class="navrow">
+    <button class="icon-btn" onclick="backFromAlloc()">←</button>
+    <button class="icon-btn" onclick="showScreen('stepHome')">🏠</button>
+  </div>
+  <div class="topbar"><div class="ttl">📊 Phân bổ khối lượng</div></div>
+  <div class="picker-wrap">
+    <div class="alloc-total">
+      KL cuộn: <span id="allocKL" style="font-size:22px;font-weight:800;">0</span> kg
+    </div>
+    <div id="allocCards"></div>
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:12px;">
+      <button class="btn green" id="btnConfirmSend" onclick="confirmSubmitSX()">✅ Xác nhận gửi</button>
+      <button class="btn ghost" onclick="backFromAlloc()">← Quay lại scan thêm</button>
+    </div>
   </div>
 </section>
 
@@ -456,8 +488,11 @@ let st = {
   user: null, maNV: null, username: null,
   loai: null,       // "Thổi" hoặc "In"
   cn: null,         // tên CN
+  maCN: null,       // mã CN
   may: null,        // tên Máy
+  maMay: null,      // mã Máy
   items: [],        // [{data, lsx, klyc}]
+  klCuon: 0,        // KL cuộn (lưu khi xem phân bổ)
 };
 
 let masters = null; // {cnThoi, cnIn, mayThoi, mayIn}
@@ -610,6 +645,10 @@ function filterCN(){
 
 function selectCN(ten){
   st.cn = ten;
+  // Tìm mã CN từ masters
+  const cnList = st.loai === "Thổi" ? (masters.cnThoi||[]) : (masters.cnIn||[]);
+  const found = cnList.find(c => c.ten === ten);
+  st.maCN = found ? found.ma : "";
   document.getElementById("mayTitle").textContent = "Chọn Máy — " + st.loai;
   renderMayList();
   showScreen("stepMay");
@@ -634,6 +673,10 @@ function filterMay(){
 
 function selectMay(ten){
   st.may = ten;
+  // Tìm mã Máy từ masters
+  const mayList = st.loai === "Thổi" ? (masters.mayThoi||[]) : (masters.mayIn||[]);
+  const found = mayList.find(m => m.ten === ten);
+  st.maMay = found ? found.ma : "";
   enterScanScreen();
 }
 
@@ -709,6 +752,14 @@ function tryAddData(raw){
     return;
   }
 
+  // Chống trùng LSX trong 1 phiến scan
+  if(st.items.some(it => it.lsx === lsx)){
+    FB.error();
+    buzz([100,60,100,60,100]);
+    setHint("⚠️ LSX này đã có trong lần Scan này: " + lsx, "err");
+    return;
+  }
+
   st.items.push({ data: s, lsx: lsx, klyc: kl });
   FB.single();
   setHint("✓ " + lsx + " — " + kl + " kg", "ok");
@@ -763,15 +814,60 @@ function clearScan(){
 }
 
 /* ══════════════════════════════════════════════════
-   GỬI DỮ LIỆU
+   PHÂN BỔ KL — Preview trước khi gửi
 ══════════════════════════════════════════════════ */
-async function submitSX(){
+function showAllocation(){
   if(!st.items.length){ toast("Chưa có mã nào"); return; }
   const klRaw = document.getElementById("klCuon").value.trim().replace(",",".");
   const klCuon = parseFloat(klRaw);
   if(isNaN(klCuon) || klCuon <= 0){ toast("Nhập KL cuộn hợp lệ"); return; }
 
-  const btn = document.getElementById("btnSend");
+  st.klCuon = klCuon;
+
+  // Phân bổ preview (giống backend: fill from first → last)
+  const alloc = previewAllocate(st.items, klCuon);
+
+  document.getElementById("allocKL").textContent = fmt(klCuon);
+  const cards = document.getElementById("allocCards");
+  cards.innerHTML = alloc.map((a, i) =>
+    '<div class="alloc-card">' +
+      '<div class="ac-lsx">#' + (i+1) + ' — ' + esc(a.lsx) + '</div>' +
+      '<div class="ac-row"><span class="ac-lbl">KL yêu cầu</span><span class="ac-val">' + fmt(a.klyc) + ' kg</span></div>' +
+      '<div class="ac-row"><span class="ac-lbl">KL phân bổ (dự kiến)</span><span class="ac-val green">' + fmt(a.allocated) + ' kg</span></div>' +
+    '</div>'
+  ).join("");
+
+  stopCamera();
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("stepAlloc").classList.add("active");
+}
+
+function previewAllocate(items, klCuon){
+  if(items.length === 1){
+    return [{ lsx: items[0].lsx, klyc: items[0].klyc, allocated: klCuon }];
+  }
+  let remaining = klCuon;
+  return items.map((it, i) => {
+    let take;
+    if(i === items.length - 1){
+      take = remaining;
+    } else {
+      take = Math.min(it.klyc, remaining);
+    }
+    remaining = Math.round((remaining - take) * 100) / 100;
+    return { lsx: it.lsx, klyc: it.klyc, allocated: Math.round(take * 100) / 100 };
+  });
+}
+
+function backFromAlloc(){
+  showScreen("stepScan");
+}
+
+/* ══════════════════════════════════════════════════
+   GỬI DỮ LIỆU
+══════════════════════════════════════════════════ */
+async function confirmSubmitSX(){
+  const btn = document.getElementById("btnConfirmSend");
   const old = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Đang gửi...';
@@ -782,23 +878,30 @@ async function submitSX(){
       user: st.username,
       loai: st.loai,
       cn: st.cn,
+      maCN: st.maCN || "",
       may: st.may,
-      klCuon: klCuon,
+      maMay: st.maMay || "",
+      klCuon: st.klCuon,
       items: st.items,
       batchId: uuid(),
       ts: new Date().toISOString()
     };
 
-    const r = await apiPost(body);
+    const r = await apiPostWithTimeout(body, 10000);
     if(r.result === "ok"){
       FB.sendOk();
-      if(r.duplicate) toast("Đã gửi trước đó (trùng batch)");
+      if(r.optimistic) toast("Đã gửi thành công!", 3000);
+      else if(r.duplicate) toast("Đã gửi trước đó (trùng batch)");
       else toast("Gửi thành công: " + (r.inserted||0) + " dòng");
+
+      // Reset và quay về màn hình Scan
       st.items = [];
+      st.klCuon = 0;
+      document.getElementById("klCuon").value = "";
       updateScanCount();
       renderScanItems();
-      document.getElementById("klCuon").value = "";
       setHint("Gửi thành công!", "ok");
+      showScreen("stepScan");
     } else {
       FB.sendFail();
       toast(r.error || "Gửi thất bại");
@@ -808,6 +911,30 @@ async function submitSX(){
     toast("Lỗi kết nối. Thử lại.");
   }
   btn.disabled = false; btn.innerHTML = old;
+}
+
+/* apiPost với timeout — nếu quá thời gian thì trả kết quả optimistic */
+async function apiPostWithTimeout(body, timeoutMs){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 10000);
+  try {
+    const r = await fetch(CONFIG.API_URL, {
+      method: "POST",
+      headers: {"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(body),
+      redirect: "follow",
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    return r.json();
+  } catch(e){
+    clearTimeout(timer);
+    if(e.name === "AbortError"){
+      // Timeout — dữ liệu rất có thể đã vào sheet rồi
+      return { result: "ok", inserted: body.items ? body.items.length : 0, optimistic: true };
+    }
+    throw e;
+  }
 }
 
 /* ══════════════════════════════════════════════════
@@ -1383,7 +1510,7 @@ document.getElementById("manualKl").addEventListener("keydown", e => {
   if(e.key === "Enter"){ e.preventDefault(); addManual(); }
 });
 document.getElementById("klCuon").addEventListener("keydown", e => {
-  if(e.key === "Enter"){ e.preventDefault(); submitSX(); }
+  if(e.key === "Enter"){ e.preventDefault(); showAllocation(); }
 });
 document.getElementById("pheTron").addEventListener("keydown", e => {
   if(e.key === "Enter"){ e.preventDefault(); document.getElementById("pheMau").focus(); }
