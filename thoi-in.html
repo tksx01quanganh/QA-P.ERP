@@ -894,14 +894,14 @@ async function confirmSubmitSX(){
       else if(r.duplicate) toast("Đã gửi trước đó (trùng batch)");
       else toast("Gửi thành công: " + (r.inserted||0) + " dòng");
 
-      // Reset và quay về màn hình Scan
+      // Reset và quay về màn hình chính
       st.items = [];
       st.klCuon = 0;
       document.getElementById("klCuon").value = "";
       updateScanCount();
       renderScanItems();
-      setHint("Gửi thành công!", "ok");
-      showScreen("stepScan");
+      setHint("Đưa mã QR vào khung hình", "info");
+      showScreen("stepHome");
     } else {
       FB.sendFail();
       toast(r.error || "Gửi thất bại");
@@ -1173,7 +1173,7 @@ function drawDaily(){
 /* ══════════════════════════════════════════════════
    NHẬP PHẾ — Flow: chọn Loại → CN → Máy → nhập KL → Gửi
 ══════════════════════════════════════════════════ */
-var phe = { loai: "", cn: "", may: "" };
+var phe = { loai: "", cn: "", may: "", maCN: "", maMay: "" };
 
 async function startPhe(loai){
   phe.loai = loai;
@@ -1204,6 +1204,9 @@ function filterPheCN(){
 
 function selectPheCN(ten){
   phe.cn = ten;
+  var cnList = phe.loai === "Thổi" ? (masters.cnThoi||[]) : (masters.cnIn||[]);
+  var found = cnList.find(function(c){ return c.ten === ten; });
+  phe.maCN = found ? found.ma : "";
   document.getElementById("pheMayTitle").textContent = "Nhập Phế " + phe.loai + " — Chọn Máy";
   renderPheMayList();
   showScreen("stepPheMay");
@@ -1227,6 +1230,9 @@ function filterPheMay(){
 
 function selectPheMay(ten){
   phe.may = ten;
+  var mayList = phe.loai === "Thổi" ? (masters.mayThoi||[]) : (masters.mayIn||[]);
+  var found = mayList.find(function(m){ return m.ten === ten; });
+  phe.maMay = found ? found.ma : "";
   document.getElementById("pheCNVal").textContent = phe.cn;
   document.getElementById("pheMayVal").textContent = phe.may;
   document.getElementById("pheLoaiVal").textContent = phe.loai;
@@ -1251,7 +1257,9 @@ async function submitPhe(){
       user: st.username,
       loai: phe.loai,
       cn: phe.cn,
+      maCN: phe.maCN || "",
       may: phe.may,
+      maMay: phe.maMay || "",
       pheTron: tron,
       pheMau: mau,
       ts: new Date().toISOString()
