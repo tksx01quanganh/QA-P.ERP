@@ -20,13 +20,10 @@ body{background:var(--bg);color:var(--txt);}
 /* search area */
 .search-area{padding:10px 12px 6px;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:49px;z-index:9;}
 .search-row{display:flex;gap:8px;margin-bottom:6px;}
-.search-box{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px;background:#fff;}
+.search-box{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px;background:#fff;min-width:0;}
 .search-box:focus{outline:none;border-color:var(--teal);}
 .filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-.filter-row select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--txt);max-width:180px;}
-.filter-row select:focus{outline:none;border-color:var(--teal);}
 .filter-row label{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;}
-.btn-sm{border:none;border-radius:8px;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;color:#fff;background:var(--teal);white-space:nowrap;}
 
 /* chips */
 .sum-chips{display:flex;gap:6px;flex-wrap:wrap;padding:6px 12px;}
@@ -47,7 +44,6 @@ body{background:var(--bg);color:var(--txt);}
 .card:active{border-color:var(--teal);}
 .card-head{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
 .c-lsx{font-weight:800;font-size:14px;word-break:break-all;font-family:ui-monospace,Consolas,monospace;color:var(--teal-d);}
-.c-masp{font-size:11px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;}
 .c-kh{font-size:12px;color:var(--txt);font-weight:600;margin-left:auto;text-align:right;max-width:45%;}
 .c-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:var(--muted);margin-bottom:8px;}
 .c-meta b{color:var(--txt);}
@@ -126,6 +122,11 @@ body{background:var(--bg);color:var(--txt);}
 .det-row .dr-cuon{color:var(--muted);font-size:10px;margin-left:4px;}
 .det-loading{text-align:center;padding:20px;color:var(--muted);font-size:13px;}
 .det-empty{text-align:center;padding:12px;color:#cbd5e1;font-size:12px;}
+
+/* KH clear button */
+.search-wrap{position:relative;flex:1;min-width:0;}
+.search-wrap .clear-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;color:var(--muted);cursor:pointer;padding:2px 6px;display:none;}
+.search-wrap .clear-btn.show{display:block;}
 </style>
 </head>
 <body>
@@ -140,12 +141,16 @@ body{background:var(--bg);color:var(--txt);}
 
 <div class="search-area">
   <div class="search-row">
-    <input id="q" class="search-box" type="text" placeholder="Tìm LSX / Mã SP..." oninput="debounceRender()">
+    <div class="search-wrap">
+      <input id="qKH" class="search-box" type="text" placeholder="Khách hàng..." oninput="debounceRender()" style="padding-right:32px;">
+      <button class="clear-btn" id="qKH_clr" onclick="document.getElementById('qKH').value='';this.classList.remove('show');render()">&times;</button>
+    </div>
+    <div class="search-wrap">
+      <input id="q" class="search-box" type="text" placeholder="LSX / Mã SP..." oninput="debounceRender()" style="padding-right:32px;">
+      <button class="clear-btn" id="q_clr" onclick="document.getElementById('q').value='';this.classList.remove('show');render()">&times;</button>
+    </div>
   </div>
   <div class="filter-row">
-    <select id="fKH" onchange="render()">
-      <option value="">Tất cả khách hàng</option>
-    </select>
     <label><input type="checkbox" id="fThieu" onchange="render()"> Chưa đủ</label>
     <label><input type="checkbox" id="fXuat" onchange="render()"> Chưa xuất</label>
   </div>
@@ -180,8 +185,8 @@ const CONFIG = {
 };
 
 /* ═══ STATE ═══ */
-let data = [];        // merged array
-let customers = [];   // unique khách hàng
+let data = [];
+let customers = [];
 let loading = false;
 
 /* ═══ SESSION ═══ */
@@ -235,29 +240,24 @@ async function loadAll(force){
   st.innerHTML = '<span class="spin"></span> Đang tải dữ liệu...';
   setLoading(true);
 
-  // Stale-while-revalidate: hiện cache cũ ngay, refresh ngầm
   if(!force){
     try{
       const c = JSON.parse(localStorage.getItem(CONFIG.CACHE_KEY) || "null");
       if(c && c.ts && c.data){
         data = c.data;
         customers = c.customers || [];
-        populateKH();
         st.style.display = "none";
         render();
-        // Cache còn tươi → không cần fetch lại
         if(Date.now() - c.ts < CONFIG.CACHE_TTL){
           loading = false;
           setLoading(false);
           return;
         }
-        // Cache cũ → hiện data cũ + fetch ngầm (stale-while-revalidate)
       }
     }catch(e){}
   }
 
   try{
-    // 2 nguồn song song: chainAll (TP + orders) + masterall (BTP Thổi/In)
     const [central, tksx] = await Promise.all([
       fetch(CONFIG.CENTRAL_URL + "?action=chainAll&t=" + Date.now()).then(r=>r.json()),
       jsonp(CONFIG.TKSX_URL + "?action=masterall", 30000).catch(()=>({rows:[]}))
@@ -268,7 +268,6 @@ async function loadAll(force){
         ts: Date.now(), data: data, customers: customers
       }));
     }catch(e){}
-    populateKH();
     st.style.display = "none";
     render();
   }catch(e){
@@ -285,7 +284,6 @@ async function loadAll(force){
 }
 
 function mergeData(central, tksx){
-  // Build BTP map: baseLSX → {thoi: {klyc, sx}, in: {klyc, sx}}
   const btpMap = {};
   (tksx.rows || []).forEach(r => {
     const key = baseLSX(r.lsxGoc || r.lsx);
@@ -297,30 +295,20 @@ function mergeData(central, tksx){
     t.sx   += parseFloat(r.tongSX) || 0;
   });
 
-  // Build merged data from orders
   const orders = central.orders || [];
   customers = central.customers || [];
 
-  // Group by baseLSX (gộp các dòng cùng LSX gốc)
   const grouped = {};
   orders.forEach(o => {
     const key = baseLSX(o.lsxct || o.lsx);
     if(!key) return;
     if(!grouped[key]){
       grouped[key] = {
-        lsx: key,
-        lsxct: o.lsxct || "",
-        kh: o.kh || "",
-        masp: o.masp || "",
-        mota: o.mota || "",
-        cl: o.cl || "",
-        dvt: o.dvt || "",
-        ng: o.ng || "",
-        slYC: 0, klYC: 0,
-        slDone: 0, klDone: 0,
-        thoi: {klyc:0, sx:0},
-        in: {klyc:0, sx:0},
-        ygh: []
+        lsx: key, lsxct: o.lsxct || "",
+        kh: o.kh || "", masp: o.masp || "", mota: o.mota || "",
+        cl: o.cl || "", dvt: o.dvt || "", ng: o.ng || "",
+        slYC: 0, klYC: 0, slDone: 0, klDone: 0,
+        thoi: {klyc:0, sx:0}, in: {klyc:0, sx:0}, ygh: []
       };
     }
     const g = grouped[key];
@@ -328,7 +316,6 @@ function mergeData(central, tksx){
     g.klYC += o.klYC || 0;
     g.slDone += o.slDone || 0;
     g.klDone += o.klDone || 0;
-    // Dùng thông tin chi tiết nhất (ưu tiên dòng có mô tả)
     if(!g.kh && o.kh) g.kh = o.kh;
     if(!g.masp && o.masp) g.masp = o.masp;
     if(!g.mota && o.mota) g.mota = o.mota;
@@ -337,7 +324,6 @@ function mergeData(central, tksx){
     if(!g.ng && o.ng) g.ng = o.ng;
   });
 
-  // Merge BTP data vào
   Object.keys(grouped).forEach(key => {
     const btp = btpMap[key];
     if(btp){
@@ -346,40 +332,33 @@ function mergeData(central, tksx){
     }
   });
 
-  // Thêm BTP LSX chưa có trong orders (trường hợp BTP đã ghi nhận nhưng chưa có đơn hàng)
   Object.keys(btpMap).forEach(key => {
     if(!grouped[key]){
       grouped[key] = {
         lsx: key, lsxct: "", kh: "", masp: "", mota: "", cl: "", dvt: "", ng: "",
         slYC: 0, klYC: 0, slDone: 0, klDone: 0,
-        thoi: btpMap[key].thoi,
-        in: btpMap[key].in,
-        ygh: []
+        thoi: btpMap[key].thoi, in: btpMap[key].in, ygh: []
       };
     }
   });
 
-  // Convert to array, sort by LSX (mới nhất trước)
   data = Object.values(grouped);
   data.sort((a,b) => String(b.lsx).localeCompare(String(a.lsx), undefined, {numeric:true}));
 }
 
-/* ═══ POPULATE KHÁCH HÀNG ═══ */
-function populateKH(){
-  const sel = document.getElementById("fKH");
-  const current = sel.value;
-  sel.innerHTML = '<option value="">Tất cả khách hàng</option>';
-  customers.forEach(kh => {
-    const opt = document.createElement("option");
-    opt.value = kh; opt.textContent = kh;
-    sel.appendChild(opt);
-  });
-  sel.value = current;
-}
-
 /* ═══ RENDER ═══ */
 let renderTimer = null;
-function debounceRender(){ clearTimeout(renderTimer); renderTimer = setTimeout(render, 200); }
+function debounceRender(){
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(()=>{
+    // Toggle clear buttons
+    const qKH = document.getElementById("qKH");
+    const q = document.getElementById("q");
+    document.getElementById("qKH_clr").classList.toggle("show", !!qKH.value);
+    document.getElementById("q_clr").classList.toggle("show", !!q.value);
+    render();
+  }, 200);
+}
 
 function fmt(n){
   const v = Math.round((n || 0) * 100) / 100;
@@ -422,23 +401,17 @@ function stageRow(name, sx, yc, unit){
 function getStatus(e){
   const hasBTP = e.thoi.sx > 0 || e.in.sx > 0;
   const hasTP = e.slDone > 0 || e.klDone > 0;
-
   if(!hasBTP && !hasTP) return "chuasx";
-
-  // Đủ TP: SL đã SX >= SL yêu cầu (nếu có SL yêu cầu)
   if(e.slYC > 0 && e.slDone >= e.slYC * 0.999) return "du";
-  // Hoặc KL đã cắt >= KL yêu cầu cuối chuỗi
   const ycCuoi = e.in.klyc > 0 ? e.in.klyc : e.thoi.klyc;
   if(ycCuoi > 0 && e.klDone >= ycCuoi * 0.999) return "du";
-  // Đã có ghi nhận TP nhưng không có yêu cầu → coi là đủ
   if(e.slYC === 0 && e.klYC === 0 && hasTP) return "du";
-
   return "thieu";
 }
 
 function render(){
   const q = (document.getElementById("q").value || "").trim().toLowerCase();
-  const fKH = document.getElementById("fKH").value;
+  const qKH = (document.getElementById("qKH").value || "").trim().toLowerCase();
   const fThieu = document.getElementById("fThieu").checked;
   const fXuat = document.getElementById("fXuat").checked;
   const listEl = document.getElementById("list");
@@ -460,13 +433,15 @@ function render(){
     '<span class="chip chuasx">' + nChuaSX + ' chưa SX</span>';
 
   let shown = data.filter(e => {
-    // Text search: chỉ tìm trong LSX + Mã SP + Mô tả (không tìm KH)
+    // Ô LSX/Mã SP: tìm trong LSX + Mã SP + Mô tả + Chủng loại
     if(q){
       const haystack = (e.lsx + " " + e.lsxct + " " + e.masp + " " + e.mota + " " + e.cl).toLowerCase();
       if(!haystack.includes(q)) return false;
     }
-    // Dropdown KH: filter độc lập
-    if(fKH && (e.kh || "").toLowerCase() !== fKH.toLowerCase()) return false;
+    // Ô Khách hàng: tìm text trong tên KH
+    if(qKH){
+      if(!(e.kh || "").toLowerCase().includes(qKH)) return false;
+    }
     if(fThieu && e._st === "du") return false;
     if(fXuat && e.ygh && e.ygh.length > 0) return false;
     return true;
@@ -482,14 +457,12 @@ function render(){
   }
 
   let html = "";
-  shown.forEach((e, idx) => {
-    // Badge
+  shown.forEach(e => {
     let badge;
     if(e._st === "chuasx") badge = '<span class="badge b-none">Chưa SX</span>';
     else if(e._st === "du") badge = '<span class="badge b-du">Đủ</span>';
     else badge = '<span class="badge b-thieu">Chưa đủ</span>';
 
-    // Meta info
     let meta = [];
     if(e.masp) meta.push('SP: <b>' + esc(e.masp) + '</b>');
     if(e.mota) meta.push(esc(e.mota));
@@ -532,8 +505,6 @@ function closeModal(){
 async function openDetail(lsx){
   const mTitle = document.getElementById("mTitle");
   const mBody = document.getElementById("mBody");
-
-  // Tìm item trong data
   const item = data.find(e => e.lsx === lsx);
 
   mTitle.textContent = lsx;
@@ -541,6 +512,7 @@ async function openDetail(lsx){
   openModal();
 
   // Load 2 nguồn song song: lsxDetail (TP) + tksxHistory (Thổi/In)
+  // tksxHistory giờ tìm theo baseLSX nên truyền LSX gốc là đúng
   let tpData = null, tiData = null;
   try{
     const [tp, ti] = await Promise.all([
@@ -572,23 +544,17 @@ function renderDetail(lsx, item, tpData, tiData){
     }
   }
 
-  // ── THỔI/IN ──
+  // ── THỔI (riêng) ──
   const tiRows = (tiData && tiData.rows) || [];
-  if(tiRows.length > 0){
-    // Tách Thổi vs In
-    const thoiRows = tiRows.filter(r => isThoi(r.loai));
-    const inRows = tiRows.filter(r => !isThoi(r.loai));
+  const thoiRows = tiRows.filter(r => isThoi(r.loai));
+  const inRows = tiRows.filter(r => !isThoi(r.loai));
 
-    if(thoiRows.length) html += buildTISection("Thổi", thoiRows);
-    if(inRows.length) html += buildTISection("In", inRows);
-  } else {
-    html += '<div class="det-section"><div class="det-title">Thổi / In</div><div class="det-empty">Chưa có dữ liệu Thổi/In</div></div>';
-  }
+  html += buildTISection("Thổi", thoiRows);
+  html += buildTISection("In", inRows);
 
   // ── THÀNH PHẨM (Cắt/TC/GTB) ──
   const tpScans = (tpData && tpData.scans) || [];
   if(tpScans.length > 0){
-    // Group by WS
     const wsGroups = {};
     tpScans.forEach(s => {
       const ws = mapWS(s.ws);
@@ -601,10 +567,6 @@ function renderDetail(lsx, item, tpData, tiData){
       if(!wsGroups[ws]) return;
       html += buildTPSection(ws, wsGroups[ws]);
     });
-    // Nếu không phân biệt WS (tất cả trống)
-    if(Object.keys(wsGroups).length === 1 && wsGroups["Khác"]){
-      // Đã render ở trên rồi, nhưng đổi title thành "Thành phẩm"
-    }
   } else {
     html += '<div class="det-section"><div class="det-title">Thành phẩm</div><div class="det-empty">Chưa có dữ liệu thành phẩm</div></div>';
   }
@@ -628,7 +590,11 @@ function mapWS(ws){
 }
 
 function buildTISection(label, rows){
-  // Gom theo ngày SX (hoặc ngày từ time nếu ngaySX trống)
+  if(!rows.length){
+    return '<div class="det-section"><div class="det-title">' + esc(label) + '</div><div class="det-empty">Chưa có dữ liệu ' + esc(label) + '</div></div>';
+  }
+
+  // Gom theo ngày SX
   const dayMap = {};
   let totalKG = 0, totalCuon = 0;
   const machineSet = {}, cnSet = {};
@@ -646,14 +612,13 @@ function buildTISection(label, rows){
     totalCuon++;
   });
 
-  // Sort ngày mới nhất trước
   const days = Object.keys(dayMap).sort((a,b) => compareDateStr(b,a));
 
   let html = '<div class="det-section">';
   html += '<div class="det-title">' + esc(label) + ' <span class="dt-badge">' + totalCuon + ' cuộn · ' + fmt(totalKG) + ' kg</span></div>';
   html += '<div class="det-summary">' +
-    'Máy: <b>' + Object.keys(machineSet).join(", ") + '</b> · ' +
-    'CN: <b>' + Object.keys(cnSet).join(", ") + '</b>' +
+    'Máy: <b>' + (Object.keys(machineSet).join(", ") || "—") + '</b> · ' +
+    'CN: <b>' + (Object.keys(cnSet).join(", ") || "—") + '</b>' +
     '</div>';
 
   days.forEach(day => {
@@ -685,7 +650,6 @@ function buildTISection(label, rows){
 }
 
 function buildTPSection(label, scans){
-  // Gom theo ngày
   const dayMap = {};
   let totalSL = 0, totalKG = 0;
   const machineSet = {}, cnSet = {};
@@ -742,21 +706,18 @@ function buildTPSection(label, scans){
 
 /* ═══ Date helpers ═══ */
 function extractDate(timeStr){
-  // "dd/MM/yyyy HH:mm:ss" → "dd/MM/yyyy"
   const s = String(timeStr || "");
   const m = /^(\d{1,2}\/\d{1,2}\/\d{4})/.exec(s);
   return m ? m[1] : s.substring(0, 10);
 }
 
 function extractTime(timeStr){
-  // "dd/MM/yyyy HH:mm:ss" → "HH:mm"
   const s = String(timeStr || "");
   const m = /(\d{1,2}:\d{2})(:\d{2})?/.exec(s);
   return m ? m[1] : "";
 }
 
 function compareDateStr(a, b){
-  // Compare "dd/MM/yyyy" strings → sort mới nhất trước
   const pa = parseDMY(a), pb = parseDMY(b);
   return pa - pb;
 }
