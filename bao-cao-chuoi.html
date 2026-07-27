@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kiểm tra tiến độ đơn hàng — QA-P.ERP</title>
+<style>
+:root{
+  --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
+  --amber:#d97706; --txt:#1e293b; --muted:#64748b; --border:#e2e8f0; --bg:#f1f5f9;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+body{background:var(--bg);color:var(--txt);}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:10;background:var(--teal);color:#fff;display:flex;align-items:center;gap:8px;padding:10px 12px;}
+.topbar .ttl{font-size:15px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.icon-btn{background:rgba(255,255,255,.15);border:none;color:#fff;font-size:17px;width:36px;height:36px;border-radius:10px;cursor:pointer;flex-shrink:0;}
+
+/* search area */
+.search-area{padding:10px 12px 6px;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:49px;z-index:9;}
+.search-row{display:flex;gap:8px;margin-bottom:6px;}
+.search-box{flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px;background:#fff;}
+.search-box:focus{outline:none;border-color:var(--teal);}
+.filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.filter-row select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--txt);max-width:180px;}
+.filter-row select:focus{outline:none;border-color:var(--teal);}
+.filter-row label{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap;}
+.btn-sm{border:none;border-radius:8px;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;color:#fff;background:var(--teal);white-space:nowrap;}
+
+/* chips */
+.sum-chips{display:flex;gap:6px;flex-wrap:wrap;padding:6px 12px;}
+.chip{font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;}
+.chip.total{background:#e0f2fe;color:#0369a1;}
+.chip.du{background:#dcfce7;color:#15803d;}
+.chip.thieu{background:#fef3c7;color:#92400e;}
+.chip.chuasx{background:#f1f5f9;color:#64748b;}
+
+/* status */
+.hint{padding:10px 14px;border-radius:10px;font-size:14px;text-align:center;margin:8px 12px;}
+.hint.info{background:#e0f2fe;color:#0369a1;}
+.hint.err{background:#fef2f2;color:var(--red);}
+
+/* cards */
+.wrap{padding:8px 12px 20px;}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;transition:border-color .15s;}
+.card:active{border-color:var(--teal);}
+.card-head{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+.c-lsx{font-weight:800;font-size:14px;word-break:break-all;font-family:ui-monospace,Consolas,monospace;color:var(--teal-d);}
+.c-masp{font-size:11px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;}
+.c-kh{font-size:12px;color:var(--txt);font-weight:600;margin-left:auto;text-align:right;max-width:45%;}
+.c-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:var(--muted);margin-bottom:8px;}
+.c-meta b{color:var(--txt);}
+.badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:7px;white-space:nowrap;}
+.b-du{background:#dcfce7;color:#15803d;}
+.b-thieu{background:#fef3c7;color:#92400e;}
+.b-none{background:#f1f5f9;color:#94a3b8;}
+
+/* stages */
+.stages{display:flex;flex-direction:column;gap:4px;}
+.stage{display:flex;align-items:center;gap:6px;font-size:12px;}
+.s-name{width:70px;color:var(--muted);flex-shrink:0;font-weight:600;font-size:11px;}
+.s-bar{flex:1;height:7px;background:#f1f5f9;border-radius:5px;overflow:hidden;}
+.s-fill{height:100%;border-radius:5px;transition:width .3s;}
+.s-fill.green{background:var(--green);}
+.s-fill.teal{background:var(--teal);}
+.s-fill.amber{background:var(--amber);}
+.s-fill.red{background:var(--red);}
+.s-val{width:130px;text-align:right;font-weight:600;font-size:11px;flex-shrink:0;}
+.s-val small{color:var(--muted);font-weight:400;}
+.s-pct{font-size:10px;font-weight:700;width:38px;text-align:right;flex-shrink:0;}
+
+/* ygh */
+.ygh-row{margin-top:6px;font-size:11px;color:var(--muted);word-break:break-all;}
+.ygh-row b{color:var(--teal);}
+
+.empty{text-align:center;color:var(--muted);padding:30px 0;font-size:14px;}
+.more-note{text-align:center;color:var(--muted);font-size:12px;margin:8px 0 16px;}
+
+/* spinner */
+.spin{display:inline-block;width:16px;height:16px;border:3px solid rgba(15,118,110,.25);border-top-color:var(--teal);border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle;}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:#111827;color:#fff;padding:10px 18px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;z-index:99;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* progress bar top */
+.load-bar{height:3px;background:transparent;position:fixed;top:49px;left:0;right:0;z-index:11;}
+.load-bar.active{background:linear-gradient(90deg,transparent,var(--teal),transparent);animation:loadSlide 1.5s infinite;}
+@keyframes loadSlide{0%{background-position:-200px 0}100%{background-position:200px 0}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="icon-btn" onclick="goHome()">&#8592;</button>
+  <div class="ttl">&#128203; Kiểm tra tiến độ đơn hàng</div>
+  <button class="icon-btn" onclick="loadAll(true)" title="Tải lại">&#128260;</button>
+  <button class="icon-btn" onclick="goHome()" title="Trang chủ">&#127968;</button>
+</div>
+<div class="load-bar" id="loadBar"></div>
+
+<div class="search-area">
+  <div class="search-row">
+    <input id="q" class="search-box" type="text" placeholder="Tìm LSX / Khách hàng / Mã SP..." oninput="debounceRender()">
+  </div>
+  <div class="filter-row">
+    <select id="fKH" onchange="render()">
+      <option value="">Tất cả khách hàng</option>
+    </select>
+    <label><input type="checkbox" id="fThieu" onchange="render()"> Chưa đủ</label>
+    <label><input type="checkbox" id="fXuat" onchange="render()"> Chưa xuất</label>
+  </div>
+</div>
+
+<div class="sum-chips" id="chips" style="display:none"></div>
+<div id="status" class="hint info">Đang tải dữ liệu...</div>
+<div class="wrap" id="list"></div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const CONFIG = {
+  CENTRAL_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
+  TKSX_URL: "https://script.google.com/macros/s/AKfycbztgdaMXNFinyvZWXeO18tGHFFUKXW6V0XvvbWNR71L311WnsbVVWDreYSuLsdpZnrsiA/exec",
+  RENDER_LIMIT: 150,
+  CACHE_KEY: "tddh_cache_v2",
+  CACHE_TTL: 5 * 60 * 1000
+};
+
+/* ═══ STATE ═══ */
+let data = [];        // merged array
+let customers = [];   // unique khách hàng
+let loading = false;
+
+/* ═══ SESSION ═══ */
+function checkSession(){
+  try{
+    const s = JSON.parse(localStorage.getItem("ghinhan_session") || "null");
+    return !!(s && s.username && s.ts && (Date.now() - s.ts < 8*3600*1000));
+  }catch(e){ return false; }
+}
+function goHome(){ window.location.href = "index.html"; }
+
+function showToast(msg, dur){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("show"), dur || 3000);
+}
+
+/* ═══ JSONP ═══ */
+let jsonpSeq = 0;
+function jsonp(url, timeoutMs){
+  return new Promise((resolve, reject)=>{
+    const cb = "__tddh_cb" + (++jsonpSeq);
+    const s = document.createElement("script");
+    const timer = setTimeout(()=>{ cleanup(); reject(new Error("timeout")); }, timeoutMs || 30000);
+    function cleanup(){ clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = d => { cleanup(); resolve(d); };
+    s.onerror = () => { cleanup(); reject(new Error("network")); };
+    s.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cb + "&t=" + Date.now();
+    document.body.appendChild(s);
+  });
+}
+
+/* ═══ BASE LSX (bỏ tiền tố bù N1-/B2-...) ═══ */
+function baseLSX(lsx){
+  const s = String(lsx || "").trim();
+  const m = /^[A-Za-z]\d-(.+)$/.exec(s);
+  return m ? m[1] : s;
+}
+function isThoi(loai){ return String(loai||"").toUpperCase().includes("TH"); }
+
+/* ═══ LOAD DATA ═══ */
+function setLoading(on){
+  document.getElementById("loadBar").className = "load-bar" + (on ? " active" : "");
+}
+
+async function loadAll(force){
+  if(loading) return;
+  loading = true;
+  const st = document.getElementById("status");
+  st.style.display = ""; st.className = "hint info";
+  st.innerHTML = '<span class="spin"></span> Đang tải dữ liệu...';
+  setLoading(true);
+
+  // Stale-while-revalidate: hiện cache cũ ngay, refresh ngầm
+  if(!force){
+    try{
+      const c = JSON.parse(localStorage.getItem(CONFIG.CACHE_KEY) || "null");
+      if(c && c.ts && c.data){
+        data = c.data;
+        customers = c.customers || [];
+        populateKH();
+        st.style.display = "none";
+        render();
+        // Cache còn tươi → không cần fetch lại
+        if(Date.now() - c.ts < CONFIG.CACHE_TTL){
+          loading = false;
+          setLoading(false);
+          return;
+        }
+        // Cache cũ → hiện data cũ + fetch ngầm (stale-while-revalidate)
+      }
+    }catch(e){}
+  }
+
+  try{
+    // 2 nguồn song song: chainAll (TP + orders) + masterall (BTP Thổi/In)
+    const [central, tksx] = await Promise.all([
+      fetch(CONFIG.CENTRAL_URL + "?action=chainAll&t=" + Date.now()).then(r=>r.json()),
+      jsonp(CONFIG.TKSX_URL + "?action=masterall", 30000).catch(()=>({rows:[]}))
+    ]);
+    mergeData(central, tksx);
+    try{
+      localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({
+        ts: Date.now(), data: data, customers: customers
+      }));
+    }catch(e){}
+    populateKH();
+    st.style.display = "none";
+    render();
+  }catch(e){
+    if(!data.length){
+      st.className = "hint err";
+      st.textContent = "Không tải được dữ liệu — kiểm tra mạng rồi bấm Tải lại.";
+    } else {
+      st.style.display = "none";
+      showToast("Lỗi cập nhật — đang hiện dữ liệu cache", 3000);
+    }
+  }
+  loading = false;
+  setLoading(false);
+}
+
+function mergeData(central, tksx){
+  // Build BTP map: baseLSX → {thoi: {klyc, sx}, in: {klyc, sx}}
+  const btpMap = {};
+  (tksx.rows || []).forEach(r => {
+    const key = baseLSX(r.lsxGoc || r.lsx);
+    if(!btpMap[key]) btpMap[key] = {
+      thoi: {klyc:0, sx:0}, in: {klyc:0, sx:0}
+    };
+    const t = isThoi(r.loai) ? btpMap[key].thoi : btpMap[key].in;
+    t.klyc += parseFloat(r.klyc) || 0;
+    t.sx   += parseFloat(r.tongSX) || 0;
+  });
+
+  // Build merged data from orders
+  const orders = central.orders || [];
+  customers = central.customers || [];
+
+  // Group by baseLSX (gộp các dòng cùng LSX gốc)
+  const grouped = {};
+  orders.forEach(o => {
+    const key = baseLSX(o.lsxct || o.lsx);
+    if(!key) return;
+    if(!grouped[key]){
+      grouped[key] = {
+        lsx: key,
+        lsxct: o.lsxct || "",
+        kh: o.kh || "",
+        masp: o.masp || "",
+        mota: o.mota || "",
+        cl: o.cl || "",
+        dvt: o.dvt || "",
+        ng: o.ng || "",
+        slYC: 0, klYC: 0,
+        slDone: 0, klDone: 0,
+        thoi: {klyc:0, sx:0},
+        in: {klyc:0, sx:0},
+        ygh: []
+      };
+    }
+    const g = grouped[key];
+    g.slYC += o.slYC || 0;
+    g.klYC += o.klYC || 0;
+    g.slDone += o.slDone || 0;
+    g.klDone += o.klDone || 0;
+    // Dùng thông tin chi tiết nhất (ưu tiên dòng có mô tả)
+    if(!g.kh && o.kh) g.kh = o.kh;
+    if(!g.masp && o.masp) g.masp = o.masp;
+    if(!g.mota && o.mota) g.mota = o.mota;
+    if(!g.cl && o.cl) g.cl = o.cl;
+    if(!g.dvt && o.dvt) g.dvt = o.dvt;
+    if(!g.ng && o.ng) g.ng = o.ng;
+  });
+
+  // Merge BTP data vào
+  Object.keys(grouped).forEach(key => {
+    const btp = btpMap[key];
+    if(btp){
+      grouped[key].thoi = btp.thoi;
+      grouped[key].in = btp.in;
+    }
+  });
+
+  // Thêm BTP LSX chưa có trong orders (trường hợp BTP đã ghi nhận nhưng chưa có đơn hàng)
+  Object.keys(btpMap).forEach(key => {
+    if(!grouped[key]){
+      grouped[key] = {
+        lsx: key, lsxct: "", kh: "", masp: "", mota: "", cl: "", dvt: "", ng: "",
+        slYC: 0, klYC: 0, slDone: 0, klDone: 0,
+        thoi: btpMap[key].thoi,
+        in: btpMap[key].in,
+        ygh: []
+      };
+    }
+  });
+
+  // Convert to array, sort by LSX (mới nhất trước)
+  data = Object.values(grouped);
+  data.sort((a,b) => String(b.lsx).localeCompare(String(a.lsx), undefined, {numeric:true}));
+}
+
+/* ═══ POPULATE KHÁCH HÀNG ═══ */
+function populateKH(){
+  const sel = document.getElementById("fKH");
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Tất cả khách hàng</option>';
+  customers.forEach(kh => {
+    const opt = document.createElement("option");
+    opt.value = kh; opt.textContent = kh;
+    sel.appendChild(opt);
+  });
+  sel.value = current;
+}
+
+/* ═══ RENDER ═══ */
+let renderTimer = null;
+function debounceRender(){ clearTimeout(renderTimer); renderTimer = setTimeout(render, 200); }
+
+function fmt(n){
+  const v = Math.round((n || 0) * 100) / 100;
+  return v % 1 === 0 ? String(v) : v.toFixed(2).replace(/0$/,"");
+}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+function pctColor(pct){
+  if(pct >= 100) return "green";
+  if(pct >= 70) return "teal";
+  if(pct >= 30) return "amber";
+  return "red";
+}
+function pctTextClass(pct){
+  if(pct >= 100) return "color:var(--green)";
+  if(pct >= 70) return "color:var(--teal)";
+  if(pct >= 30) return "color:var(--amber)";
+  return "color:var(--red)";
+}
+
+function stageRow(name, sx, yc, unit){
+  const has = yc > 0;
+  const pct = has ? Math.round(Math.min(sx / yc * 100, 999)) : (sx > 0 ? 100 : 0);
+  const displayPct = has ? (pct > 100 ? ">100" : pct) : (sx > 0 ? "—" : "");
+  const barPct = Math.min(pct, 100);
+  const color = has ? pctColor(pct) : (sx > 0 ? "teal" : "");
+
+  const val = has
+    ? fmt(sx) + ' / ' + fmt(yc) + ' <small>' + esc(unit) + '</small>'
+    : (sx > 0 ? fmt(sx) + ' <small>' + esc(unit) + '</small>' : '<small style="color:#cbd5e1">—</small>');
+
+  return '<div class="stage">' +
+    '<span class="s-name">' + name + '</span>' +
+    '<div class="s-bar"><div class="s-fill ' + color + '" style="width:' + barPct + '%"></div></div>' +
+    '<span class="s-val">' + val + '</span>' +
+    (displayPct !== "" ? '<span class="s-pct" style="' + pctTextClass(pct) + '">' + displayPct + '%</span>' : '<span class="s-pct"></span>') +
+    '</div>';
+}
+
+function getStatus(e){
+  const hasBTP = e.thoi.sx > 0 || e.in.sx > 0;
+  const hasTP = e.slDone > 0 || e.klDone > 0;
+
+  if(!hasBTP && !hasTP) return "chuasx";
+
+  // Đủ TP: SL đã SX >= SL yêu cầu (nếu có SL yêu cầu)
+  if(e.slYC > 0 && e.slDone >= e.slYC * 0.999) return "du";
+  // Hoặc KL đã cắt >= KL yêu cầu cuối chuỗi
+  const ycCuoi = e.in.klyc > 0 ? e.in.klyc : e.thoi.klyc;
+  if(ycCuoi > 0 && e.klDone >= ycCuoi * 0.999) return "du";
+  // Đã có ghi nhận TP nhưng không có yêu cầu → coi là đủ
+  if(e.slYC === 0 && e.klYC === 0 && hasTP) return "du";
+
+  return "thieu";
+}
+
+function render(){
+  const q = (document.getElementById("q").value || "").trim().toLowerCase();
+  const fKH = document.getElementById("fKH").value;
+  const fThieu = document.getElementById("fThieu").checked;
+  const fXuat = document.getElementById("fXuat").checked;
+  const listEl = document.getElementById("list");
+  const chipsEl = document.getElementById("chips");
+
+  let nDu = 0, nThieu = 0, nChuaSX = 0;
+  data.forEach(e => {
+    e._st = getStatus(e);
+    if(e._st === "du") nDu++;
+    else if(e._st === "thieu") nThieu++;
+    else nChuaSX++;
+  });
+
+  chipsEl.style.display = "";
+  chipsEl.innerHTML =
+    '<span class="chip total">' + data.length + ' LSX</span>' +
+    '<span class="chip du">' + nDu + ' đủ</span>' +
+    '<span class="chip thieu">' + nThieu + ' chưa đủ</span>' +
+    '<span class="chip chuasx">' + nChuaSX + ' chưa SX</span>';
+
+  let shown = data.filter(e => {
+    if(q){
+      const haystack = (e.lsx + " " + e.lsxct + " " + e.kh + " " + e.masp + " " + e.mota + " " + e.cl).toLowerCase();
+      if(!haystack.includes(q)) return false;
+    }
+    if(fKH && (e.kh || "").toLowerCase() !== fKH.toLowerCase()) return false;
+    if(fThieu && e._st === "du") return false;
+    if(fXuat && e.ygh && e.ygh.length > 0) return false;
+    return true;
+  });
+
+  const total = shown.length;
+  const limited = total > CONFIG.RENDER_LIMIT;
+  if(limited) shown = shown.slice(0, CONFIG.RENDER_LIMIT);
+
+  if(total === 0){
+    listEl.innerHTML = '<div class="empty">Không có LSX nào khớp.</div>';
+    return;
+  }
+
+  let html = "";
+  shown.forEach(e => {
+    // Badge
+    let badge;
+    if(e._st === "chuasx") badge = '<span class="badge b-none">Chưa SX</span>';
+    else if(e._st === "du") badge = '<span class="badge b-du">Đủ</span>';
+    else badge = '<span class="badge b-thieu">Chưa đủ</span>';
+
+    // Meta info
+    let meta = [];
+    if(e.masp) meta.push('SP: <b>' + esc(e.masp) + '</b>');
+    if(e.mota) meta.push(esc(e.mota));
+    if(e.cl) meta.push(esc(e.cl));
+    if(e.ng) meta.push('Giao: <b>' + esc(e.ng) + '</b>');
+
+    html += '<div class="card">' +
+      '<div class="card-head">' +
+        '<span class="c-lsx">' + esc(e.lsx) + '</span>' +
+        (e.kh ? '<span class="c-kh">' + esc(e.kh) + '</span>' : '') +
+        badge +
+      '</div>' +
+      (meta.length ? '<div class="c-meta">' + meta.join(' · ') + '</div>' : '') +
+      '<div class="stages">' +
+        stageRow("Thổi", e.thoi.sx, e.thoi.klyc, "kg") +
+        stageRow("In", e.in.sx, e.in.klyc, "kg") +
+        stageRow("TP (SL)", e.slDone, e.slYC, e.dvt || "cái") +
+        stageRow("TP (KL)", e.klDone, e.klYC, "kg") +
+      '</div>' +
+      (e.ygh && e.ygh.length ? '<div class="ygh-row">Xuất: <b>' + e.ygh.map(esc).join(", ") + '</b></div>' : '') +
+    '</div>';
+  });
+
+  if(limited){
+    html += '<div class="more-note">Hiển thị ' + CONFIG.RENDER_LIMIT + '/' + total + ' — dùng ô tìm kiếm để lọc.</div>';
+  }
+  listEl.innerHTML = html;
+}
+
+/* ═══ BOOT ═══ */
+if(!checkSession()){ window.location.href = "index.html"; }
+else loadAll(false);
+</script>
+</body>
+</html>
