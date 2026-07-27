@@ -682,7 +682,7 @@ const FUNC_HIERARCHY = {
     {
       name: "Ghi nhận SX Bán thành phẩm",
       icon: "🎞️",
-      childUrls: ["thoi-in.html?mode=sx"]
+      childUrls: ["thoi-in.html?mode=sx", "thoi-in.html?mode=dashboard"]
     },
     {
       name: "Kiểm tra tiến độ đơn hàng",
@@ -813,6 +813,11 @@ function openModuleFuncs(modCode, group){
       });
       children.forEach(c => usedUrls.add((c.url || "").trim().toLowerCase()));
       if(children.length) parentItems.push({ ...h, children });
+    });
+
+    // Đánh dấu directItems URLs → không hiện ungrouped
+    hierarchy.forEach(h => {
+      if (h.directItems) h.directItems.forEach(di => usedUrls.add((di.url || "").trim().toLowerCase()));
     });
 
     // Chức năng không thuộc nhóm nào → hiện trực tiếp
