@@ -674,13 +674,10 @@ const FUNC_HIERARCHY = {
     {
       name: "Ghi nhận KQSX thành phẩm",
       icon: "📝",
-      childUrls: ["index.html"]
-    },
-    {
-      name: "Tra cứu KQSX thành phẩm",
-      icon: "🔍",
-      childUrls: [],
-      directUrl: "tien-do.html"
+      childUrls: ["index.html"],
+      directItems: [
+        { name: "Tra cứu KQSX thành phẩm", icon: "🔍", url: "tien-do.html" }
+      ]
     },
     {
       name: "Ghi nhận SX Bán thành phẩm",
@@ -893,8 +890,10 @@ function openModuleFuncs(modCode, group){
 function openSubFuncs(mod, parentItem){
   document.getElementById("subFuncIcon").textContent = parentItem.icon || mod.icon || "📋";
   document.getElementById("subFuncName").textContent = parentItem.name;
-  document.getElementById("subFuncSubtitle").textContent =
-    parentItem.children.length + " chức năng";
+
+  const extras = parentItem.directItems || [];
+  const total = parentItem.children.length + extras.length;
+  document.getElementById("subFuncSubtitle").textContent = total + " chức năng";
 
   const list = document.getElementById("subFuncList");
   list.innerHTML = "";
@@ -909,6 +908,19 @@ function openSubFuncs(mod, parentItem){
         '<div class="func-desc">' + quyenTags(p.quyen, true) + '</div>' +
       '</div>';
     btn.onclick = () => selectFunction(p);
+    list.appendChild(btn);
+  });
+
+  // Direct items (không cần phân quyền, navigate thẳng)
+  extras.forEach(di => {
+    const btn = document.createElement("button");
+    btn.className = "func-btn";
+    btn.innerHTML =
+      '<div class="func-icon">' + (di.icon || mod.icon || "📋") + '</div>' +
+      '<div class="func-info">' +
+        '<div class="func-name">' + esc(di.name) + '</div>' +
+      '</div>';
+    btn.onclick = () => { window.location.href = di.url; };
     list.appendChild(btn);
   });
 
