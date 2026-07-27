@@ -1269,6 +1269,7 @@ async function submitPhe(){
       toast("Gửi phế thành công!");
       document.getElementById("pheTron").value = "";
       document.getElementById("pheMau").value = "";
+      showScreen("stepHome");
     } else {
       FB.sendFail();
       toast(r.error || "Gửi thất bại");
