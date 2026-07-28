@@ -126,15 +126,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <!-- ══════════════════════════════ -->
 <section id="scrDash" class="screen active">
   <div class="topbar">
-    <button class="icon-btn" onclick="goBack()">&#8592;</button>
+    <button class="icon-btn" onclick="goHome()">&#127968;</button>
     <div class="ttl">&#9881; Quản lý Trục In</div>
-    <button class="icon-btn" onclick="loadDashboard()">&#8635;</button>
+    <button class="icon-btn" onclick="loadAll()">&#8635;</button>
   </div>
   <div class="wrap">
     <div class="dash-grid">
       <div class="dash-card full" onclick="openSearch('')"><div class="dc-num" id="dcTotal">—</div><div class="dc-lbl">Tổng trục</div></div>
-      <div class="dash-card green" onclick="openSearch('AVAILABLE')"><div class="dc-num" id="dcAvail">—</div><div class="dc-lbl">Sẵn sàng</div></div>
-      <div class="dash-card amber" onclick="openSearch('ISSUED')"><div class="dc-num" id="dcIssued">—</div><div class="dc-lbl">Đã giao</div></div>
+      <div class="dash-card green" onclick="openSearch('AVAILABLE')"><div class="dc-num" id="dcAvail">—</div><div class="dc-lbl">Trong kho</div></div>
+      <div class="dash-card amber" onclick="openSearch('ISSUED')"><div class="dc-num" id="dcIssued">—</div><div class="dc-lbl">Đã xuất</div></div>
       <div class="dash-card blue" onclick="openSearch('UNDER_REPAIR')"><div class="dc-num" id="dcRepair">—</div><div class="dc-lbl">Đang sửa</div></div>
       <div class="dash-card red" onclick="openSearch('SCRAPPED')"><div class="dc-num" id="dcScrap">—</div><div class="dc-lbl">Đã hủy</div></div>
     </div>
@@ -171,6 +171,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="cancelTxn()">&#8592;</button>
     <div class="ttl" id="txnTitle">Giao dịch</div>
+    <button class="icon-btn" onclick="cancelTxn()">&#127968;</button>
   </div>
   <div class="wrap">
     <!-- STEP 1: Chọn loại GD -->
@@ -219,7 +220,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <!-- TO LOCATION (nhập trục, chuyển VT) -->
         <div class="field" id="fToLoc" style="display:none;">
           <label>Vị trí đích</label>
-          <input type="text" id="txnToLoc" list="locList" placeholder="Nhập vị trí..." />
+          <div class="row2" style="margin-bottom:6px;">
+            <button class="btn small" onclick="openScanner('loc')">&#128247; Scan vị trí</button>
+            <button class="btn small ghost" onclick="document.getElementById('txnToLoc').focus()">&#9999; Nhập tay</button>
+          </div>
+          <input type="text" id="txnToLoc" list="locList" placeholder="Nhập hoặc scan vị trí..." />
           <datalist id="locList"></datalist>
         </div>
 
@@ -242,20 +247,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="stopScan();show('scrDash')">&#8592;</button>
     <div class="ttl">&#128269; Tra cứu trục</div>
+    <button class="icon-btn" onclick="stopScan();show('scrDash')">&#127968;</button>
   </div>
   <div class="wrap">
-    <div class="hint info">Scan QR trục hoặc nhập mã bên dưới</div>
-    <div style="margin:10px 0;">
-      <button class="btn small" onclick="openScanner('scan')">&#128247; Bắt đầu Scan</button>
+    <div style="margin-bottom:10px;">
+      <button class="btn small" onclick="openScanner('scan')" style="width:100%;">&#128247; Scan QR trục</button>
     </div>
-    <div class="field">
-      <label>Hoặc nhập mã trục</label>
-      <div class="row2">
-        <input type="text" id="scanInput" placeholder="CYL-00123" style="flex:1" />
-        <button class="btn small" onclick="doQuickLookup()" style="width:auto;">Tìm</button>
-      </div>
-    </div>
-    <div id="scanResult"></div>
+    <input id="scanInput" class="search-box" type="text" placeholder="Tìm theo mã trục, BP, vị trí..." oninput="filterScanList()" />
+    <div id="scanCylList"><div class="loading">Đang tải...</div></div>
   </div>
 </section>
 
@@ -266,6 +265,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="goBackDetail()">&#8592;</button>
     <div class="ttl" id="detTitle">Chi tiết trục</div>
+    <button class="icon-btn" onclick="show('scrDash')">&#127968;</button>
   </div>
   <div class="tab-bar">
     <button class="tab-btn active" onclick="detTab('info',this)">Thông tin</button>
@@ -291,13 +291,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="show('scrDash')">&#8592;</button>
     <div class="ttl">&#128203; Danh sách trục</div>
+    <button class="icon-btn" onclick="show('scrDash')">&#127968;</button>
   </div>
   <div class="wrap">
     <input id="searchQ" class="search-box" type="text" placeholder="Tìm theo mã, số trục, SP..." oninput="debounce(doSearch,300)" />
     <div class="filter-chips" id="statusChips">
       <div class="chip active" onclick="setFilter('',this)">Tất cả</div>
-      <div class="chip" onclick="setFilter('AVAILABLE',this)">Sẵn sàng</div>
-      <div class="chip" onclick="setFilter('ISSUED',this)">Đã giao</div>
+      <div class="chip" onclick="setFilter('AVAILABLE',this)">Trong kho</div>
+      <div class="chip" onclick="setFilter('ISSUED',this)">Đã xuất</div>
       <div class="chip" onclick="setFilter('UNDER_REPAIR',this)">Đang sửa</div>
       <div class="chip" onclick="setFilter('SCRAPPED',this)">Đã hủy</div>
     </div>
@@ -337,10 +338,35 @@ var txnCyl = null;   // found cylinder or null (new)
 var txnCylCode = "";
 var prevScreen = "scrDash";
 
-// Data cache
+// Data cache (tất cả load 1 lần từ cylInit)
 var departments = [];
 var locSuggestions = [];
-var subTypes = {};
+var allCylinders = [];
+var dataReady = false;
+
+// ═══════════════ SUB TYPES (hardcode — không gọi API) ═══════════════
+var LOCAL_SUB_TYPES = {
+  IN_FROM_PRODUCTION: { type:"IN", label:"Nhập từ sản xuất" },
+  IN_NEW_CYLINDER:    { type:"IN", label:"Nhập trục mới" },
+  IN_FROM_REPAIR:     { type:"IN", label:"Nhập từ sửa chữa" },
+  IN_OTHER:           { type:"IN", label:"Nhập khác" },
+  OUT_TO_PRODUCTION:  { type:"OUT", label:"Xuất sang sản xuất" },
+  OUT_TO_REPAIR:      { type:"OUT", label:"Xuất đi sửa chữa" },
+  OUT_SCRAP:          { type:"OUT", label:"Xuất hủy" },
+  OUT_OTHER:          { type:"OUT", label:"Xuất khác" },
+  TRANSFER_LOCATION:  { type:"TRANSFER", label:"Chuyển vị trí" },
+  TRANSFER_DEPARTMENT:{ type:"TRANSFER", label:"Chuyển bộ phận" }
+};
+
+function getSubTypesByGroup(group) {
+  var list = [];
+  for (var key in LOCAL_SUB_TYPES) {
+    if (LOCAL_SUB_TYPES[key].type === group) {
+      list.push({ code: key, label: LOCAL_SUB_TYPES[key].label });
+    }
+  }
+  return list;
+}
 
 // ═══════════════ SESSION ═══════════════
 function checkSession() {
@@ -355,73 +381,98 @@ function checkSession() {
   } catch(e) { return false; }
 }
 
-// ═══════════════ INIT ═══════════════
+// ═══════════════ INIT (1 API call duy nhất) ═══════════════
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) {
     alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
     window.location.href = "index.html";
     return;
   }
-
-  loadDashboard();
-  loadDepts();
-  loadLocSuggestions();
+  loadAll();
 });
+
+function loadAll() {
+  apiGet("cylInit",{},function(d){
+    if (d.result !== "ok") return;
+    // Cache tất cả dữ liệu
+    departments = d.departments || [];
+    locSuggestions = d.locations || [];
+    allCylinders = d.cylinders || [];
+    dataReady = true;
+    // Cập nhật UI
+    updateDashboardUI(d.counts);
+    buildLocDatalist();
+  }, 2);
+}
+
+function updateDashboardUI(c) {
+  if (!c) return;
+  document.getElementById("dcTotal").textContent = c.total;
+  document.getElementById("dcAvail").textContent = c.available;
+  document.getElementById("dcIssued").textContent = c.issued;
+  document.getElementById("dcRepair").textContent = c.underRepair;
+  document.getElementById("dcScrap").textContent = c.scrapped;
+}
 
 // ═══════════════ NAVIGATION ═══════════════
 function show(id) {
+  // Clear nội dung cũ TRƯỚC khi chuyển → tránh hiện nhầm
+  if (id === "scrTxn") {
+    document.getElementById("txnSubTypeList").innerHTML = '';
+    document.getElementById("txnCylResult").className = "scan-result";
+    document.getElementById("txnForm").style.display = "none";
+  }
   document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
   document.getElementById(id).classList.add("active");
   stopScan();
-  if (id === "scrDash") loadDashboard();
+  if (id === "scrDash") refreshData();
+  if (id === "scrScan") { document.getElementById("scanInput").value=""; filterScanList(); }
   if (id === "scrSearch") doSearch();
 }
 
+// Refresh = gọi lại cylInit để cập nhật dữ liệu mới nhất
+function refreshData() {
+  loadAll();
+}
+
 function goBack() {
-  if (window.opener || document.referrer) window.history.back();
-  else show("scrDash");
+  show("scrDash");
+}
+
+function goHome() {
+  window.location.href = "index.html";
 }
 
 function goBackDetail() { show(prevScreen); }
 
-// ═══════════════ API ═══════════════
-function apiGet(action, params, cb) {
-  var url = API + "?action=" + action;
+// ═══════════════ API (retry + cache-bust) ═══════════════
+function apiGet(action, params, cb, retries) {
+  if (retries === undefined) retries = 1;
+  var url = API + "?action=" + action + "&_t=" + Date.now();
   if (params) for (var k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
-  fetch(url).then(function(r){return r.json();}).then(cb).catch(function(e){toast("Lỗi: "+e.message,1);});
+  fetch(url).then(function(r){return r.json();}).then(function(d){
+    if (d && d.result) cb(d);
+    else if (retries > 0) { setTimeout(function(){ apiGet(action, params, cb, retries-1); }, 800); }
+    else cb({ result:"error", error:"Dữ liệu không hợp lệ" });
+  }).catch(function(e){
+    if (retries > 0) { setTimeout(function(){ apiGet(action, params, cb, retries-1); }, 1000); }
+    else toast("Lỗi kết nối: "+e.message,1);
+  });
 }
-function apiPost(data, cb) {
-  fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
-    .then(function(r){return r.json();}).then(cb).catch(function(e){toast("Lỗi: "+e.message,1);});
+function apiPost(data, cb, retries) {
+  if (retries === undefined) retries = 1;
+  fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(data),redirect:"follow"})
+    .then(function(r){return r.json();}).then(function(d){
+      if (d && d.result) cb(d);
+      else if (retries > 0) { setTimeout(function(){ apiPost(data, cb, retries-1); }, 1000); }
+      else cb({ result:"error", error:"Không nhận được phản hồi" });
+    }).catch(function(e){
+      if (retries > 0) { setTimeout(function(){ apiPost(data, cb, retries-1); }, 1000); }
+      else toast("Lỗi kết nối: "+e.message,1);
+    });
 }
 
-// ═══════════════ DASHBOARD ═══════════════
-function loadDashboard() {
-  apiGet("cylDashboard",{},function(d){
-    if(d.result!=="ok")return;
-    var c=d.counts;
-    document.getElementById("dcTotal").textContent=c.total;
-    document.getElementById("dcAvail").textContent=c.available;
-    document.getElementById("dcIssued").textContent=c.issued;
-    document.getElementById("dcRepair").textContent=c.underRepair;
-    document.getElementById("dcScrap").textContent=c.scrapped;
-  });
-}
-
-// ═══════════════ LOAD MASTER DATA ═══════════════
-function loadDepts() {
-  apiGet("cylDeptList",{},function(d){
-    if(d.result==="ok") departments=d.departments||[];
-  });
-}
-function loadLocSuggestions() {
-  apiGet("cylLocSuggestions",{},function(d){
-    if(d.result==="ok") {
-      locSuggestions=d.locations||[];
-      buildLocDatalist();
-    }
-  });
-}
+// ═══════════════ MASTER DATA (đã cache từ cylInit) ═══════════════
 function buildLocDatalist() {
   var dl = document.getElementById("locList");
   dl.innerHTML = "";
@@ -448,18 +499,15 @@ function startTxn(group) {
   var titles = {IN:"Nhập trục", OUT:"Xuất trục", TRANSFER:"Chuyển vị trí"};
   document.getElementById("txnTitle").textContent = titles[group] || "Giao dịch";
 
-  // Load sub types
-  apiGet("cylSubTypes",{group:group},function(d){
-    if(d.result!=="ok") return;
-    var list = d.subTypes||[];
-    var html = "";
-    list.forEach(function(t){
-      html += '<div class="menu-btn" onclick="pickSubType(\''+t.code+'\',\''+esc(t.label)+'\')">' +
-        '<div class="mb-icon" style="font-size:13px;color:var(--teal);font-weight:700;">'+esc(t.code.replace(/_/g," "))+'</div>' +
-        '<div class="mb-text"><div class="mb-title">'+esc(t.label)+'</div></div></div>';
-    });
-    document.getElementById("txnSubTypeList").innerHTML = html || '<div class="empty">Không có loại GD</div>';
+  // Dùng local sub-types — KHÔNG gọi API → hiển thị tức thì
+  var list = getSubTypesByGroup(group);
+  var html = "";
+  list.forEach(function(t){
+    html += '<div class="menu-btn" onclick="pickSubType(\''+t.code+'\',\''+esc(t.label)+'\')">' +
+      '<div class="mb-icon" style="font-size:13px;color:var(--teal);font-weight:700;">'+esc(t.code.replace(/_/g," "))+'</div>' +
+      '<div class="mb-text"><div class="mb-title">'+esc(t.label)+'</div></div></div>';
   });
+  document.getElementById("txnSubTypeList").innerHTML = html;
 
   document.getElementById("txnStep1").style.display = "";
   document.getElementById("txnStep2").style.display = "none";
@@ -480,11 +528,12 @@ function pickSubType(code, label) {
   fillDeptSelect("txnToDept");
 
   // Show/hide fields based on group
-  // IN: fromDept(chọn) + toLoc(nhập vị trí)
-  // OUT: toDept(chọn), KHÔNG có vị trí
-  // TRANSFER: toLoc(nhập vị trí mới)
+  // IN: fromDept(chọn BP nguồn) + toLoc(scan/nhập vị trí đích)
+  // OUT: toDept(chọn BP đích) — KHÔNG có vị trí
+  // TRANSFER_LOCATION: toLoc(vị trí mới)
+  // TRANSFER_DEPARTMENT: toDept(BP đích)
   document.getElementById("fFromDept").style.display = (txnGroup==="IN") ? "" : "none";
-  document.getElementById("fToDept").style.display = (txnGroup==="OUT" || code==="TRANSFER_DEPARTMENT") ? "" : "none";
+  document.getElementById("fToDept").style.display = ((txnGroup==="OUT" && code!=="OUT_SCRAP") || code==="TRANSFER_DEPARTMENT") ? "" : "none";
   document.getElementById("fToLoc").style.display = (txnGroup==="IN" || code==="TRANSFER_LOCATION") ? "" : "none";
 
   // Reset
@@ -498,9 +547,33 @@ function cancelTxn() { show("scrDash"); }
 
 // Cylinder found after scan/manual
 function onCylFound(code, cyl, isNew) {
+  var el = document.getElementById("txnCylResult");
+
+  // === VALIDATION NGHIỆP VỤ ===
+
+  // #3: Nhập trục — nếu trục đã AVAILABLE (đang trong kho) thì chặn
+  if (txnGroup === "IN" && !isNew && cyl.curStatus === "AVAILABLE") {
+    el.innerHTML = '<div style="font-weight:700;font-size:16px;color:var(--red);">'+esc(code)+'</div>' +
+      '<div style="font-size:14px;color:var(--red);margin-top:6px;">Trục đã có trong kho và đang ở vị trí: <b>'+esc(cyl.curLoc||"—")+'</b> (BP: '+esc(cyl.curDept||"—")+')</div>';
+    el.className = "scan-result show new";
+    document.getElementById("txnForm").style.display = "none";
+    toast("Trục đã có trong kho!", 1);
+    return;
+  }
+
+  // #4: Xuất trục — nếu trục đã ISSUED (đã xuất) thì chặn (trừ xuất hủy)
+  if (txnGroup === "OUT" && txnSubType !== "OUT_SCRAP" && !isNew && cyl.curStatus === "ISSUED") {
+    el.innerHTML = '<div style="font-weight:700;font-size:16px;color:var(--red);">'+esc(code)+'</div>' +
+      '<div style="font-size:14px;color:var(--red);margin-top:6px;">Trục đã được xuất trước đó (BP: <b>'+esc(cyl.curDept||"—")+'</b>). Phải nhập trục về kho trước khi xuất lại.</div>';
+    el.className = "scan-result show new";
+    document.getElementById("txnForm").style.display = "none";
+    toast("Trục đã xuất, chưa nhập về!", 1);
+    return;
+  }
+
+  // === OK — cho phép giao dịch ===
   txnCylCode = code;
   txnCyl = cyl;
-  var el = document.getElementById("txnCylResult");
 
   if (isNew) {
     el.innerHTML = '<div style="font-weight:700;font-size:16px;">'+esc(code)+'</div>' +
@@ -508,7 +581,7 @@ function onCylFound(code, cyl, isNew) {
     el.className = "scan-result show new";
   } else {
     el.innerHTML = '<div style="font-weight:700;font-size:16px;">'+esc(cyl.code)+'</div>' +
-      '<div style="font-size:13px;margin-top:4px;">Trạng thái: <b>'+esc(cyl.curStatus)+'</b></div>' +
+      '<div style="font-size:13px;margin-top:4px;">Trạng thái: <b>'+statusVi(cyl.curStatus)+'</b></div>' +
       '<div style="font-size:13px;color:var(--muted);">BP: '+esc(cyl.curDept||"—")+' | VT: '+esc(cyl.curLoc||"—")+'</div>';
     el.className = "scan-result show";
   }
@@ -540,6 +613,11 @@ function submitTxn() {
   if (!txnCylCode) return toast("Chưa có mã trục",1);
   if (!txnSubType) return toast("Chưa chọn loại GD",1);
 
+  // Xuất hủy → xác nhận thêm 1 bước
+  if (txnSubType === "OUT_SCRAP") {
+    if (!confirm("XÁC NHẬN XUẤT HỦY\n\nTrục: " + txnCylCode + "\n\nSau khi hủy sẽ không thể sử dụng lại trục này.\nBạn chắc chắn muốn xuất hủy?")) return;
+  }
+
   var btn = document.getElementById("txnSubmitBtn");
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Đang xử lý...';
@@ -562,12 +640,68 @@ function submitTxn() {
     var msg = "Thành công: " + d.txnNo;
     if (d.autoCreated) msg += " (đã tạo trục mới)";
     toast(msg);
-    loadLocSuggestions(); // refresh suggestions
+    // Refresh cache từ server (chạy nền, không block UI)
+    loadAll();
     show("scrDash");
   });
 }
 
 function quickTxn(group) { startTxn(group); }
+
+// quickTxn từ màn hình Detail — trục đã biết, skip bước scan
+function quickTxnFor(group) {
+  var cyl = window._detailCyl;
+  if (!cyl) return startTxn(group);
+  txnGroup = group;
+  txnCylCode = cyl.code;
+  txnCyl = cyl;
+
+  var titles = {IN:"Nhập trục", OUT:"Xuất trục", TRANSFER:"Chuyển vị trí"};
+  document.getElementById("txnTitle").textContent = titles[group] + " — " + cyl.code;
+
+  // Dùng local sub-types — hiển thị tức thì
+  var list = getSubTypesByGroup(group);
+  var html = "";
+  list.forEach(function(t){
+    html += '<div class="menu-btn" onclick="pickSubTypeQuick(\''+t.code+'\',\''+esc(t.label)+'\')">' +
+      '<div class="mb-icon" style="font-size:13px;color:var(--teal);font-weight:700;">'+esc(t.code.replace(/_/g," "))+'</div>' +
+      '<div class="mb-text"><div class="mb-title">'+esc(t.label)+'</div></div></div>';
+  });
+  document.getElementById("txnSubTypeList").innerHTML = html;
+
+  document.getElementById("txnStep1").style.display = "";
+  document.getElementById("txnStep2").style.display = "none";
+  show("scrTxn");
+}
+
+// Chọn sub type khi đã biết trục (skip scan)
+function pickSubTypeQuick(code, label) {
+  txnSubType = code;
+  document.getElementById("txnStep1").style.display = "none";
+  document.getElementById("txnStep2").style.display = "";
+  document.getElementById("txnManual").style.display = "none";
+
+  // Hiện info trục đã biết
+  document.getElementById("txnSubLabel").textContent = label;
+
+  // Prepare dept selects
+  fillDeptSelect("txnFromDept");
+  fillDeptSelect("txnToDept");
+
+  // Show/hide fields
+  document.getElementById("fFromDept").style.display = (txnGroup==="IN") ? "" : "none";
+  document.getElementById("fToDept").style.display = (txnGroup==="OUT" && code!=="OUT_SCRAP") || code==="TRANSFER_DEPARTMENT" ? "" : "none";
+  document.getElementById("fToLoc").style.display = (txnGroup==="IN" || code==="TRANSFER_LOCATION") ? "" : "none";
+
+  // Reset
+  document.getElementById("txnFromDept").value = "";
+  document.getElementById("txnToDept").value = "";
+  document.getElementById("txnToLoc").value = "";
+  document.getElementById("txnRemark").value = "";
+
+  // Hiển thị trục
+  onCylFound(txnCylCode, txnCyl, false);
+}
 
 // ═══════════════ QR SCANNER ═══════════════
 function openScanner(mode) {
@@ -584,11 +718,14 @@ function openScanner(mode) {
     {fps:10, qrbox:{width:250,height:250}},
     function(decoded){
       closeScanner();
-      var code = decoded.trim().toUpperCase();
+      var code = decoded.trim();
       if (scanMode === "txn") {
-        lookupCode(code, function(cyl,isNew){ onCylFound(code,cyl,isNew); });
+        lookupCode(code.toUpperCase(), function(cyl,isNew){ onCylFound(code.toUpperCase(),cyl,isNew); });
+      } else if (scanMode === "loc") {
+        document.getElementById("txnToLoc").value = code;
+        toast("Đã scan vị trí: " + code);
       } else {
-        showDetail(code);
+        showDetail(code.toUpperCase());
       }
     },
     function(){}
@@ -604,11 +741,34 @@ function stopScan() {
   if (scanner) { try{scanner.stop();}catch(e){} scanner=null; }
 }
 
-// ═══════════════ QUICK LOOKUP (scan screen) ═══════════════
-function doQuickLookup() {
-  var code = document.getElementById("scanInput").value.trim().toUpperCase();
-  if (!code) return;
-  showDetail(code);
+// ═══════════════ TRA CỨU — filter từ cache ═══════════════
+function filterScanList() {
+  var q = (document.getElementById("scanInput").value||"").trim().toLowerCase();
+  var filtered = allCylinders;
+  if (q) {
+    filtered = allCylinders.filter(function(c){
+      var s = [c.code, c.cylNumber, c.productCode, c.curDept, c.curLoc, c.curStatus].join(" ").toLowerCase();
+      return s.indexOf(q) > -1;
+    });
+  }
+  renderScanList(filtered);
+}
+
+function renderScanList(list) {
+  if (!list.length) {
+    document.getElementById("scanCylList").innerHTML = '<div class="empty">Không tìm thấy trục nào</div>';
+    return;
+  }
+  var html = '<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">'+list.length+' trục</div>';
+  list.forEach(function(c){
+    html += '<div class="cyl-card" onclick="showDetail(\''+esc(c.code)+'\')">' +
+      '<div class="cyl-head"><span class="cyl-id">'+esc(c.code)+'</span>' +
+      '<span class="cyl-status st-'+c.curStatus.toLowerCase()+'">'+statusVi(c.curStatus)+'</span></div>' +
+      '<div class="cyl-sub">'+(c.cylNumber?'#'+esc(c.cylNumber)+' ':'')+(c.productCode?'SP: '+esc(c.productCode):'')+'</div>' +
+      '<div class="cyl-loc">BP: '+esc(c.curDept||"—")+' | VT: '+esc(c.curLoc||"—")+'</div>' +
+      '</div>';
+  });
+  document.getElementById("scanCylList").innerHTML = html;
 }
 
 function showDetail(code) {
@@ -666,7 +826,28 @@ function renderDetail(cyl) {
     document.getElementById("detHist").innerHTML = html;
   });
 
-  document.getElementById("detActions").style.display = (cyl.curStatus==="SCRAPPED")?"none":"";
+  // Nút hành động nhanh theo trạng thái
+  var actEl = document.getElementById("detActions");
+  if (cyl.curStatus === "SCRAPPED") {
+    actEl.style.display = "none";
+  } else if (cyl.curStatus === "AVAILABLE") {
+    // Trong kho → chỉ Xuất hoặc Chuyển VT
+    actEl.style.display = "";
+    actEl.innerHTML = '<div class="row2">' +
+      '<button class="btn small amber" onclick="quickTxnFor(\'OUT\')">Xuất trục</button>' +
+      '<button class="btn small" onclick="quickTxnFor(\'TRANSFER\')">Chuyển vị trí</button></div>';
+  } else if (cyl.curStatus === "ISSUED") {
+    // Đã xuất → chỉ Nhập về kho
+    actEl.style.display = "";
+    actEl.innerHTML = '<button class="btn small green" onclick="quickTxnFor(\'IN\')">Nhập về kho</button>';
+  } else {
+    // UNDER_REPAIR → Nhập về kho
+    actEl.style.display = "";
+    actEl.innerHTML = '<button class="btn small green" onclick="quickTxnFor(\'IN\')">Nhập về kho</button>';
+  }
+
+  // Lưu trục đang xem để quickTxn dùng
+  window._detailCyl = cyl;
 
   detTab("info", document.querySelector("#scrDetail .tab-btn"));
   show("scrDetail");
@@ -700,33 +881,32 @@ function setFilter(st, chip) {
 }
 
 function doSearch() {
-  var q = document.getElementById("searchQ").value.trim();
-  var params = {};
-  if (q) params.q = q;
-  if (searchFilter) params.status = searchFilter;
+  var q = (document.getElementById("searchQ").value||"").trim().toLowerCase();
 
-  document.getElementById("searchResults").innerHTML = '<div class="loading">Đang tìm...</div>';
-  apiGet("cylSearch", params, function(d){
-    if (d.result!=="ok") {
-      document.getElementById("searchResults").innerHTML = '<div class="hint err">'+esc(d.error)+'</div>';
-      return;
+  // Filter từ cache — không gọi API
+  var list = allCylinders.filter(function(c){
+    if (searchFilter && c.curStatus !== searchFilter) return false;
+    if (q) {
+      var s = [c.code, c.cylNumber, c.productCode, c.curDept, c.curLoc].join(" ").toLowerCase();
+      if (s.indexOf(q) === -1) return false;
     }
-    var list = d.cylinders||[];
-    if (!list.length) {
-      document.getElementById("searchResults").innerHTML = '<div class="empty">Không tìm thấy</div>';
-      return;
-    }
-    var html = '<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">'+list.length+' kết quả</div>';
-    list.forEach(function(c){
-      html += '<div class="cyl-card" onclick="showDetail(\''+esc(c.code)+'\')">' +
-        '<div class="cyl-head"><span class="cyl-id">'+esc(c.code)+'</span>' +
-        '<span class="cyl-status st-'+c.curStatus.toLowerCase()+'">'+statusVi(c.curStatus)+'</span></div>' +
-        '<div class="cyl-sub">'+(c.cylNumber?'#'+esc(c.cylNumber)+' ':'')+(c.productCode?'SP: '+esc(c.productCode):'')+'</div>' +
-        '<div class="cyl-loc">BP: '+esc(c.curDept||"—")+' | VT: '+esc(c.curLoc||"—")+'</div>' +
-        '</div>';
-    });
-    document.getElementById("searchResults").innerHTML = html;
+    return true;
   });
+
+  if (!list.length) {
+    document.getElementById("searchResults").innerHTML = '<div class="empty">Không tìm thấy</div>';
+    return;
+  }
+  var html = '<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">'+list.length+' kết quả</div>';
+  list.forEach(function(c){
+    html += '<div class="cyl-card" onclick="showDetail(\''+esc(c.code)+'\')">' +
+      '<div class="cyl-head"><span class="cyl-id">'+esc(c.code)+'</span>' +
+      '<span class="cyl-status st-'+c.curStatus.toLowerCase()+'">'+statusVi(c.curStatus)+'</span></div>' +
+      '<div class="cyl-sub">'+(c.cylNumber?'#'+esc(c.cylNumber)+' ':'')+(c.productCode?'SP: '+esc(c.productCode):'')+'</div>' +
+      '<div class="cyl-loc">BP: '+esc(c.curDept||"—")+' | VT: '+esc(c.curLoc||"—")+'</div>' +
+      '</div>';
+  });
+  document.getElementById("searchResults").innerHTML = html;
 }
 
 // ═══════════════ UTILS ═══════════════
@@ -735,7 +915,7 @@ function dr(label, value) {
 }
 
 function statusVi(s) {
-  var m = {AVAILABLE:"Sẵn sàng",ISSUED:"Đã giao",UNDER_REPAIR:"Đang sửa",SCRAPPED:"Đã hủy"};
+  var m = {AVAILABLE:"Trong kho",ISSUED:"Đã xuất",UNDER_REPAIR:"Đang sửa",SCRAPPED:"Đã hủy"};
   return m[s]||s;
 }
 
