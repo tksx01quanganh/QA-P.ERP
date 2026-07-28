@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
 <title>Quản lý Trục In — QA-P.ERP</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
@@ -127,7 +130,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Quản lý Trục In</div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.0</span></div>
     <button class="icon-btn" onclick="loadAll()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -322,23 +325,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <div id="toast" class="toast"></div>
 
 <script>
+// ═══════════════════════════════════════════════════════════
+// Quản lý Trục In — QA-P.ERP Frontend
+// Viết lại sạch 2026-07-28: mỗi hàm tự quản lý DOM,
+// không phụ thuộc side-effect từ hàm khác.
+// ═══════════════════════════════════════════════════════════
+
 // ═══════════════ CONFIG ═══════════════
-var CONFIG = { XUAT_HANG_URL: "https://script.google.com/macros/s/AKfycbw0ILLVOhQGGjrtr4gpAAr1NBB44fHKpvP248rnddJvqHctfHj_85plkz3pCmXtGp1G-Q/exec" };
-var API = CONFIG.XUAT_HANG_URL;
+var API = "https://script.google.com/macros/s/AKfycbw0ILLVOhQGGjrtr4gpAAr1NBB44fHKpvP248rnddJvqHctfHj_85plkz3pCmXtGp1G-Q/exec";
 var user = "";
 var scanner = null;
-var scanMode = ""; // "txn" | "scan"
+var scanMode = "";
 var searchFilter = "";
 var debounceT = null;
 
 // Transaction state
-var txnGroup = "";   // IN / OUT / TRANSFER
+var txnGroup = "";
 var txnSubType = null;
-var txnCyl = null;   // found cylinder or null (new)
+var txnCyl = null;
 var txnCylCode = "";
 var prevScreen = "scrDash";
 
-// Data cache (tất cả load 1 lần từ cylInit)
+// Data cache
 var departments = [];
 var locSuggestions = [];
 var allCylinders = [];
@@ -361,7 +369,7 @@ var LOCAL_SUB_TYPES = {
 function getSubTypesByGroup(group) {
   var list = [];
   for (var key in LOCAL_SUB_TYPES) {
-    if (LOCAL_SUB_TYPES[key].type === group) {
+    if (LOCAL_SUB_TYPES.hasOwnProperty(key) && LOCAL_SUB_TYPES[key].type === group) {
       list.push({ code: key, label: LOCAL_SUB_TYPES[key].label });
     }
   }
@@ -381,27 +389,58 @@ function checkSession() {
   } catch(e) { return false; }
 }
 
-// ═══════════════ INIT (1 API call duy nhất) ═══════════════
+// ═══════════════ INIT ═══════════════
+var CACHE_KEY = "cylCache_v1";
+
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) {
     alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
     window.location.href = "index.html";
     return;
   }
+  // 1. Hiển thị dữ liệu cache ngay lập tức (nếu có)
+  loadFromCache();
+  // 2. Refresh từ server ngầm
   loadAll();
 });
 
+function loadFromCache() {
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return;
+    var c = JSON.parse(raw);
+    if (!c || !c.counts) return;
+    departments = c.departments || [];
+    locSuggestions = c.locations || [];
+    allCylinders = c.cylinders || [];
+    dataReady = true;
+    updateDashboardUI(c.counts);
+    buildLocDatalist();
+  } catch (e) { /* cache lỗi → bỏ qua, đợi server */ }
+}
+
+function saveToCache(d) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      counts: d.counts,
+      departments: d.departments,
+      locations: d.locations,
+      cylinders: d.cylinders,
+      ts: Date.now()
+    }));
+  } catch (e) { /* full storage → bỏ qua */ }
+}
+
 function loadAll() {
-  apiGet("cylInit",{},function(d){
+  apiGet("cylInit", {}, function(d) {
     if (d.result !== "ok") return;
-    // Cache tất cả dữ liệu
     departments = d.departments || [];
     locSuggestions = d.locations || [];
     allCylinders = d.cylinders || [];
     dataReady = true;
-    // Cập nhật UI
     updateDashboardUI(d.counts);
     buildLocDatalist();
+    saveToCache(d);
   }, 2);
 }
 
@@ -414,175 +453,256 @@ function updateDashboardUI(c) {
   document.getElementById("dcScrap").textContent = c.scrapped;
 }
 
-// ═══════════════ NAVIGATION ═══════════════
-function show(id) {
-  // Clear nội dung cũ TRƯỚC khi chuyển → tránh hiện nhầm
-  if (id === "scrTxn") {
-    document.getElementById("txnSubTypeList").innerHTML = '';
-    document.getElementById("txnCylResult").className = "scan-result";
-    document.getElementById("txnForm").style.display = "none";
+// ═══════════════ SCREEN SWITCHING ═══════════════
+// switchScreen: CHỈ chuyển màn hình, KHÔNG làm gì khác
+function switchScreen(id) {
+  var screens = document.querySelectorAll(".screen");
+  for (var i = 0; i < screens.length; i++) {
+    screens[i].classList.remove("active");
   }
-  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
-  document.getElementById(id).classList.add("active");
-  stopScan();
-  if (id === "scrDash") refreshData();
-  if (id === "scrScan") { document.getElementById("scanInput").value=""; filterScanList(); }
-  if (id === "scrSearch") doSearch();
+  var target = document.getElementById(id);
+  if (target) target.classList.add("active");
 }
 
-// Refresh = gọi lại cylInit để cập nhật dữ liệu mới nhất
-function refreshData() {
-  loadAll();
+// show: dùng cho navigation đơn giản (back, home, menu items)
+function show(id) {
+  switchScreen(id);
+  safeStopScan();
+  if (id === "scrScan") {
+    document.getElementById("scanInput").value = "";
+    filterScanList();
+  }
+  if (id === "scrSearch") {
+    doSearch();
+  }
 }
 
-function goBack() {
-  show("scrDash");
-}
-
-function goHome() {
-  window.location.href = "index.html";
-}
-
+function goBack() { show("scrDash"); }
+function goHome() { window.location.href = "index.html"; }
 function goBackDetail() { show(prevScreen); }
+function cancelTxn() { show("scrDash"); }
 
-// ═══════════════ API (retry + cache-bust) ═══════════════
+// ═══════════════ API ═══════════════
 function apiGet(action, params, cb, retries) {
   if (retries === undefined) retries = 1;
   var url = API + "?action=" + action + "&_t=" + Date.now();
-  if (params) for (var k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
-  fetch(url).then(function(r){return r.json();}).then(function(d){
+  if (params) {
+    for (var k in params) {
+      if (params.hasOwnProperty(k)) url += "&" + k + "=" + encodeURIComponent(params[k]);
+    }
+  }
+  fetch(url).then(function(r) { return r.json(); }).then(function(d) {
     if (d && d.result) cb(d);
-    else if (retries > 0) { setTimeout(function(){ apiGet(action, params, cb, retries-1); }, 800); }
-    else cb({ result:"error", error:"Dữ liệu không hợp lệ" });
-  }).catch(function(e){
-    if (retries > 0) { setTimeout(function(){ apiGet(action, params, cb, retries-1); }, 1000); }
-    else toast("Lỗi kết nối: "+e.message,1);
+    else if (retries > 0) setTimeout(function() { apiGet(action, params, cb, retries - 1); }, 800);
+    else cb({ result: "error", error: "Dữ liệu không hợp lệ" });
+  }).catch(function(e) {
+    if (retries > 0) setTimeout(function() { apiGet(action, params, cb, retries - 1); }, 1000);
+    else toast("Lỗi kết nối: " + e.message, 1);
   });
 }
+
 function apiPost(data, cb, retries) {
   if (retries === undefined) retries = 1;
-  fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(data),redirect:"follow"})
-    .then(function(r){return r.json();}).then(function(d){
-      if (d && d.result) cb(d);
-      else if (retries > 0) { setTimeout(function(){ apiPost(data, cb, retries-1); }, 1000); }
-      else cb({ result:"error", error:"Không nhận được phản hồi" });
-    }).catch(function(e){
-      if (retries > 0) { setTimeout(function(){ apiPost(data, cb, retries-1); }, 1000); }
-      else toast("Lỗi kết nối: "+e.message,1);
-    });
+  fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(data),
+    redirect: "follow"
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d && d.result) cb(d);
+    else if (retries > 0) setTimeout(function() { apiPost(data, cb, retries - 1); }, 1000);
+    else cb({ result: "error", error: "Không nhận được phản hồi" });
+  }).catch(function(e) {
+    if (retries > 0) setTimeout(function() { apiPost(data, cb, retries - 1); }, 1000);
+    else toast("Lỗi kết nối: " + e.message, 1);
+  });
 }
 
-// ═══════════════ MASTER DATA (đã cache từ cylInit) ═══════════════
+// ═══════════════ MASTER DATA ═══════════════
 function buildLocDatalist() {
   var dl = document.getElementById("locList");
   dl.innerHTML = "";
-  locSuggestions.forEach(function(l){ var o=document.createElement("option"); o.value=l; dl.appendChild(o); });
+  locSuggestions.forEach(function(l) {
+    var o = document.createElement("option");
+    o.value = l;
+    dl.appendChild(o);
+  });
 }
+
 function fillDeptSelect(selId) {
   var sel = document.getElementById(selId);
   sel.innerHTML = '<option value="">— Chọn bộ phận —</option>';
-  departments.forEach(function(d){
+  departments.forEach(function(d) {
     var o = document.createElement("option");
     o.value = d.ten;
-    o.textContent = d.ten + (d.loai ? " ("+d.loai+")" : "");
+    o.textContent = d.ten + (d.loai ? " (" + d.loai + ")" : "");
     sel.appendChild(o);
   });
 }
 
-// ═══════════════ TRANSACTION FLOW ═══════════════
+// ═══════════════ TRANSACTION — Luồng chính ═══════════════
 function startTxn(group) {
-  txnGroup = group;
-  txnSubType = null;
-  txnCyl = null;
-  txnCylCode = "";
+  try {
+    txnGroup = group;
+    txnSubType = null;
+    txnCyl = null;
+    txnCylCode = "";
 
-  var titles = {IN:"Nhập trục", OUT:"Xuất trục", TRANSFER:"Chuyển vị trí"};
-  document.getElementById("txnTitle").textContent = titles[group] || "Giao dịch";
+    var titles = { IN: "Nhập trục", OUT: "Xuất trục", TRANSFER: "Chuyển vị trí" };
+    document.getElementById("txnTitle").textContent = titles[group] || "Giao dịch";
 
-  // Dùng local sub-types — KHÔNG gọi API → hiển thị tức thì
-  var list = getSubTypesByGroup(group);
-  var html = "";
-  list.forEach(function(t){
-    html += '<div class="menu-btn" onclick="pickSubType(\''+t.code+'\',\''+esc(t.label)+'\')">' +
-      '<div class="mb-icon" style="font-size:13px;color:var(--teal);font-weight:700;">'+esc(t.code.replace(/_/g," "))+'</div>' +
-      '<div class="mb-text"><div class="mb-title">'+esc(t.label)+'</div></div></div>';
-  });
-  document.getElementById("txnSubTypeList").innerHTML = html;
+    // Reset UI
+    document.getElementById("txnCylResult").className = "scan-result";
+    document.getElementById("txnCylResult").innerHTML = "";
+    document.getElementById("txnForm").style.display = "none";
+    document.getElementById("txnManual").style.display = "none";
+    document.getElementById("txnStep2").style.display = "none";
 
-  document.getElementById("txnStep1").style.display = "";
-  document.getElementById("txnStep2").style.display = "none";
-  show("scrTxn");
+    // Build sub-type list
+    var list = getSubTypesByGroup(group);
+    var html = "";
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i];
+      html += '<div class="menu-btn" onclick="pickSubType(\'' + t.code + '\',\'' + escAttr(t.label) + '\')">' +
+        '<div class="mb-icon" style="font-size:13px;color:var(--teal);font-weight:700;">' + esc(t.code.replace(/_/g, " ")) + '</div>' +
+        '<div class="mb-text"><div class="mb-title">' + esc(t.label) + '</div></div></div>';
+    }
+    document.getElementById("txnSubTypeList").innerHTML = html;
+    document.getElementById("txnStep1").style.display = "";
+
+    // Chuyển màn hình
+    switchScreen("scrTxn");
+    safeStopScan();
+  } catch (e) {
+    alert("Lỗi startTxn: " + e.message);
+  }
+}
+
+// quickTxn: từ static buttons trong detail (fallback)
+function quickTxn(group) { startTxn(group); }
+
+// quickTxnFor: từ detail screen — trục đã biết
+function quickTxnFor(group) {
+  try {
+    var cyl = window._detailCyl;
+    if (!cyl) return startTxn(group);
+
+    txnGroup = group;
+    txnCylCode = cyl.code;
+    txnCyl = cyl;
+
+    var titles = { IN: "Nhập trục", OUT: "Xuất trục", TRANSFER: "Chuyển vị trí" };
+    document.getElementById("txnTitle").textContent = titles[group] + " — " + cyl.code;
+
+    // Reset UI
+    document.getElementById("txnCylResult").className = "scan-result";
+    document.getElementById("txnCylResult").innerHTML = "";
+    document.getElementById("txnForm").style.display = "none";
+    document.getElementById("txnManual").style.display = "none";
+    document.getElementById("txnStep2").style.display = "none";
+
+    // Build sub-type list
+    var list = getSubTypesByGroup(group);
+    var html = "";
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i];
+      html += '<div class="menu-btn" onclick="pickSubTypeQuick(\'' + t.code + '\',\'' + escAttr(t.label) + '\')">' +
+        '<div class="mb-icon" style="font-size:13px;color:var(--teal);font-weight:700;">' + esc(t.code.replace(/_/g, " ")) + '</div>' +
+        '<div class="mb-text"><div class="mb-title">' + esc(t.label) + '</div></div></div>';
+    }
+    document.getElementById("txnSubTypeList").innerHTML = html;
+    document.getElementById("txnStep1").style.display = "";
+
+    switchScreen("scrTxn");
+    safeStopScan();
+  } catch (e) {
+    alert("Lỗi quickTxnFor: " + e.message);
+  }
 }
 
 function pickSubType(code, label) {
-  txnSubType = code;
-  document.getElementById("txnSubLabel").textContent = label + " — Scan QR trục";
-  document.getElementById("txnStep1").style.display = "none";
-  document.getElementById("txnStep2").style.display = "";
-  document.getElementById("txnCylResult").style.display = "none";
-  document.getElementById("txnForm").style.display = "none";
-  document.getElementById("txnManual").style.display = "none";
-
-  // Prepare dept selects
-  fillDeptSelect("txnFromDept");
-  fillDeptSelect("txnToDept");
-
-  // Show/hide fields based on group
-  // IN: fromDept(chọn BP nguồn) + toLoc(scan/nhập vị trí đích)
-  // OUT: toDept(chọn BP đích) — KHÔNG có vị trí
-  // TRANSFER_LOCATION: toLoc(vị trí mới)
-  // TRANSFER_DEPARTMENT: toDept(BP đích)
-  document.getElementById("fFromDept").style.display = (txnGroup==="IN") ? "" : "none";
-  document.getElementById("fToDept").style.display = ((txnGroup==="OUT" && code!=="OUT_SCRAP") || code==="TRANSFER_DEPARTMENT") ? "" : "none";
-  document.getElementById("fToLoc").style.display = (txnGroup==="IN" || code==="TRANSFER_LOCATION") ? "" : "none";
-
-  // Reset
-  document.getElementById("txnFromDept").value = "";
-  document.getElementById("txnToDept").value = "";
-  document.getElementById("txnToLoc").value = "";
-  document.getElementById("txnRemark").value = "";
+  try {
+    txnSubType = code;
+    document.getElementById("txnStep1").style.display = "none";
+    document.getElementById("txnStep2").style.display = "";
+    document.getElementById("txnSubLabel").textContent = label + " — Scan QR trục";
+    document.getElementById("txnCylResult").className = "scan-result";
+    document.getElementById("txnCylResult").innerHTML = "";
+    document.getElementById("txnForm").style.display = "none";
+    document.getElementById("txnManual").style.display = "none";
+    document.getElementById("txnCodeInput").value = "";
+    fillDeptSelect("txnFromDept");
+    fillDeptSelect("txnToDept");
+    document.getElementById("fFromDept").style.display = (txnGroup === "IN") ? "" : "none";
+    document.getElementById("fToDept").style.display = ((txnGroup === "OUT" && code !== "OUT_SCRAP") || code === "TRANSFER_DEPARTMENT") ? "" : "none";
+    document.getElementById("fToLoc").style.display = (txnGroup === "IN" || code === "TRANSFER_LOCATION") ? "" : "none";
+    document.getElementById("txnFromDept").value = "";
+    document.getElementById("txnToDept").value = "";
+    document.getElementById("txnToLoc").value = "";
+    document.getElementById("txnRemark").value = "";
+  } catch (e) {
+    alert("Lỗi pickSubType: " + e.message);
+  }
 }
 
-function cancelTxn() { show("scrDash"); }
+function pickSubTypeQuick(code, label) {
+  try {
+    txnSubType = code;
+    document.getElementById("txnStep1").style.display = "none";
+    document.getElementById("txnStep2").style.display = "";
+    document.getElementById("txnSubLabel").textContent = label;
+    document.getElementById("txnManual").style.display = "none";
+    fillDeptSelect("txnFromDept");
+    fillDeptSelect("txnToDept");
+    document.getElementById("fFromDept").style.display = (txnGroup === "IN") ? "" : "none";
+    document.getElementById("fToDept").style.display = ((txnGroup === "OUT" && code !== "OUT_SCRAP") || code === "TRANSFER_DEPARTMENT") ? "" : "none";
+    document.getElementById("fToLoc").style.display = (txnGroup === "IN" || code === "TRANSFER_LOCATION") ? "" : "none";
+    document.getElementById("txnFromDept").value = "";
+    document.getElementById("txnToDept").value = "";
+    document.getElementById("txnToLoc").value = "";
+    document.getElementById("txnRemark").value = "";
+    onCylFound(txnCylCode, txnCyl, false);
+  } catch (e) {
+    alert("Lỗi pickSubTypeQuick: " + e.message);
+  }
+}
 
-// Cylinder found after scan/manual
+// onCylFound: hiển thị info trục sau khi scan/lookup
 function onCylFound(code, cyl, isNew) {
   var el = document.getElementById("txnCylResult");
 
-  // === VALIDATION NGHIỆP VỤ ===
-
-  // #3: Nhập trục — nếu trục đã AVAILABLE (đang trong kho) thì chặn
-  if (txnGroup === "IN" && !isNew && cyl.curStatus === "AVAILABLE") {
-    el.innerHTML = '<div style="font-weight:700;font-size:16px;color:var(--red);">'+esc(code)+'</div>' +
-      '<div style="font-size:14px;color:var(--red);margin-top:6px;">Trục đã có trong kho và đang ở vị trí: <b>'+esc(cyl.curLoc||"—")+'</b> (BP: '+esc(cyl.curDept||"—")+')</div>';
+  // Validation: nhập trục đã có trong kho
+  if (txnGroup === "IN" && !isNew && cyl && cyl.curStatus === "AVAILABLE") {
+    el.innerHTML = '<div style="font-weight:700;font-size:16px;color:var(--red);">' + esc(code) + '</div>' +
+      '<div style="font-size:14px;color:var(--red);margin-top:6px;">Trục đã có trong kho tại vị trí: <b>' + esc(cyl.curLoc || "—") + '</b> (BP: ' + esc(cyl.curDept || "—") + ')</div>';
     el.className = "scan-result show new";
     document.getElementById("txnForm").style.display = "none";
     toast("Trục đã có trong kho!", 1);
     return;
   }
 
-  // #4: Xuất trục — nếu trục đã ISSUED (đã xuất) thì chặn (trừ xuất hủy)
-  if (txnGroup === "OUT" && txnSubType !== "OUT_SCRAP" && !isNew && cyl.curStatus === "ISSUED") {
-    el.innerHTML = '<div style="font-weight:700;font-size:16px;color:var(--red);">'+esc(code)+'</div>' +
-      '<div style="font-size:14px;color:var(--red);margin-top:6px;">Trục đã được xuất trước đó (BP: <b>'+esc(cyl.curDept||"—")+'</b>). Phải nhập trục về kho trước khi xuất lại.</div>';
+  // Validation: xuất trục đã xuất (trừ xuất hủy)
+  if (txnGroup === "OUT" && txnSubType !== "OUT_SCRAP" && !isNew && cyl && cyl.curStatus === "ISSUED") {
+    el.innerHTML = '<div style="font-weight:700;font-size:16px;color:var(--red);">' + esc(code) + '</div>' +
+      '<div style="font-size:14px;color:var(--red);margin-top:6px;">Trục đã xuất cho BP: <b>' + esc(cyl.curDept || "—") + '</b>. Phải nhập về kho trước.</div>';
     el.className = "scan-result show new";
     document.getElementById("txnForm").style.display = "none";
     toast("Trục đã xuất, chưa nhập về!", 1);
     return;
   }
 
-  // === OK — cho phép giao dịch ===
+  // OK — cho phép giao dịch
   txnCylCode = code;
   txnCyl = cyl;
 
   if (isNew) {
-    el.innerHTML = '<div style="font-weight:700;font-size:16px;">'+esc(code)+'</div>' +
+    el.innerHTML = '<div style="font-weight:700;font-size:16px;">' + esc(code) + '</div>' +
       '<div style="font-size:13px;color:var(--amber);margin-top:4px;">Trục mới — sẽ tự động tạo khi xác nhận</div>';
     el.className = "scan-result show new";
   } else {
-    el.innerHTML = '<div style="font-weight:700;font-size:16px;">'+esc(cyl.code)+'</div>' +
-      '<div style="font-size:13px;margin-top:4px;">Trạng thái: <b>'+statusVi(cyl.curStatus)+'</b></div>' +
-      '<div style="font-size:13px;color:var(--muted);">BP: '+esc(cyl.curDept||"—")+' | VT: '+esc(cyl.curLoc||"—")+'</div>';
+    el.innerHTML = '<div style="font-weight:700;font-size:16px;">' + esc(cyl.code) + '</div>' +
+      '<div style="font-size:13px;margin-top:4px;">Trạng thái: <b>' + statusVi(cyl.curStatus) + '</b></div>' +
+      '<div style="font-size:13px;color:var(--muted);">BP: ' + esc(cyl.curDept || "—") + ' | VT: ' + esc(cyl.curLoc || "—") + '</div>';
     el.className = "scan-result show";
   }
   document.getElementById("txnForm").style.display = "";
@@ -595,27 +715,26 @@ function manualLookup() {
 }
 
 function lookupCode(code, cb) {
-  apiGet("cylLookup",{code:code},function(d){
+  apiGet("cylLookup", { code: code }, function(d) {
     if (d.result === "ok") cb(d.cylinder, false);
     else if (d.result === "notfound") {
       if (txnGroup === "OUT" || txnGroup === "TRANSFER") {
-        toast("Trục chưa tồn tại — không thể " + (txnGroup==="OUT"?"xuất":"chuyển"), 1);
+        toast("Trục chưa tồn tại — không thể " + (txnGroup === "OUT" ? "xuất" : "chuyển"), 1);
       } else {
-        cb(null, true); // new cylinder, IN flow
+        cb(null, true);
       }
     } else {
-      toast(d.error||"Lỗi", 1);
+      toast(d.error || "Lỗi", 1);
     }
   });
 }
 
 function submitTxn() {
-  if (!txnCylCode) return toast("Chưa có mã trục",1);
-  if (!txnSubType) return toast("Chưa chọn loại GD",1);
+  if (!txnCylCode) return toast("Chưa có mã trục", 1);
+  if (!txnSubType) return toast("Chưa chọn loại GD", 1);
 
-  // Xuất hủy → xác nhận thêm 1 bước
   if (txnSubType === "OUT_SCRAP") {
-    if (!confirm("XÁC NHẬN XUẤT HỦY\n\nTrục: " + txnCylCode + "\n\nSau khi hủy sẽ không thể sử dụng lại trục này.\nBạn chắc chắn muốn xuất hủy?")) return;
+    if (!confirm("XÁC NHẬN XUẤT HỦY\n\nTrục: " + txnCylCode + "\n\nSau khi hủy sẽ không thể sử dụng lại.\nBạn chắc chắn?")) return;
   }
 
   var btn = document.getElementById("txnSubmitBtn");
@@ -636,148 +755,103 @@ function submitTxn() {
   apiPost(body, function(d) {
     btn.disabled = false;
     btn.textContent = "Xác nhận giao dịch";
-    if (d.result !== "ok") return toast(d.error||"Lỗi",1);
+    if (d.result !== "ok") return toast(d.error || "Lỗi", 1);
     var msg = "Thành công: " + d.txnNo;
     if (d.autoCreated) msg += " (đã tạo trục mới)";
     toast(msg);
-    // Refresh cache từ server (chạy nền, không block UI)
+    switchScreen("scrDash");
     loadAll();
-    show("scrDash");
   });
-}
-
-function quickTxn(group) { startTxn(group); }
-
-// quickTxn từ màn hình Detail — trục đã biết, skip bước scan
-function quickTxnFor(group) {
-  var cyl = window._detailCyl;
-  if (!cyl) return startTxn(group);
-  txnGroup = group;
-  txnCylCode = cyl.code;
-  txnCyl = cyl;
-
-  var titles = {IN:"Nhập trục", OUT:"Xuất trục", TRANSFER:"Chuyển vị trí"};
-  document.getElementById("txnTitle").textContent = titles[group] + " — " + cyl.code;
-
-  // Dùng local sub-types — hiển thị tức thì
-  var list = getSubTypesByGroup(group);
-  var html = "";
-  list.forEach(function(t){
-    html += '<div class="menu-btn" onclick="pickSubTypeQuick(\''+t.code+'\',\''+esc(t.label)+'\')">' +
-      '<div class="mb-icon" style="font-size:13px;color:var(--teal);font-weight:700;">'+esc(t.code.replace(/_/g," "))+'</div>' +
-      '<div class="mb-text"><div class="mb-title">'+esc(t.label)+'</div></div></div>';
-  });
-  document.getElementById("txnSubTypeList").innerHTML = html;
-
-  document.getElementById("txnStep1").style.display = "";
-  document.getElementById("txnStep2").style.display = "none";
-  show("scrTxn");
-}
-
-// Chọn sub type khi đã biết trục (skip scan)
-function pickSubTypeQuick(code, label) {
-  txnSubType = code;
-  document.getElementById("txnStep1").style.display = "none";
-  document.getElementById("txnStep2").style.display = "";
-  document.getElementById("txnManual").style.display = "none";
-
-  // Hiện info trục đã biết
-  document.getElementById("txnSubLabel").textContent = label;
-
-  // Prepare dept selects
-  fillDeptSelect("txnFromDept");
-  fillDeptSelect("txnToDept");
-
-  // Show/hide fields
-  document.getElementById("fFromDept").style.display = (txnGroup==="IN") ? "" : "none";
-  document.getElementById("fToDept").style.display = (txnGroup==="OUT" && code!=="OUT_SCRAP") || code==="TRANSFER_DEPARTMENT" ? "" : "none";
-  document.getElementById("fToLoc").style.display = (txnGroup==="IN" || code==="TRANSFER_LOCATION") ? "" : "none";
-
-  // Reset
-  document.getElementById("txnFromDept").value = "";
-  document.getElementById("txnToDept").value = "";
-  document.getElementById("txnToLoc").value = "";
-  document.getElementById("txnRemark").value = "";
-
-  // Hiển thị trục
-  onCylFound(txnCylCode, txnCyl, false);
 }
 
 // ═══════════════ QR SCANNER ═══════════════
 function openScanner(mode) {
   scanMode = mode;
-  stopScan();
-  var ov = document.getElementById("ovScanner");
-  ov.style.display = "flex";
-  var container = document.getElementById("qrReader");
-  container.innerHTML = "";
+  safeStopScan();
+  document.getElementById("ovScanner").style.display = "flex";
+  document.getElementById("qrReader").innerHTML = "";
 
-  scanner = new Html5Qrcode("qrReader");
-  scanner.start(
-    {facingMode:"environment"},
-    {fps:10, qrbox:{width:250,height:250}},
-    function(decoded){
-      closeScanner();
-      var code = decoded.trim();
-      if (scanMode === "txn") {
-        lookupCode(code.toUpperCase(), function(cyl,isNew){ onCylFound(code.toUpperCase(),cyl,isNew); });
-      } else if (scanMode === "loc") {
-        document.getElementById("txnToLoc").value = code;
-        toast("Đã scan vị trí: " + code);
-      } else {
-        showDetail(code.toUpperCase());
-      }
-    },
-    function(){}
-  ).catch(function(e){ toast("Camera: "+e,1); });
+  try {
+    scanner = new Html5Qrcode("qrReader");
+    scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      function(decoded) {
+        closeScanner();
+        var code = decoded.trim();
+        if (scanMode === "txn") {
+          // Hiển thị mã trục vào ô nhập tay
+          document.getElementById("txnManual").style.display = "";
+          document.getElementById("txnCodeInput").value = code.toUpperCase();
+          lookupCode(code.toUpperCase(), function(cyl, isNew) { onCylFound(code.toUpperCase(), cyl, isNew); });
+        } else if (scanMode === "loc") {
+          document.getElementById("txnToLoc").value = code;
+          toast("Vị trí: " + code);
+        } else {
+          showDetail(code.toUpperCase());
+        }
+      },
+      function() {}
+    ).catch(function(e) { toast("Camera: " + e, 1); });
+  } catch (e) {
+    toast("Không mở được camera: " + e, 1);
+  }
 }
 
 function closeScanner() {
-  stopScan();
+  safeStopScan();
   document.getElementById("ovScanner").style.display = "none";
 }
 
-function stopScan() {
-  if (scanner) { try{scanner.stop();}catch(e){} scanner=null; }
+function safeStopScan() {
+  if (scanner) {
+    try { scanner.stop(); } catch (e) { /* ignore */ }
+    scanner = null;
+  }
 }
+// Alias cho HTML onclick handlers dùng stopScan()
+function stopScan() { safeStopScan(); }
 
-// ═══════════════ TRA CỨU — filter từ cache ═══════════════
+// ═══════════════ TRA CỨU ═══════════════
 function filterScanList() {
-  var q = (document.getElementById("scanInput").value||"").trim().toLowerCase();
+  if (!dataReady) {
+    document.getElementById("scanCylList").innerHTML = '<div class="loading">Đang tải dữ liệu...</div>';
+    return;
+  }
+  var q = (document.getElementById("scanInput").value || "").trim().toLowerCase();
   var filtered = allCylinders;
   if (q) {
-    filtered = allCylinders.filter(function(c){
+    filtered = allCylinders.filter(function(c) {
       var s = [c.code, c.cylNumber, c.productCode, c.curDept, c.curLoc, c.curStatus].join(" ").toLowerCase();
       return s.indexOf(q) > -1;
     });
   }
-  renderScanList(filtered);
+  renderCylList("scanCylList", filtered);
 }
 
-function renderScanList(list) {
+function renderCylList(containerId, list) {
+  var container = document.getElementById(containerId);
   if (!list.length) {
-    document.getElementById("scanCylList").innerHTML = '<div class="empty">Không tìm thấy trục nào</div>';
+    container.innerHTML = '<div class="empty">Không tìm thấy trục nào</div>';
     return;
   }
-  var html = '<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">'+list.length+' trục</div>';
-  list.forEach(function(c){
-    html += '<div class="cyl-card" onclick="showDetail(\''+esc(c.code)+'\')">' +
-      '<div class="cyl-head"><span class="cyl-id">'+esc(c.code)+'</span>' +
-      '<span class="cyl-status st-'+c.curStatus.toLowerCase()+'">'+statusVi(c.curStatus)+'</span></div>' +
-      '<div class="cyl-sub">'+(c.cylNumber?'#'+esc(c.cylNumber)+' ':'')+(c.productCode?'SP: '+esc(c.productCode):'')+'</div>' +
-      '<div class="cyl-loc">BP: '+esc(c.curDept||"—")+' | VT: '+esc(c.curLoc||"—")+'</div>' +
+  var html = '<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">' + list.length + ' trục</div>';
+  for (var i = 0; i < list.length; i++) {
+    var c = list[i];
+    html += '<div class="cyl-card" onclick="showDetail(\'' + escAttr(c.code) + '\')">' +
+      '<div class="cyl-head"><span class="cyl-id">' + esc(c.code) + '</span>' +
+      '<span class="cyl-status st-' + c.curStatus.toLowerCase() + '">' + statusVi(c.curStatus) + '</span></div>' +
+      '<div class="cyl-sub">' + (c.cylNumber ? '#' + esc(c.cylNumber) + ' ' : '') + (c.productCode ? 'SP: ' + esc(c.productCode) : '') + '</div>' +
+      '<div class="cyl-loc">BP: ' + esc(c.curDept || "—") + ' | VT: ' + esc(c.curLoc || "—") + '</div>' +
       '</div>';
-  });
-  document.getElementById("scanCylList").innerHTML = html;
+  }
+  container.innerHTML = html;
 }
 
 function showDetail(code) {
-  apiGet("cylLookup",{code:code},function(d){
-    if (d.result === "notfound") {
-      toast("Không tìm thấy: "+code,1);
-      return;
-    }
-    if (d.result !== "ok") { toast(d.error||"Lỗi",1); return; }
+  apiGet("cylLookup", { code: code }, function(d) {
+    if (d.result === "notfound") return toast("Không tìm thấy: " + code, 1);
+    if (d.result !== "ok") return toast(d.error || "Lỗi", 1);
     renderDetail(d.cylinder);
   });
 }
@@ -796,95 +870,96 @@ function renderDetail(cyl) {
     dr("Mã thành phẩm", cyl.productCode) +
     '</div>' +
     '<div class="detail-section"><h4>Trạng thái hiện tại</h4>' +
-    dr("Trạng thái", '<span class="cyl-status st-'+cyl.curStatus.toLowerCase()+'">'+statusVi(cyl.curStatus)+'</span>') +
-    dr("Bộ phận", cyl.curDept||"—") +
-    dr("Vị trí", cyl.curLoc||"—") +
-    dr("GD gần nhất", cyl.lastTxnId ? cyl.lastTxnId+" ("+cyl.lastTxnDate+")" : "—") +
+    dr("Trạng thái", '<span class="cyl-status st-' + cyl.curStatus.toLowerCase() + '">' + statusVi(cyl.curStatus) + '</span>') +
+    dr("Bộ phận", cyl.curDept || "—") +
+    dr("Vị trí", cyl.curLoc || "—") +
+    dr("GD gần nhất", cyl.lastTxnId ? cyl.lastTxnId + " (" + cyl.lastTxnDate + ")" : "—") +
     '</div>';
   document.getElementById("detInfo").innerHTML = info;
 
   // History
   document.getElementById("detHist").innerHTML = '<div class="loading">Đang tải lịch sử...</div>';
-  apiGet("cylHistory",{code:cyl.code},function(d){
-    if (d.result!=="ok" || !d.history.length) {
+  apiGet("cylHistory", { code: cyl.code }, function(d) {
+    if (d.result !== "ok" || !d.history || !d.history.length) {
       document.getElementById("detHist").innerHTML = '<div class="empty">Chưa có lịch sử</div>';
       return;
     }
     var html = "";
-    d.history.forEach(function(h){
-      var stLabel = subTypeLabel(h.subType);
+    for (var i = 0; i < d.history.length; i++) {
+      var h = d.history[i];
       html += '<div class="hist-item">' +
-        '<div class="hist-type">' + esc(stLabel) + '</div>' +
+        '<div class="hist-type">' + esc(subTypeLabel(h.subType)) + '</div>' +
         '<div class="hist-detail">' +
-          (h.fromDept||h.toDept ? esc(h.fromDept||"—")+" → "+esc(h.toDept||"—") : "") +
-          (h.fromLoc||h.toLoc ? ' | '+esc(h.fromLoc||"—")+" → "+esc(h.toLoc||"—") : "") +
+          (h.fromDept || h.toDept ? esc(h.fromDept || "—") + " → " + esc(h.toDept || "—") : "") +
+          (h.fromLoc || h.toLoc ? ' | ' + esc(h.fromLoc || "—") + " → " + esc(h.toLoc || "—") : "") +
         '</div>' +
-        (h.remark ? '<div class="hist-detail" style="color:var(--amber);">'+esc(h.remark)+'</div>' : '') +
+        (h.remark ? '<div class="hist-detail" style="color:var(--amber);">' + esc(h.remark) + '</div>' : '') +
         '<div class="hist-time">' + esc(h.createdAt) + ' — ' + esc(h.user) + '</div>' +
         '</div>';
-    });
+    }
     document.getElementById("detHist").innerHTML = html;
   });
 
-  // Nút hành động nhanh theo trạng thái
+  // Action buttons theo trạng thái
   var actEl = document.getElementById("detActions");
   if (cyl.curStatus === "SCRAPPED") {
     actEl.style.display = "none";
   } else if (cyl.curStatus === "AVAILABLE") {
-    // Trong kho → chỉ Xuất hoặc Chuyển VT
     actEl.style.display = "";
     actEl.innerHTML = '<div class="row2">' +
       '<button class="btn small amber" onclick="quickTxnFor(\'OUT\')">Xuất trục</button>' +
       '<button class="btn small" onclick="quickTxnFor(\'TRANSFER\')">Chuyển vị trí</button></div>';
   } else if (cyl.curStatus === "ISSUED") {
-    // Đã xuất → chỉ Nhập về kho
     actEl.style.display = "";
     actEl.innerHTML = '<button class="btn small green" onclick="quickTxnFor(\'IN\')">Nhập về kho</button>';
   } else {
-    // UNDER_REPAIR → Nhập về kho
     actEl.style.display = "";
     actEl.innerHTML = '<button class="btn small green" onclick="quickTxnFor(\'IN\')">Nhập về kho</button>';
   }
 
-  // Lưu trục đang xem để quickTxn dùng
   window._detailCyl = cyl;
-
   detTab("info", document.querySelector("#scrDetail .tab-btn"));
-  show("scrDetail");
+  switchScreen("scrDetail");
 }
 
 function detTab(tab, btn) {
-  document.querySelectorAll("#scrDetail .tab-btn").forEach(function(b){b.classList.remove("active");});
-  if(btn) btn.classList.add("active");
-  document.getElementById("detInfo").style.display = (tab==="info") ? "" : "none";
-  document.getElementById("detHist").style.display = (tab==="hist") ? "" : "none";
+  var tabs = document.querySelectorAll("#scrDetail .tab-btn");
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+  if (btn) btn.classList.add("active");
+  document.getElementById("detInfo").style.display = (tab === "info") ? "" : "none";
+  document.getElementById("detHist").style.display = (tab === "hist") ? "" : "none";
 }
 
 // ═══════════════ SEARCH ═══════════════
 function openSearch(status) {
   searchFilter = status || "";
-  show("scrSearch");
-  // activate chip
-  document.querySelectorAll("#statusChips .chip").forEach(function(c){
-    var isAll = !searchFilter && c.textContent==="Tất cả";
-    var isMatch = searchFilter && c.getAttribute("onclick").indexOf("'"+searchFilter+"'")>-1;
-    c.classList.toggle("active", isAll||isMatch);
-  });
+  // Activate chip
+  var chips = document.querySelectorAll("#statusChips .chip");
+  for (var i = 0; i < chips.length; i++) {
+    var c = chips[i];
+    var isAll = !searchFilter && c.textContent === "Tất cả";
+    var isMatch = searchFilter && c.getAttribute("onclick").indexOf("'" + searchFilter + "'") > -1;
+    c.classList.toggle("active", isAll || isMatch);
+  }
+  switchScreen("scrSearch");
   doSearch();
 }
 
 function setFilter(st, chip) {
   searchFilter = st;
-  document.querySelectorAll("#statusChips .chip").forEach(function(c){c.classList.remove("active");});
+  var chips = document.querySelectorAll("#statusChips .chip");
+  for (var i = 0; i < chips.length; i++) chips[i].classList.remove("active");
   chip.classList.add("active");
   doSearch();
 }
 
 function doSearch() {
-  var q = (document.getElementById("searchQ").value||"").trim().toLowerCase();
-
-  // Filter từ cache — không gọi API
-  var list = allCylinders.filter(function(c){
+  if (!dataReady) {
+    document.getElementById("searchResults").innerHTML = '<div class="loading">Đang tải dữ liệu...</div>';
+    return;
+  }
+  var q = (document.getElementById("searchQ").value || "").trim().toLowerCase();
+  var list = allCylinders.filter(function(c) {
     if (searchFilter && c.curStatus !== searchFilter) return false;
     if (q) {
       var s = [c.code, c.cylNumber, c.productCode, c.curDept, c.curLoc].join(" ").toLowerCase();
@@ -892,57 +967,58 @@ function doSearch() {
     }
     return true;
   });
-
-  if (!list.length) {
-    document.getElementById("searchResults").innerHTML = '<div class="empty">Không tìm thấy</div>';
-    return;
-  }
-  var html = '<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">'+list.length+' kết quả</div>';
-  list.forEach(function(c){
-    html += '<div class="cyl-card" onclick="showDetail(\''+esc(c.code)+'\')">' +
-      '<div class="cyl-head"><span class="cyl-id">'+esc(c.code)+'</span>' +
-      '<span class="cyl-status st-'+c.curStatus.toLowerCase()+'">'+statusVi(c.curStatus)+'</span></div>' +
-      '<div class="cyl-sub">'+(c.cylNumber?'#'+esc(c.cylNumber)+' ':'')+(c.productCode?'SP: '+esc(c.productCode):'')+'</div>' +
-      '<div class="cyl-loc">BP: '+esc(c.curDept||"—")+' | VT: '+esc(c.curLoc||"—")+'</div>' +
-      '</div>';
-  });
-  document.getElementById("searchResults").innerHTML = html;
+  renderCylList("searchResults", list);
 }
 
 // ═══════════════ UTILS ═══════════════
 function dr(label, value) {
-  return '<div class="detail-row"><span class="dr-label">'+label+'</span><span class="dr-value">'+(value||"—")+'</span></div>';
+  return '<div class="detail-row"><span class="dr-label">' + label + '</span><span class="dr-value">' + (value || "—") + '</span></div>';
 }
 
 function statusVi(s) {
-  var m = {AVAILABLE:"Trong kho",ISSUED:"Đã xuất",UNDER_REPAIR:"Đang sửa",SCRAPPED:"Đã hủy"};
-  return m[s]||s;
+  var m = { AVAILABLE: "Trong kho", ISSUED: "Đã xuất", UNDER_REPAIR: "Đang sửa", SCRAPPED: "Đã hủy" };
+  return m[s] || s;
 }
 
 var ST_LABELS = {
-  IN_FROM_PRODUCTION:"Nhập từ SX", IN_NEW_CYLINDER:"Nhập trục mới",
-  IN_FROM_REPAIR:"Nhập từ sửa chữa", IN_OTHER:"Nhập khác",
-  OUT_TO_PRODUCTION:"Xuất sang SX", OUT_TO_REPAIR:"Xuất đi sửa chữa",
-  OUT_SCRAP:"Xuất hủy", OUT_OTHER:"Xuất khác",
-  TRANSFER_LOCATION:"Chuyển vị trí", TRANSFER_DEPARTMENT:"Chuyển bộ phận"
+  IN_FROM_PRODUCTION: "Nhập từ SX", IN_NEW_CYLINDER: "Nhập trục mới",
+  IN_FROM_REPAIR: "Nhập từ sửa chữa", IN_OTHER: "Nhập khác",
+  OUT_TO_PRODUCTION: "Xuất sang SX", OUT_TO_REPAIR: "Xuất đi sửa chữa",
+  OUT_SCRAP: "Xuất hủy", OUT_OTHER: "Xuất khác",
+  TRANSFER_LOCATION: "Chuyển vị trí", TRANSFER_DEPARTMENT: "Chuyển bộ phận"
 };
-function subTypeLabel(code) { return ST_LABELS[code]||code; }
+function subTypeLabel(code) { return ST_LABELS[code] || code; }
 
-function esc(s) { var d=document.createElement("div"); d.textContent=s||""; return d.innerHTML; }
+// Escape HTML content
+function esc(s) {
+  var d = document.createElement("div");
+  d.textContent = s || "";
+  return d.innerHTML;
+}
 
-function toast(msg,isErr) {
-  var el=document.getElementById("toast");
-  el.textContent=msg; el.style.background=isErr?"var(--red)":"#1e293b";
-  el.classList.add("show"); clearTimeout(el._t);
-  el._t=setTimeout(function(){el.classList.remove("show");},2500);
+// Escape cho dùng trong HTML attribute (onclick)
+function escAttr(s) {
+  return esc(s).replace(/'/g, "&#39;");
+}
+
+function toast(msg, isErr) {
+  var el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.background = isErr ? "var(--red)" : "#1e293b";
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(function() { el.classList.remove("show"); }, 2500);
 }
 
 function toggleEl(id) {
-  var el=document.getElementById(id);
-  el.style.display = el.style.display==="none"?"":"none";
+  var el = document.getElementById(id);
+  el.style.display = el.style.display === "none" ? "" : "none";
 }
 
-function debounce(fn,ms) { clearTimeout(debounceT); debounceT=setTimeout(fn,ms); }
+function debounce(fn, ms) {
+  clearTimeout(debounceT);
+  debounceT = setTimeout(fn, ms);
+}
 </script>
 </body>
 </html>
