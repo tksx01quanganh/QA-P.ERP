@@ -882,14 +882,17 @@ let _lbUrls = [], _lbIdx = 0;
 // Chuyển URL Drive cũ sang URL xem trực tiếp
 function toDirectImgUrl(url) {
   if (!url) return "";
-  // Đã là lh3 URL → giữ nguyên
-  if (url.indexOf("lh3.googleusercontent.com") !== -1) return url;
-  // drive.google.com/file/d/FILE_ID/... → lh3
-  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (m) return "https://lh3.googleusercontent.com/d/" + m[1];
-  // drive.google.com/open?id=FILE_ID → lh3
-  const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (m2) return "https://lh3.googleusercontent.com/d/" + m2[1];
+  // Trích FILE_ID từ bất kỳ dạng URL Drive nào
+  var fileId = "";
+  // lh3.googleusercontent.com/d/FILE_ID
+  var m0 = url.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+  if (m0) fileId = m0[1];
+  // drive.google.com/file/d/FILE_ID/...
+  if (!fileId) { var m1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (m1) fileId = m1[1]; }
+  // drive.google.com/open?id=FILE_ID
+  if (!fileId) { var m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/); if (m2) fileId = m2[1]; }
+  // Dùng drive.google.com/thumbnail (ổn định hơn lh3)
+  if (fileId) return "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1200";
   return url;
 }
 
