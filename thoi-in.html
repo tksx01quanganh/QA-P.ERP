@@ -121,10 +121,17 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
 .daily-chip{flex:1;text-align:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 4px;}
 .daily-chip .dv{font-size:18px;font-weight:800;color:var(--teal-d);}
 .daily-chip .dl{font-size:11px;color:var(--muted);}
-.group-row{background:var(--teal);color:#fff;font-weight:700;padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:14px;}
-.date-row{background:#e0f2fe;color:#0369a1;font-weight:600;padding:6px 12px;border-radius:6px;margin-bottom:4px;font-size:13px;}
-.may-row{padding:4px 12px 4px 28px;font-size:14px;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);cursor:pointer;}
+.group-row{background:var(--teal);color:#fff;font-weight:700;padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:14px;cursor:pointer;user-select:none;}
+.date-row{background:#e0f2fe;color:#0369a1;font-weight:600;padding:6px 12px;border-radius:6px;margin-bottom:4px;font-size:13px;cursor:pointer;user-select:none;}
+.ca-row{background:#fef3c7;color:#92400e;font-weight:600;padding:5px 12px 5px 20px;border-radius:6px;margin-bottom:3px;font-size:13px;cursor:pointer;user-select:none;}
+.may-row{padding:4px 12px 4px 28px;font-size:14px;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
 .may-row:active{background:#f0fdf4;}
+.cn-row{padding:3px 12px 3px 40px;font-size:13px;display:flex;justify-content:space-between;border-bottom:1px dashed var(--border);cursor:pointer;user-select:none;color:var(--teal-d);}
+.detail-row{padding:2px 12px 2px 52px;font-size:12px;display:flex;justify-content:space-between;color:var(--muted);border-bottom:1px dotted var(--border);}
+.acc-content{display:none;overflow:hidden;}
+.acc-content.open{display:block;}
+.acc-arrow{display:inline-block;transition:transform .2s;margin-right:4px;font-size:12px;}
+.acc-arrow.open{transform:rotate(90deg);}
 
 /* modal */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;z-index:20;}
@@ -533,6 +540,7 @@ function fmt(n){ const v=Math.round((n||0)*100)/100; return v%1===0?String(v):v.
 function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
 function yesterdayISO(){ const d=new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
 function dmy(s){ const p=String(s).split("-"); return p.length===3 ? p[2]+"/"+p[1]+"/"+p[0] : s; }
+function toggleAcc(id,el){ const c=document.getElementById(id); if(!c)return; const open=c.classList.toggle("open"); const arrow=el.querySelector(".acc-arrow"); if(arrow) arrow.classList.toggle("open",open); }
 function uuid(){ return 'xxxx-xxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16)) + '-' + Date.now().toString(36); }
 
 let toastTimer;
@@ -1106,64 +1114,133 @@ function drawDaily(){
     '<div class="daily-chip"><div class="dv">' + fmt(tongPheTron) + '</div><div class="dl">🗑️ Phế trơn</div></div>' +
     '<div class="daily-chip"><div class="dv">' + fmt(tongPheMau) + '</div><div class="dl">🎨 Phế màu</div></div>';
 
-  // ── Nhóm SX: Tổ → Ngày → Máy ──
-  const groups = {};
-  sx.forEach(r => {
-    const gk = r.loai;
-    if(!groups[gk]) groups[gk] = {};
-    if(!groups[gk][r.ngay]) groups[gk][r.ngay] = {};
-    groups[gk][r.ngay][r.may] = (groups[gk][r.ngay][r.may]||0) + r.tong;
+  // ── Nhóm SX chi tiết: Tổ → Ngày → Ca → Máy → CN → LSX ──
+  const sxd = (dailyData.sxd || []).filter(r => dailyFilter === "all" || r.loai === dailyFilter);
+  const phed = (dailyData.phed || []).filter(r => dailyFilter === "all" || r.loai === dailyFilter);
+  let uid = 0;
+
+  // Build SX tree: loai → ngaySX → ca → may → cn → [{gio, lsx, kq}]
+  const sxTree = {};
+  sxd.forEach(r => {
+    const loai = r.loai, ngay = r.ngaySX || r.ngay, ca = r.ca || "—", may = r.may, cn = r.cn;
+    if(!sxTree[loai]) sxTree[loai] = {};
+    if(!sxTree[loai][ngay]) sxTree[loai][ngay] = {};
+    if(!sxTree[loai][ngay][ca]) sxTree[loai][ngay][ca] = {};
+    if(!sxTree[loai][ngay][ca][may]) sxTree[loai][ngay][ca][may] = {};
+    if(!sxTree[loai][ngay][ca][may][cn]) sxTree[loai][ngay][ca][may][cn] = [];
+    sxTree[loai][ngay][ca][may][cn].push({ gio: r.gio, lsx: r.lsx, kq: r.kq });
   });
 
   let html = "";
   for(const loai of ["Thổi", "In"]){
-    if(!groups[loai]) continue;
+    if(!sxTree[loai]) continue;
     const icon = loai === "Thổi" ? "💨" : "🖨️";
-    const totalG = Object.values(groups[loai]).reduce((s,days) => s + Object.values(days).reduce((a,b)=>a+b,0), 0);
-    html += '<div class="group-row">' + icon + ' ' + loai + ' — ' + fmt(totalG) + ' kg</div>';
+    const totalG = sxd.filter(r=>r.loai===loai).reduce((s,r)=>s+r.kq,0);
+    const gid = "sx_g" + (uid++);
+    html += '<div class="group-row" onclick="toggleAcc(\'' + gid + '\',this)"><span class="acc-arrow">▶</span>' + icon + ' ' + loai + ' — ' + fmt(totalG) + ' kg</div>';
+    html += '<div class="acc-content" id="' + gid + '">';
 
-    const dates = Object.keys(groups[loai]).sort().reverse();
+    const dates = Object.keys(sxTree[loai]).sort().reverse();
     dates.forEach(ngay => {
-      const mays = groups[loai][ngay];
-      const dayTotal = Object.values(mays).reduce((a,b)=>a+b,0);
-      html += '<div class="date-row">📅 ' + dmy(ngay) + ' — ' + fmt(dayTotal) + ' kg</div>';
-      for(const may in mays){
-        html += '<div class="may-row"><span>' + esc(may) + '</span><span>' + fmt(mays[may]) + ' kg</span></div>';
-      }
+      const dayTotal = sxd.filter(r=>r.loai===loai&&(r.ngaySX||r.ngay)===ngay).reduce((s,r)=>s+r.kq,0);
+      const did = "sx_d" + (uid++);
+      html += '<div class="date-row" onclick="toggleAcc(\'' + did + '\',this)"><span class="acc-arrow">▶</span>📅 ' + esc(ngay) + ' — ' + fmt(dayTotal) + ' kg</div>';
+      html += '<div class="acc-content" id="' + did + '">';
+
+      const cas = Object.keys(sxTree[loai][ngay]).sort();
+      cas.forEach(ca => {
+        const caTotal = sxd.filter(r=>r.loai===loai&&(r.ngaySX||r.ngay)===ngay&&(r.ca||"—")===ca).reduce((s,r)=>s+r.kq,0);
+        const cid = "sx_c" + (uid++);
+        html += '<div class="ca-row" onclick="toggleAcc(\'' + cid + '\',this)"><span class="acc-arrow">▶</span>🕐 Ca ' + esc(ca) + ' — ' + fmt(caTotal) + ' kg</div>';
+        html += '<div class="acc-content" id="' + cid + '">';
+
+        const mays = sxTree[loai][ngay][ca];
+        for(const may in mays){
+          const mayTotal = Object.values(mays[may]).reduce((s,arr)=>s+arr.reduce((a,r)=>a+r.kq,0),0);
+          const mid = "sx_m" + (uid++);
+          html += '<div class="may-row" onclick="toggleAcc(\'' + mid + '\',this)"><span class="acc-arrow">▶</span><span>' + esc(may) + '</span><span>' + fmt(mayTotal) + ' kg</span></div>';
+          html += '<div class="acc-content" id="' + mid + '">';
+
+          const cns = mays[may];
+          for(const cn in cns){
+            const cnTotal = cns[cn].reduce((s,r)=>s+r.kq,0);
+            const nid = "sx_n" + (uid++);
+            html += '<div class="cn-row" onclick="toggleAcc(\'' + nid + '\',this)"><span class="acc-arrow">▶</span><span>' + esc(cn) + '</span><span>' + fmt(cnTotal) + ' kg</span></div>';
+            html += '<div class="acc-content" id="' + nid + '">';
+            cns[cn].forEach(d => {
+              html += '<div class="detail-row"><span>' + esc(d.gio) + ' — ' + esc(d.lsx) + '</span><span>' + fmt(d.kq) + ' kg</span></div>';
+            });
+            html += '</div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
     });
+    html += '</div>';
   }
 
-  // ── Nhóm Phế: Tổ → Ngày → Máy ──
-  if(pheArr.length){
-    const pheGroups = {};
-    pheArr.forEach(r => {
-      const gk = r.loai;
-      if(!pheGroups[gk]) pheGroups[gk] = {};
-      if(!pheGroups[gk][r.ngay]) pheGroups[gk][r.ngay] = {};
-      if(!pheGroups[gk][r.ngay][r.may]) pheGroups[gk][r.ngay][r.may] = { tron: 0, mau: 0 };
-      pheGroups[gk][r.ngay][r.may].tron += r.tron;
-      pheGroups[gk][r.ngay][r.may].mau  += r.mau;
+  // ── Nhóm Phế chi tiết: Tổ → Ngày → Ca → Máy → CN ──
+  if(phed.length){
+    const pheTree = {};
+    phed.forEach(r => {
+      const loai = r.loai, ngay = r.ngaySX || r.ngay, ca = r.ca || "—", may = r.may, cn = r.cn;
+      if(!pheTree[loai]) pheTree[loai] = {};
+      if(!pheTree[loai][ngay]) pheTree[loai][ngay] = {};
+      if(!pheTree[loai][ngay][ca]) pheTree[loai][ngay][ca] = {};
+      if(!pheTree[loai][ngay][ca][may]) pheTree[loai][ngay][ca][may] = {};
+      if(!pheTree[loai][ngay][ca][may][cn]) pheTree[loai][ngay][ca][may][cn] = { tron: 0, mau: 0 };
+      pheTree[loai][ngay][ca][may][cn].tron += r.tron;
+      pheTree[loai][ngay][ca][may][cn].mau  += r.mau;
     });
 
     for(const loai of ["Thổi", "In"]){
-      if(!pheGroups[loai]) continue;
+      if(!pheTree[loai]) continue;
       const icon = loai === "Thổi" ? "💨" : "🖨️";
-      const allDays = Object.values(pheGroups[loai]);
-      const totalTron = allDays.reduce((s,days) => s + Object.values(days).reduce((a,m)=>a+m.tron,0), 0);
-      const totalMau  = allDays.reduce((s,days) => s + Object.values(days).reduce((a,m)=>a+m.mau,0), 0);
-      html += '<div class="group-row">🗑️ Phế ' + loai + ' — Trơn: ' + fmt(totalTron) + ' / Màu: ' + fmt(totalMau) + ' kg</div>';
+      const totalTron = phed.filter(r=>r.loai===loai).reduce((s,r)=>s+r.tron,0);
+      const totalMau  = phed.filter(r=>r.loai===loai).reduce((s,r)=>s+r.mau,0);
+      const gid = "ph_g" + (uid++);
+      html += '<div class="group-row" onclick="toggleAcc(\'' + gid + '\',this)"><span class="acc-arrow">▶</span>🗑️ Phế ' + loai + ' — Trơn: ' + fmt(totalTron) + ' / Màu: ' + fmt(totalMau) + ' kg</div>';
+      html += '<div class="acc-content" id="' + gid + '">';
 
-      const dates = Object.keys(pheGroups[loai]).sort().reverse();
+      const dates = Object.keys(pheTree[loai]).sort().reverse();
       dates.forEach(ngay => {
-        const mays = pheGroups[loai][ngay];
-        const dayTron = Object.values(mays).reduce((a,m)=>a+m.tron,0);
-        const dayMau  = Object.values(mays).reduce((a,m)=>a+m.mau,0);
-        html += '<div class="date-row">📅 ' + dmy(ngay) + ' — Trơn: ' + fmt(dayTron) + ' / Màu: ' + fmt(dayMau) + ' kg</div>';
-        for(const may in mays){
-          const m = mays[may];
-          html += '<div class="may-row"><span>' + esc(may) + '</span><span>Trơn: ' + fmt(m.tron) + ' / Màu: ' + fmt(m.mau) + '</span></div>';
-        }
+        const dayItems = phed.filter(r=>r.loai===loai&&(r.ngaySX||r.ngay)===ngay);
+        const dayTron = dayItems.reduce((s,r)=>s+r.tron,0);
+        const dayMau  = dayItems.reduce((s,r)=>s+r.mau,0);
+        const did = "ph_d" + (uid++);
+        html += '<div class="date-row" onclick="toggleAcc(\'' + did + '\',this)"><span class="acc-arrow">▶</span>📅 ' + esc(ngay) + ' — Trơn: ' + fmt(dayTron) + ' / Màu: ' + fmt(dayMau) + ' kg</div>';
+        html += '<div class="acc-content" id="' + did + '">';
+
+        const cas = Object.keys(pheTree[loai][ngay]).sort();
+        cas.forEach(ca => {
+          const caItems = dayItems.filter(r=>(r.ca||"—")===ca);
+          const caTron = caItems.reduce((s,r)=>s+r.tron,0);
+          const caMau  = caItems.reduce((s,r)=>s+r.mau,0);
+          const cid = "ph_c" + (uid++);
+          html += '<div class="ca-row" onclick="toggleAcc(\'' + cid + '\',this)"><span class="acc-arrow">▶</span>🕐 Ca ' + esc(ca) + ' — Trơn: ' + fmt(caTron) + ' / Màu: ' + fmt(caMau) + ' kg</div>';
+          html += '<div class="acc-content" id="' + cid + '">';
+
+          const mays = pheTree[loai][ngay][ca];
+          for(const may in mays){
+            const mayTron = Object.values(mays[may]).reduce((s,v)=>s+v.tron,0);
+            const mayMau  = Object.values(mays[may]).reduce((s,v)=>s+v.mau,0);
+            const mid = "ph_m" + (uid++);
+            html += '<div class="may-row" onclick="toggleAcc(\'' + mid + '\',this)"><span class="acc-arrow">▶</span><span>' + esc(may) + '</span><span>Trơn: ' + fmt(mayTron) + ' / Màu: ' + fmt(mayMau) + '</span></div>';
+            html += '<div class="acc-content" id="' + mid + '">';
+
+            for(const cn in mays[may]){
+              const v = mays[may][cn];
+              html += '<div class="cn-row"><span>' + esc(cn) + '</span><span>Trơn: ' + fmt(v.tron) + ' / Màu: ' + fmt(v.mau) + '</span></div>';
+            }
+            html += '</div>';
+          }
+          html += '</div>';
+        });
+        html += '</div>';
       });
+      html += '</div>';
     }
   }
 
