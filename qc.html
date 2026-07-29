@@ -78,7 +78,8 @@ input,select,textarea{font-family:inherit;font-size:16px}
 .f-group input,.f-group select{width:100%;padding:8px 10px;border:2px solid var(--border);border-radius:8px;outline:none;background:#fff;font-size:14px;font-family:inherit}
 .f-group input:focus,.f-group select:focus{border-color:var(--teal)}
 .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-.sum-card{text-align:center;padding:10px 4px;border-radius:10px}
+.sum-card{text-align:center;padding:10px 4px;border-radius:10px;transition:outline .15s,transform .1s}
+.sum-card:active{transform:scale(.95)}
 .sum-card .val{font-size:22px;font-weight:700}
 .sum-card .lbl{font-size:11px;font-weight:600;color:var(--muted);margin-top:2px}
 .sum-total{background:#eff6ff} .sum-total .val{color:var(--blue)}
@@ -328,9 +329,9 @@ input,select,textarea{font-family:inherit;font-size:16px}
       <button class="btn teal" onclick="doSearch()">🔍 Tra cứu</button>
     </div>
     <div class="summary" id="summaryArea" style="display:none">
-      <div class="sum-card sum-total"><div class="val" id="sumTotal">0</div><div class="lbl">TỔNG BẢN GHI</div></div>
-      <div class="sum-card sum-pass"><div class="val" id="sumPass">0</div><div class="lbl">PASS</div></div>
-      <div class="sum-card sum-ng"><div class="val" id="sumNG">0</div><div class="lbl">NG</div></div>
+      <div class="sum-card sum-total" onclick="filterNG('all')" style="cursor:pointer"><div class="val" id="sumTotal">0</div><div class="lbl">TỔNG BẢN GHI</div></div>
+      <div class="sum-card sum-pass" onclick="filterNG('pass')" style="cursor:pointer"><div class="val" id="sumPass">0</div><div class="lbl">PASS</div></div>
+      <div class="sum-card sum-ng" onclick="filterNG()" style="cursor:pointer"><div class="val" id="sumNG">0</div><div class="lbl">NG</div></div>
       <div class="sum-card sum-rate"><div class="val" id="sumRate">0%</div><div class="lbl">TỶ LỆ NG</div></div>
     </div>
     <div class="tc-tabs" id="tcTabBar" style="display:none">
@@ -879,21 +880,28 @@ async function submitInspection() {
 
 let _lbUrls = [], _lbIdx = 0;
 
-// Chuyển URL Drive cũ sang URL xem trực tiếp
+// Chuyển URL Drive sang URL xem trực tiếp (hỗ trợ mobile)
+function extractDriveFileId(url) {
+  if (!url) return "";
+  var m0 = url.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+  if (m0) return m0[1];
+  var m1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1) return m1[1];
+  var m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m2) return m2[1];
+  return "";
+}
 function toDirectImgUrl(url) {
   if (!url) return "";
-  // Trích FILE_ID từ bất kỳ dạng URL Drive nào
-  var fileId = "";
-  // lh3.googleusercontent.com/d/FILE_ID
-  var m0 = url.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
-  if (m0) fileId = m0[1];
-  // drive.google.com/file/d/FILE_ID/...
-  if (!fileId) { var m1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/); if (m1) fileId = m1[1]; }
-  // drive.google.com/open?id=FILE_ID
-  if (!fileId) { var m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/); if (m2) fileId = m2[1]; }
-  // Dùng drive.google.com/thumbnail (ổn định hơn lh3)
-  if (fileId) return "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1200";
+  var fileId = extractDriveFileId(url);
+  // lh3: không cần auth cho file shared ANYONE_WITH_LINK → hoạt động trên mobile
+  if (fileId) return "https://lh3.googleusercontent.com/d/" + fileId + "=w1200";
   return url;
+}
+function toFallbackImgUrl(url) {
+  var fileId = extractDriveFileId(url);
+  if (fileId) return "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1200";
+  return "";
 }
 
 function openLightbox(urls, startIdx) {
@@ -915,7 +923,14 @@ function lbNav(dir, e) {
 }
 
 function showLbImage() {
-  document.getElementById("lbImg").src = _lbUrls[_lbIdx];
+  var img = document.getElementById("lbImg");
+  var url = _lbUrls[_lbIdx];
+  img.onerror = function() {
+    // Fallback: thử thumbnail API (cần đăng nhập Google)
+    var fb = toFallbackImgUrl(url);
+    if (fb && img.src !== fb) { img.onerror = null; img.src = fb; }
+  };
+  img.src = url;
   document.getElementById("lbCounter").textContent = (_lbIdx + 1) + " / " + _lbUrls.length;
   document.querySelector(".lb-prev").style.display = _lbUrls.length > 1 ? "" : "none";
   document.querySelector(".lb-next").style.display = _lbUrls.length > 1 ? "" : "none";
@@ -1028,6 +1043,36 @@ function switchTab(tab) {
   document.querySelectorAll(".tc-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
   document.getElementById("viewList").style.display = tab === "list" ? "" : "none";
   document.getElementById("viewChart").style.display = tab === "chart" ? "" : "none";
+}
+
+// ===== FILTER TỪ DASHBOARD =====
+let _activeFilter = "all";
+function filterNG(type) {
+  if (!state.results || !state.results.length) return;
+  type = type || "ng";
+  _activeFilter = type;
+  // Highlight card đang active
+  document.querySelectorAll(".summary .sum-card").forEach(c => c.style.outline = "none");
+  if (type !== "all") {
+    const cls = type === "ng" ? ".sum-ng" : ".sum-pass";
+    const card = document.querySelector(cls);
+    if (card) card.style.outline = "2.5px solid var(--teal)";
+  }
+  // Filter
+  let filtered;
+  if (type === "ng") filtered = state.results.filter(r => r.phanDinh === "NG");
+  else if (type === "pass") filtered = state.results.filter(r => r.phanDinh !== "NG");
+  else filtered = state.results;
+  // Switch sang tab list, render, auto expand
+  switchTab("list");
+  renderList(filtered);
+  if (type === "ng") {
+    // Auto expand tất cả LSX card có NG
+    document.querySelectorAll("#viewList .lsx-detail").forEach(d => d.classList.add("show"));
+    document.querySelectorAll("#viewList .lsx-arrow").forEach(a => a.classList.add("open"));
+  }
+  // Scroll đến khu vực danh sách
+  document.getElementById("viewList").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ===== LIST VIEW — grouped by LSX =====
