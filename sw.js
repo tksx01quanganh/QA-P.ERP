@@ -1,4 +1,4 @@
-const CACHE = 'qap-erp-v24';
+const CACHE = 'qap-erp-v25';
 const ASSETS = [
   './',
   './index.html',
@@ -6,7 +6,6 @@ const ASSETS = [
   './xuat-hang.html',
   './bao-cao-chuoi.html',
   './qc.html',
-  './ng-report.html',
   './manifest.json',
   './icon.svg',
   './icon-192.png',
