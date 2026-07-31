@@ -169,12 +169,23 @@ function quick2(p){
   loadTab2();
 }
 
-/* ═══ FETCH HELPER ═══ */
+/* ═══ JSONP HELPER — nhanh hơn fetch (tránh redirect 302 của GAS) ═══ */
+function jsonp(url, timeout){
+  return new Promise((resolve,reject)=>{
+    const cb="__bh_"+Date.now()+"_"+Math.random().toString(36).slice(2,6);
+    const s=document.createElement("script");
+    const timer=setTimeout(()=>{cleanup();reject(new Error("Hết thời gian chờ"))},timeout||20000);
+    function cleanup(){clearTimeout(timer);delete window[cb];if(s.parentNode)s.remove();}
+    window[cb]=function(d){cleanup();resolve(d);};
+    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb;
+    s.onerror=function(){cleanup();reject(new Error("Lỗi kết nối"));};
+    document.head.appendChild(s);
+  });
+}
 async function callAPI(action, params){
   let url = CONFIG.BAN_HANG_URL + "?action=" + action + "&t=" + Date.now();
   for(const k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
-  const res = await fetch(url);
-  const json = await res.json();
+  const json = await jsonp(url, 25000);
   if(json.result !== "ok") throw new Error(json.error || "Lỗi không xác định");
   return json;
 }
