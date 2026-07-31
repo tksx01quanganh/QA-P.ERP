@@ -38,9 +38,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle;margin-right:6px;}
 @keyframes sp{to{transform:rotate(360deg)}}
 .loading-text{text-align:center;padding:20px;color:var(--muted);font-size:14px;}
-/* Login */
-.login-box{max-width:340px;margin:40px auto;padding:20px;background:#fff;border-radius:16px;border:1px solid var(--border);}
-.login-box h2{text-align:center;margin-bottom:20px;font-size:20px;}
 /* Menu */
 .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:400px;margin:30px auto;}
 .menu-card{background:#fff;border:2px solid var(--border);border-radius:16px;padding:24px 16px;text-align:center;cursor:pointer;transition:border-color .2s;}
@@ -105,37 +102,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 </head>
 <body>
 
-<!-- ══════ SCREEN: LOGIN ══════ -->
-<div id="scrLogin" class="screen active">
-  <div class="topbar">
-    <button class="icon-btn" onclick="goHome()">&#9664;</button>
-    <span class="ttl">Kiểm kê Thành phẩm</span>
-    <span class="ver">v1.0</span>
-  </div>
-  <div class="wrap">
-    <div class="login-box">
-      <h2>Đăng nhập</h2>
-      <div class="field">
-        <label class="label">Tên đăng nhập</label>
-        <input id="loginUser" class="input" autocomplete="username" placeholder="Username"/>
-      </div>
-      <div class="field">
-        <label class="label">Mật khẩu</label>
-        <input id="loginPass" class="input" type="password" autocomplete="current-password" placeholder="Password"/>
-      </div>
-      <button id="btnLogin" class="btn teal" onclick="doLogin()">Đăng nhập</button>
-      <div id="loginMsg" style="text-align:center;margin-top:8px;font-size:13px;color:var(--red);"></div>
-    </div>
-  </div>
-</div>
-
 <!-- ══════ SCREEN: MENU ══════ -->
 <div id="scrMenu" class="screen">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#9664;</button>
     <span class="ttl">Kiểm kê</span>
     <span class="ver">v1.0</span>
-    <button class="icon-btn" onclick="doLogout()" title="Đăng xuất">&#128682;</button>
   </div>
   <div class="wrap">
     <div style="text-align:center;margin-bottom:8px;font-size:13px;color:var(--muted);">
@@ -323,50 +295,18 @@ function setHint(cls, msg){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SESSION / LOGIN
+   SESSION (dùng chung ghinhan_session từ app chính)
    ══════════════════════════════════════════════════════════════ */
 function checkSession(){
-  var saved=localStorage.getItem("stkSession_v1");
+  var saved=localStorage.getItem("ghinhan_session");
   if(!saved) return false;
   try{
     var s=JSON.parse(saved);
-    if(s.user && s.ts && (Date.now()-s.ts < 8*3600*1000)){
+    if(s.username && s.ts && (Date.now()-s.ts < 8*3600*1000)){
       state.user=s.user; state.maNV=s.maNV; return true;
     }
   }catch(e){}
   return false;
-}
-function saveSession(){
-  localStorage.setItem("stkSession_v1", JSON.stringify({user:state.user, maNV:state.maNV, ts:Date.now()}));
-}
-
-async function doLogin(){
-  var user=document.getElementById("loginUser").value.trim();
-  var pass=document.getElementById("loginPass").value.trim();
-  var msg=document.getElementById("loginMsg");
-  if(!user||!pass){msg.textContent="Vui lòng nhập đủ thông tin";return;}
-  var btn=document.getElementById("btnLogin");
-  btn.disabled=true; btn.textContent="Đang đăng nhập..."; msg.textContent="";
-  try{
-    var res=await fetch(CONFIG.XUAT_HANG_URL,{method:"POST",body:JSON.stringify({action:"stkLogin",user:user,pass:pass}),headers:{"Content-Type":"text/plain"}});
-    var out=await res.json();
-    if(out.result==="ok"){
-      state.user=out.user; state.maNV=out.maNV;
-      saveSession();
-      enterMenu();
-    } else {
-      msg.textContent=out.error||"Lỗi đăng nhập";
-    }
-  }catch(e){
-    msg.textContent="Không kết nối được server";
-  }
-  btn.disabled=false; btn.textContent="Đăng nhập";
-}
-
-function doLogout(){
-  localStorage.removeItem("stkSession_v1");
-  state.user=null; state.maNV=null;
-  show("scrLogin");
 }
 
 function enterMenu(){
@@ -773,7 +713,8 @@ function toggleRptAcc(id){
   if(checkSession()){
     enterMenu();
   } else {
-    show("scrLogin");
+    // Chưa đăng nhập → quay về app chính
+    window.location.href = "index.html";
   }
 })();
 </script>
