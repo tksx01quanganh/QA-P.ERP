@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Kiểm kê Thành phẩm — QA-P.ERP</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{--teal:#0f766e;--bg:#f8fafc;--txt:#1e293b;--muted:#64748b;--border:#e2e8f0;--red:#dc2626;--green:#16a34a;--amber:#d97706;--blue:#2563eb;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);-webkit-tap-highlight-color:transparent;}
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+.topbar{display:flex;align-items:center;padding:10px 12px;background:#fff;border-bottom:1px solid var(--border);gap:8px;position:sticky;top:0;z-index:10;}
+.topbar .ttl{flex:1;font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.topbar .ver{font-size:11px;color:var(--muted);}
+.icon-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:4px 8px;border-radius:8px;}
+.icon-btn:active{background:#f1f5f9;}
+.wrap{padding:12px;flex:1;overflow-y:auto;}
+.btn{border:none;padding:12px 20px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;text-align:center;}
+.btn:active{opacity:.85;}
+.btn.teal{background:var(--teal);color:#fff;}
+.btn.green{background:var(--green);color:#fff;}
+.btn.red{background:var(--red);color:#fff;}
+.btn.outline{background:#fff;color:var(--teal);border:2px solid var(--teal);}
+.btn.gray{background:#e2e8f0;color:var(--txt);}
+.btn:disabled{opacity:.4;pointer-events:none;}
+.input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:12px;font-size:16px;outline:none;background:#fff;}
+.input:focus{border-color:var(--teal);}
+.label{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block;}
+.field{margin-bottom:12px;}
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:12px;font-size:14px;font-weight:600;color:#fff;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%;text-align:center;}
+.toast.show{opacity:1;}
+.toast.ok{background:var(--green);}
+.toast.err{background:var(--red);}
+/* Loading */
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:sp .6s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes sp{to{transform:rotate(360deg)}}
+.loading-text{text-align:center;padding:20px;color:var(--muted);font-size:14px;}
+/* Login */
+.login-box{max-width:340px;margin:40px auto;padding:20px;background:#fff;border-radius:16px;border:1px solid var(--border);}
+.login-box h2{text-align:center;margin-bottom:20px;font-size:20px;}
+/* Menu */
+.menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:400px;margin:30px auto;}
+.menu-card{background:#fff;border:2px solid var(--border);border-radius:16px;padding:24px 16px;text-align:center;cursor:pointer;transition:border-color .2s;}
+.menu-card:active{border-color:var(--teal);background:#f0fdfa;}
+.menu-card .mc-icon{font-size:36px;margin-bottom:8px;}
+.menu-card .mc-label{font-size:14px;font-weight:700;color:var(--txt);}
+/* Location */
+.loc-section{max-width:400px;margin:20px auto;text-align:center;}
+.loc-section .loc-icon{font-size:48px;margin-bottom:12px;}
+.loc-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--muted);font-size:13px;}
+.loc-divider::before,.loc-divider::after{content:"";flex:1;border-top:1px solid var(--border);}
+/* Scan */
+.summary-bar{display:flex;justify-content:space-around;background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;padding:10px;margin-bottom:12px;}
+.summary-item{text-align:center;}
+.summary-item .si-val{font-size:18px;font-weight:800;color:var(--teal);}
+.summary-item .si-label{font-size:11px;color:var(--muted);}
+.scan-list{margin-bottom:12px;}
+.scan-row{display:flex;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;gap:8px;}
+.scan-row .sr-info{flex:1;min-width:0;}
+.scan-row .sr-lsx{font-weight:700;font-size:15px;}
+.scan-row .sr-detail{font-size:12px;color:var(--muted);margin-top:2px;}
+.scan-row .sr-del{background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;color:var(--red);flex-shrink:0;}
+.scan-row .sr-del:active{opacity:.6;}
+#reader{width:100%;max-width:360px;margin:0 auto 12px;border-radius:12px;overflow:hidden;}
+#reader.scan-err{box-shadow:0 0 0 4px var(--red);transition:box-shadow .15s;}
+.hint{text-align:center;font-size:13px;padding:6px 12px;border-radius:8px;margin:0 0 10px;}
+.hint.info{color:var(--blue);background:#eff6ff;}
+.hint.ok{color:var(--green);background:#f0fdf4;}
+.hint.err{color:var(--red);background:#fef2f2;}
+.scan-btns{display:flex;gap:8px;margin-bottom:12px;}
+.scan-btns .btn{flex:1;}
+/* Report */
+.filter-box{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;}
+.filter-row{display:flex;gap:8px;margin-bottom:8px;}
+.filter-row .field{flex:1;margin-bottom:0;}
+.filter-row .input{font-size:14px;padding:10px;}
+.rpt-summary{display:flex;justify-content:space-around;background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;padding:12px;margin-bottom:12px;}
+.rpt-summary .rs-item{text-align:center;}
+.rpt-summary .rs-val{font-size:20px;font-weight:800;color:var(--teal);}
+.rpt-summary .rs-label{font-size:11px;color:var(--muted);}
+.loc-acc{border:2px solid var(--border);border-radius:14px;margin-bottom:8px;overflow:hidden;background:#fff;}
+.loc-acc-hdr{display:flex;align-items:center;padding:12px 14px;cursor:pointer;gap:8px;}
+.loc-acc-hdr:active{background:#f8fafc;}
+.loc-tri{font-size:10px;color:var(--muted);transition:transform .2s;width:16px;text-align:center;flex-shrink:0;}
+.loc-tri.open{transform:rotate(90deg);}
+.loc-acc-info{flex:1;min-width:0;}
+.loc-acc-title{font-weight:700;font-size:15px;}
+.loc-acc-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.loc-acc-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
+.loc-acc-body.open{display:block;}
+.rpt-row{background:#f8fafc;border-radius:8px;padding:8px 10px;margin-top:6px;font-size:13px;}
+.rpt-row .rr-head{display:flex;justify-content:space-between;align-items:center;}
+.rpt-row .rr-lsx{font-weight:700;}
+.rpt-row .rr-qty{color:var(--teal);font-weight:600;}
+.rpt-row .rr-meta{color:var(--muted);font-size:11px;margin-top:2px;}
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;justify-content:center;align-items:center;padding:16px;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;max-height:90vh;overflow-y:auto;}
+.modal h3{text-align:center;margin-bottom:16px;font-size:18px;}
+</style>
+</head>
+<body>
+
+<!-- ══════ SCREEN: LOGIN ══════ -->
+<div id="scrLogin" class="screen active">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goHome()">&#9664;</button>
+    <span class="ttl">Kiểm kê Thành phẩm</span>
+    <span class="ver">v1.0</span>
+  </div>
+  <div class="wrap">
+    <div class="login-box">
+      <h2>Đăng nhập</h2>
+      <div class="field">
+        <label class="label">Tên đăng nhập</label>
+        <input id="loginUser" class="input" autocomplete="username" placeholder="Username"/>
+      </div>
+      <div class="field">
+        <label class="label">Mật khẩu</label>
+        <input id="loginPass" class="input" type="password" autocomplete="current-password" placeholder="Password"/>
+      </div>
+      <button id="btnLogin" class="btn teal" onclick="doLogin()">Đăng nhập</button>
+      <div id="loginMsg" style="text-align:center;margin-top:8px;font-size:13px;color:var(--red);"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SCREEN: MENU ══════ -->
+<div id="scrMenu" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="goHome()">&#9664;</button>
+    <span class="ttl">Kiểm kê</span>
+    <span class="ver">v1.0</span>
+    <button class="icon-btn" onclick="doLogout()" title="Đăng xuất">&#128682;</button>
+  </div>
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:8px;font-size:13px;color:var(--muted);">
+      Xin chào, <strong id="menuUser"></strong>
+    </div>
+    <div class="menu-grid">
+      <div class="menu-card" onclick="goToLocation()">
+        <div class="mc-icon">&#128203;</div>
+        <div class="mc-label">Kiểm kê thành phẩm</div>
+      </div>
+      <div class="menu-card" onclick="goToReport()">
+        <div class="mc-icon">&#128202;</div>
+        <div class="mc-label">Báo cáo kiểm kê</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SCREEN: LOCATION ══════ -->
+<div id="scrLocation" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="backToMenu()">&#9664;</button>
+    <span class="ttl">Chọn vị trí kho</span>
+    <span class="ver">v1.0</span>
+  </div>
+  <div class="wrap">
+    <div class="loc-section">
+      <div class="loc-icon">&#128205;</div>
+      <h3 style="margin-bottom:16px;">Chọn vị trí kiểm kê</h3>
+      <button class="btn teal" onclick="scanLocation()" id="btnScanLoc">&#128247; Scan QR vị trí</button>
+      <div id="locReader" style="margin:10px auto;max-width:300px;border-radius:12px;overflow:hidden;"></div>
+      <div class="loc-divider">hoặc</div>
+      <div class="field" style="text-align:left;">
+        <label class="label">Nhập vị trí</label>
+        <input id="locInput" class="input" placeholder="VD: Kệ A1-01" oninput="checkLocBtn()"/>
+      </div>
+      <button id="btnLocConfirm" class="btn green" onclick="confirmLocation()" disabled>Xác nhận vị trí</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SCREEN: SCAN ══════ -->
+<div id="scrScan" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="backFromScan()">&#9664;</button>
+    <span class="ttl">&#128205; <span id="scanLocLabel">---</span></span>
+    <span class="ver">v1.0</span>
+  </div>
+  <div class="wrap">
+    <div id="reader"></div>
+    <div id="hint" class="hint info">Nhấn "Bắt đầu Scan" để quét QR</div>
+    <div class="scan-btns">
+      <button class="btn teal" id="btnScan" onclick="startOrNext()">&#128247; Bắt đầu Scan</button>
+      <button class="btn outline" onclick="openManualModal()">&#9997; Nhập tay</button>
+    </div>
+    <div class="summary-bar">
+      <div class="summary-item"><div class="si-val" id="sumLsx">0</div><div class="si-label">LSX</div></div>
+      <div class="summary-item"><div class="si-val" id="sumPcs">0</div><div class="si-label">PCS</div></div>
+      <div class="summary-item"><div class="si-val" id="sumKg">0</div><div class="si-label">KG</div></div>
+      <div class="summary-item"><div class="si-val" id="sumRows">0</div><div class="si-label">Dòng</div></div>
+    </div>
+    <div id="scanListEl" class="scan-list"></div>
+    <button id="btnSubmit" class="btn green" onclick="submitData()" disabled>&#128228; Gửi kiểm kê (0)</button>
+    <button class="btn gray" onclick="changeLocation()" style="margin-top:4px;">&#128260; Đổi vị trí</button>
+  </div>
+</div>
+
+<!-- ══════ SCREEN: REPORT ══════ -->
+<div id="scrReport" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="backToMenu()">&#9664;</button>
+    <span class="ttl">Báo cáo kiểm kê</span>
+    <span class="ver">v1.0</span>
+  </div>
+  <div class="wrap">
+    <div class="filter-box">
+      <div class="filter-row">
+        <div class="field"><label class="label">Từ ngày</label><input type="date" id="rptFrom" class="input"/></div>
+        <div class="field"><label class="label">Đến ngày</label><input type="date" id="rptTo" class="input"/></div>
+      </div>
+      <div class="filter-row">
+        <div class="field"><label class="label">Người KK</label><input id="rptNguoi" class="input" placeholder="Tất cả"/></div>
+        <div class="field"><label class="label">Vị trí</label><input id="rptViTri" class="input" placeholder="Tất cả"/></div>
+      </div>
+      <div class="field"><label class="label">LSX</label><input id="rptLsx" class="input" placeholder="Tìm theo LSX"/></div>
+      <button class="btn teal" onclick="doReport()">&#128269; Tìm kiếm</button>
+    </div>
+    <div id="rptResult"></div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: NHẬP TAY ══════ -->
+<div id="modalManual" class="modal-overlay" onclick="if(event.target===this)closeManualModal()">
+  <div class="modal">
+    <h3>Nhập tay thành phẩm</h3>
+    <div class="field">
+      <label class="label">LSX</label>
+      <input id="manLsx" class="input" placeholder="Mã LSX" style="text-transform:uppercase;"/>
+    </div>
+    <div class="field">
+      <label class="label">Số lượng (PCS)</label>
+      <input id="manPcs" class="input" type="number" inputmode="numeric" placeholder="0"/>
+    </div>
+    <div class="field">
+      <label class="label">Đơn vị tính</label>
+      <input id="manDvt" class="input" placeholder="VD: Cái, Bộ, Túi"/>
+    </div>
+    <div class="field">
+      <label class="label">Khối lượng (KG)</label>
+      <input id="manKg" class="input" type="number" inputmode="decimal" step="0.01" placeholder="0.00"/>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="btn gray" onclick="closeManualModal()" style="flex:1;">Hủy</button>
+      <button class="btn green" onclick="addManual()" style="flex:1;">Thêm &#10003;</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIG & STATE
+   ══════════════════════════════════════════════════════════════ */
+const CONFIG = {
+  // Dùng chung URL deploy với Xuất hàng + Trục in
+  XUAT_HANG_URL: "https://script.google.com/macros/s/AKfycbw0ILLVOhQGGjrtr4gpAAr1NBB44fHKpvP248rnddJvqHctfHj_85plkz3pCmXtGp1G-Q/exec"
+};
+
+let state = {
+  user: null,
+  maNV: null,
+  viTri: "",
+  scanList: [],   // [{lsx, pcs, dvt, kg, ts}]
+  sessionId: ""
+};
+
+let qr = null, scanning = false, scanLocked = true, lastText = "";
+let locQr = null, locScanning = false;
+
+/* ══════════════════════════════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════════════════════════════ */
+function esc(s){ var d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+function show(id){
+  for(var i=0;i<document.querySelectorAll(".screen").length;i++){
+    document.querySelectorAll(".screen")[i].classList.remove("active");
+  }
+  document.getElementById(id).classList.add("active");
+}
+function goHome(){ window.location.href = "index.html"; }
+
+function showToast(msg, type, dur){
+  var t=document.getElementById("toast");
+  t.textContent=msg; t.className="toast "+type+" show";
+  clearTimeout(t._t); t._t=setTimeout(function(){t.classList.remove("show");}, dur||3000);
+}
+
+function todayISO(){
+  var d=new Date();
+  return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
+}
+
+/* ── Audio / Haptic ─────────────────────────────────────────── */
+var audioCtx=null;
+function ac(){if(!audioCtx){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}} return audioCtx;}
+function tone(freq,dur,when){var c=ac();if(!c)return;var o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;o.connect(g);g.connect(c.destination);var t=c.currentTime+(when||0);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.start(t);o.stop(t+dur+.02);}
+function buzz(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
+var FB={
+  ok:function(){tone(1175,.12,0);tone(1568,.14,.13);buzz([60,40,90]);},
+  err:function(){tone(200,.16,0);tone(200,.16,.22);buzz([40,40,40]);},
+  warn:function(){tone(440,.2,0);buzz(200);}
+};
+
+function flashReader(){
+  var r=document.getElementById("reader");
+  if(!r) return;
+  r.classList.add("scan-err");
+  clearTimeout(r._t); r._t=setTimeout(function(){r.classList.remove("scan-err");}, 900);
+}
+
+function setHint(cls, msg){
+  var h=document.getElementById("hint");
+  h.className="hint "+cls; h.textContent=msg;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SESSION / LOGIN
+   ══════════════════════════════════════════════════════════════ */
+function checkSession(){
+  var saved=localStorage.getItem("stkSession_v1");
+  if(!saved) return false;
+  try{
+    var s=JSON.parse(saved);
+    if(s.user && s.ts && (Date.now()-s.ts < 8*3600*1000)){
+      state.user=s.user; state.maNV=s.maNV; return true;
+    }
+  }catch(e){}
+  return false;
+}
+function saveSession(){
+  localStorage.setItem("stkSession_v1", JSON.stringify({user:state.user, maNV:state.maNV, ts:Date.now()}));
+}
+
+async function doLogin(){
+  var user=document.getElementById("loginUser").value.trim();
+  var pass=document.getElementById("loginPass").value.trim();
+  var msg=document.getElementById("loginMsg");
+  if(!user||!pass){msg.textContent="Vui lòng nhập đủ thông tin";return;}
+  var btn=document.getElementById("btnLogin");
+  btn.disabled=true; btn.textContent="Đang đăng nhập..."; msg.textContent="";
+  try{
+    var res=await fetch(CONFIG.XUAT_HANG_URL,{method:"POST",body:JSON.stringify({action:"stkLogin",user:user,pass:pass}),headers:{"Content-Type":"text/plain"}});
+    var out=await res.json();
+    if(out.result==="ok"){
+      state.user=out.user; state.maNV=out.maNV;
+      saveSession();
+      enterMenu();
+    } else {
+      msg.textContent=out.error||"Lỗi đăng nhập";
+    }
+  }catch(e){
+    msg.textContent="Không kết nối được server";
+  }
+  btn.disabled=false; btn.textContent="Đăng nhập";
+}
+
+function doLogout(){
+  localStorage.removeItem("stkSession_v1");
+  state.user=null; state.maNV=null;
+  show("scrLogin");
+}
+
+function enterMenu(){
+  document.getElementById("menuUser").textContent=state.user||"";
+  show("scrMenu");
+  checkRestore();
+  // URL param mode=report → thẳng báo cáo
+  if(window.location.search.indexOf("mode=report")>=0){
+    goToReport();
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   AUTO SAVE / RESTORE
+   ══════════════════════════════════════════════════════════════ */
+function saveDraft(){
+  if(state.scanList.length===0){localStorage.removeItem("stkDraft_v1");return;}
+  try{
+    localStorage.setItem("stkDraft_v1", JSON.stringify({
+      viTri:state.viTri, nguoiScan:state.user, rows:state.scanList, savedAt:Date.now()
+    }));
+  }catch(e){}
+}
+function loadDraft(){
+  try{
+    var raw=localStorage.getItem("stkDraft_v1");
+    if(!raw) return null;
+    var d=JSON.parse(raw);
+    if(!d||!Array.isArray(d.rows)||d.rows.length===0) return null;
+    return d;
+  }catch(e){return null;}
+}
+function clearDraft(){try{localStorage.removeItem("stkDraft_v1");}catch(e){}}
+
+function checkRestore(){
+  var draft=loadDraft();
+  if(!draft) return;
+  var msg="Có "+draft.rows.length+" dòng kiểm kê chưa gửi tại "+draft.viTri+".\nKhôi phục?";
+  if(confirm(msg)){
+    state.viTri=draft.viTri;
+    state.scanList=draft.rows;
+    state.sessionId="STK_"+Date.now();
+    document.getElementById("scanLocLabel").textContent=state.viTri;
+    renderScanList();
+    show("scrScan");
+  } else {
+    clearDraft();
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LOCATION
+   ══════════════════════════════════════════════════════════════ */
+function goToLocation(){
+  document.getElementById("locInput").value="";
+  checkLocBtn();
+  show("scrLocation");
+}
+function backToMenu(){
+  stopLocCamera();
+  stopCamera();
+  show("scrMenu");
+}
+
+function checkLocBtn(){
+  document.getElementById("btnLocConfirm").disabled=!document.getElementById("locInput").value.trim();
+}
+
+function confirmLocation(){
+  var loc=document.getElementById("locInput").value.trim();
+  if(!loc) return;
+  stopLocCamera();
+  state.viTri=loc;
+  state.scanList=[];
+  state.sessionId="STK_"+Date.now();
+  document.getElementById("scanLocLabel").textContent=loc;
+  renderScanList();
+  setHint("info","Nhấn \"Bắt đầu Scan\" để quét QR");
+  show("scrScan");
+}
+
+/* Scan QR vị trí */
+async function scanLocation(){
+  if(locScanning){stopLocCamera();return;}
+  try{
+    locQr=new Html5Qrcode("locReader",{verbose:false});
+    await locQr.start({facingMode:"environment"},{fps:10,qrbox:{width:220,height:220},aspectRatio:1.0},
+      function(text){
+        text=(text||"").trim();
+        if(!text) return;
+        document.getElementById("locInput").value=text;
+        checkLocBtn();
+        stopLocCamera();
+        FB.ok();
+      },function(){});
+    locScanning=true;
+    document.getElementById("btnScanLoc").textContent="Dừng camera";
+  }catch(e){
+    showToast("Không mở được camera","err");
+  }
+}
+function stopLocCamera(){
+  if(locQr&&locScanning){locQr.stop().then(function(){try{locQr.clear();}catch(e){}}).catch(function(){});}
+  locScanning=false;
+  document.getElementById("btnScanLoc").innerHTML="&#128247; Scan QR vị trí";
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SCAN THÀNH PHẨM
+   ══════════════════════════════════════════════════════════════ */
+function backFromScan(){
+  if(state.scanList.length>0){
+    if(confirm("Có "+state.scanList.length+" mục chưa gửi.\nLưu tạm vào máy để lần sau tiếp tục?")){
+      saveDraft();
+      showToast("Đã lưu tạm","ok",2000);
+    } else if(!confirm("Thoát mà KHÔNG lưu? Dữ liệu chưa gửi sẽ mất.")){
+      return;
+    } else {
+      clearDraft();
+    }
+  }
+  stopCamera();
+  show("scrMenu");
+}
+
+function changeLocation(){
+  if(state.scanList.length>0){
+    if(!confirm("Đổi vị trí sẽ GỬI "+state.scanList.length+" dòng hiện tại trước. Tiếp tục?")){return;}
+    submitData(function(){goToLocation();}, true);
+    return;
+  }
+  stopCamera();
+  goToLocation();
+}
+
+/* QR Camera */
+async function startOrNext(){
+  if(scanning){scanLocked=false;lastText="";document.getElementById("btnScan").textContent="Đang quét...";setHint("info","Đưa QR vào khung để quét");return;}
+  await startCamera();
+}
+async function startCamera(){
+  try{
+    qr=new Html5Qrcode("reader",{verbose:false});
+    await qr.start({facingMode:"environment"},{fps:10,qrbox:{width:240,height:240},aspectRatio:1.0},onScan,function(){});
+    scanning=true;scanLocked=false;lastText="";
+    document.getElementById("btnScan").textContent="Đang quét...";
+    setHint("info","Đưa QR vào khung để quét");
+  }catch(e){setHint("err","Không mở được camera");}
+}
+function stopCamera(){
+  if(qr&&scanning){qr.stop().then(function(){try{qr.clear();}catch(e){}}).catch(function(){});}
+  scanning=false;scanLocked=true;
+  document.getElementById("btnScan").innerHTML="&#128247; Bắt đầu Scan";
+}
+function onScan(text){
+  if(scanLocked) return;
+  text=(text||"").trim();
+  if(!text||text===lastText) return;
+  lastText=text; scanLocked=true;
+  processQR(text);
+}
+
+/* Parse QR: LSX/PCS/DVT/KG */
+function parseQR(text){
+  var parts=text.split("/");
+  if(parts.length<4) return null;
+  var lsx=parts[0].trim().toUpperCase();
+  var pcs=parseInt(parts[1]);
+  var dvt=parts[2].trim();
+  var kg=parseFloat(String(parts[3]).replace(",","."));
+  if(!lsx||isNaN(pcs)||pcs<=0) return null;
+  if(isNaN(kg)) kg=0;
+  return {lsx:lsx, pcs:pcs, dvt:dvt, kg:kg};
+}
+
+function processQR(text){
+  var parsed=parseQR(text);
+  if(!parsed){
+    FB.err(); flashReader();
+    setHint("err","QR không hợp lệ (cần: LSX/PCS/ĐVT/KG)");
+    document.getElementById("btnScan").textContent="Quét tiếp";
+    return;
+  }
+  addScanRow(parsed.lsx, parsed.pcs, parsed.dvt, parsed.kg);
+  FB.ok();
+  showToast("✓ "+parsed.lsx+" — "+parsed.pcs+" "+parsed.dvt,"ok",2000);
+  setHint("ok","Đã thêm "+parsed.lsx);
+  // Tiếp tục scan tự động
+  setTimeout(function(){scanLocked=false;lastText="";document.getElementById("btnScan").textContent="Đang quét...";setHint("info","Đưa QR tiếp theo vào khung");},800);
+}
+
+function addScanRow(lsx, pcs, dvt, kg){
+  state.scanList.push({lsx:lsx, pcs:pcs, dvt:dvt, kg:kg, ts:Date.now()});
+  renderScanList();
+  saveDraft();
+}
+
+function deleteScanRow(idx){
+  var row=state.scanList[idx];
+  if(!row) return;
+  if(!confirm("Xóa dòng "+row.lsx+" — "+row.pcs+" "+row.dvt+"?")) return;
+  state.scanList.splice(idx,1);
+  renderScanList();
+  saveDraft();
+}
+
+function renderScanList(){
+  var el=document.getElementById("scanListEl");
+  var html="";
+  var totalPcs=0, totalKg=0, lsxSet={};
+  for(var i=state.scanList.length-1;i>=0;i--){
+    var r=state.scanList[i];
+    totalPcs+=r.pcs; totalKg+=r.kg; lsxSet[r.lsx]=true;
+    html+='<div class="scan-row">'
+      +'<div class="sr-info">'
+      +'<div class="sr-lsx">'+esc(r.lsx)+'</div>'
+      +'<div class="sr-detail">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg</div>'
+      +'</div>'
+      +'<button class="sr-del" onclick="deleteScanRow('+i+')">&#128465;</button>'
+      +'</div>';
+  }
+  el.innerHTML=html;
+  var lsxCount=Object.keys(lsxSet).length;
+  document.getElementById("sumLsx").textContent=lsxCount;
+  document.getElementById("sumPcs").textContent=totalPcs;
+  document.getElementById("sumKg").textContent=Math.round(totalKg*100)/100;
+  document.getElementById("sumRows").textContent=state.scanList.length;
+  var btn=document.getElementById("btnSubmit");
+  btn.disabled=state.scanList.length===0;
+  btn.innerHTML="&#128228; Gửi kiểm kê ("+state.scanList.length+")";
+}
+
+/* ══════════════════════════════════════════════════════════════
+   NHẬP TAY (MODAL)
+   ══════════════════════════════════════════════════════════════ */
+function openManualModal(){
+  document.getElementById("manLsx").value="";
+  document.getElementById("manPcs").value="";
+  document.getElementById("manDvt").value="";
+  document.getElementById("manKg").value="";
+  document.getElementById("modalManual").classList.add("show");
+  document.getElementById("manLsx").focus();
+}
+function closeManualModal(){
+  document.getElementById("modalManual").classList.remove("show");
+}
+function addManual(){
+  var lsx=document.getElementById("manLsx").value.trim().toUpperCase();
+  var pcs=parseInt(document.getElementById("manPcs").value)||0;
+  var dvt=document.getElementById("manDvt").value.trim();
+  var kg=parseFloat(document.getElementById("manKg").value)||0;
+  if(!lsx){showToast("Vui lòng nhập LSX","err");return;}
+  if(pcs<=0){showToast("Số lượng phải > 0","err");return;}
+  addScanRow(lsx, pcs, dvt, kg);
+  FB.ok();
+  showToast("✓ Đã thêm "+lsx,"ok",2000);
+  closeManualModal();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GỬI KIỂM KÊ
+   ══════════════════════════════════════════════════════════════ */
+async function submitData(callback, skipConfirm){
+  if(state.scanList.length===0){showToast("Không có dữ liệu","err");return;}
+  if(!skipConfirm && !confirm("Gửi "+state.scanList.length+" dòng kiểm kê tại "+state.viTri+"?")) return;
+
+  var btn=document.getElementById("btnSubmit");
+  btn.disabled=true; btn.textContent="Đang gửi...";
+
+  try{
+    var body={
+      action:"stkSubmit",
+      sessionId:state.sessionId,
+      viTri:state.viTri,
+      nguoiScan:state.user,
+      rows:state.scanList
+    };
+    var res=await fetch(CONFIG.XUAT_HANG_URL,{method:"POST",body:JSON.stringify(body),headers:{"Content-Type":"text/plain"}});
+    var out=await res.json();
+    if(out.result==="ok"){
+      FB.ok();
+      showToast("Đã gửi "+out.count+" dòng thành công!","ok",3000);
+      state.scanList=[];
+      clearDraft();
+      renderScanList();
+      stopCamera();
+      if(typeof callback==="function"){callback();}
+      else{goToLocation();}
+    } else {
+      showToast(out.error||"Lỗi gửi dữ liệu","err",4000);
+      btn.disabled=false;
+      btn.innerHTML="&#128228; Gửi kiểm kê ("+state.scanList.length+")";
+    }
+  }catch(e){
+    showToast("Không kết nối được server","err",4000);
+    btn.disabled=false;
+    btn.innerHTML="&#128228; Gửi kiểm kê ("+state.scanList.length+")";
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BÁO CÁO
+   ══════════════════════════════════════════════════════════════ */
+function goToReport(){
+  var today=todayISO();
+  document.getElementById("rptFrom").value=today;
+  document.getElementById("rptTo").value=today;
+  document.getElementById("rptNguoi").value="";
+  document.getElementById("rptViTri").value="";
+  document.getElementById("rptLsx").value="";
+  document.getElementById("rptResult").innerHTML="";
+  show("scrReport");
+}
+
+async function doReport(){
+  var dateFrom=document.getElementById("rptFrom").value;
+  var dateTo=document.getElementById("rptTo").value;
+  var nguoi=document.getElementById("rptNguoi").value.trim();
+  var viTri=document.getElementById("rptViTri").value.trim();
+  var lsx=document.getElementById("rptLsx").value.trim();
+
+  if(!dateFrom&&!dateTo){showToast("Vui lòng chọn ngày","err");return;}
+  if(!dateFrom) dateFrom=dateTo;
+  if(!dateTo) dateTo=dateFrom;
+
+  var el=document.getElementById("rptResult");
+  el.innerHTML='<div class="loading-text"><span class="spin"></span> Đang tải...</div>';
+
+  try{
+    var url=CONFIG.XUAT_HANG_URL+"?action=stkReport"
+      +"&dateFrom="+encodeURIComponent(dateFrom)
+      +"&dateTo="+encodeURIComponent(dateTo)
+      +"&nguoi="+encodeURIComponent(nguoi)
+      +"&viTri="+encodeURIComponent(viTri)
+      +"&lsx="+encodeURIComponent(lsx)
+      +"&t="+Date.now();
+    var res=await fetch(url);
+    var out=await res.json();
+    if(out.result==="ok"){
+      renderReport(out);
+    } else {
+      el.innerHTML='<div class="loading-text" style="color:var(--red)">'+esc(out.error||"Lỗi")+'</div>';
+    }
+  }catch(e){
+    el.innerHTML='<div class="loading-text" style="color:var(--red)">Không kết nối được server</div>';
+  }
+}
+
+function renderReport(data){
+  var el=document.getElementById("rptResult");
+  var s=data.summary;
+  var html='<div class="rpt-summary">'
+    +'<div class="rs-item"><div class="rs-val">'+s.sessions+'</div><div class="rs-label">Phiên</div></div>'
+    +'<div class="rs-item"><div class="rs-val">'+s.lsx+'</div><div class="rs-label">LSX</div></div>'
+    +'<div class="rs-item"><div class="rs-val">'+s.pcs+'</div><div class="rs-label">PCS</div></div>'
+    +'<div class="rs-item"><div class="rs-val">'+s.kg+'</div><div class="rs-label">KG</div></div>'
+    +'</div>';
+
+  if(!data.byLocation||data.byLocation.length===0){
+    html+='<div class="loading-text">Không có dữ liệu</div>';
+    el.innerHTML=html;
+    return;
+  }
+
+  for(var i=0;i<data.byLocation.length;i++){
+    var loc=data.byLocation[i];
+    var accId="rptAcc"+i;
+    html+='<div class="loc-acc">'
+      +'<div class="loc-acc-hdr" onclick="toggleRptAcc(\''+accId+'\')">'
+      +'<span class="loc-tri" id="'+accId+'Tri">&#9654;</span>'
+      +'<div class="loc-acc-info">'
+      +'<div class="loc-acc-title">'+esc(loc.viTri)+'</div>'
+      +'<div class="loc-acc-meta">'+loc.totalLsx+' LSX | '+loc.totalPcs+' PCS | '+loc.totalKg+' kg</div>'
+      +'</div></div>'
+      +'<div class="loc-acc-body" id="'+accId+'Body">';
+
+    for(var j=0;j<loc.rows.length;j++){
+      var r=loc.rows[j];
+      html+='<div class="rpt-row">'
+        +'<div class="rr-head"><span class="rr-lsx">'+esc(r.lsx)+'</span><span class="rr-qty">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg</span></div>'
+        +'<div class="rr-meta">'+esc(r.khachHang||"")+(r.moTa?" — "+esc(r.moTa):"")+'</div>'
+        +'<div class="rr-meta">'+esc(r.nguoiScan)+" | "+esc(r.gio)+'</div>'
+        +'</div>';
+    }
+    html+='</div></div>';
+  }
+  el.innerHTML=html;
+}
+
+function toggleRptAcc(id){
+  var body=document.getElementById(id+"Body");
+  var tri=document.getElementById(id+"Tri");
+  if(body.classList.contains("open")){
+    body.classList.remove("open"); tri.classList.remove("open");
+  } else {
+    body.classList.add("open"); tri.classList.add("open");
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════════════════════ */
+(function init(){
+  if(checkSession()){
+    enterMenu();
+  } else {
+    show("scrLogin");
+  }
+})();
+</script>
+</body>
+</html>
