@@ -209,8 +209,7 @@ async function loadTP(){
   document.getElementById("loadTP").style.display="block";
   try{
     const url=CONFIG.CENTRAL_URL+"?action=teamDaily&from="+from+"&to="+to+"&t="+Date.now();
-    const res=await fetch(url);
-    const json=await res.json();
+    const json=await jsonp(url, 25000);
     if(json.result!=="ok") throw new Error(json.error||"Lỗi");
     renderTP(json.days, from, to);
   }catch(e){
