@@ -745,18 +745,23 @@ function enterModuleScreen(){
 
   ALL_MODULES.forEach(mod => {
     const hasAccess = !!permGroups[mod.ma];
+    // Module có FUNC_HIERARCHY (dashboard directUrl) → luôn mở được
+    const hasDashboard = !!FUNC_HIERARCHY[mod.ma];
+    const canOpen = hasAccess || hasDashboard;
 
     const card = document.createElement("div");
-    card.className = "mod-card" + (hasAccess ? "" : " locked");
+    card.className = "mod-card" + (canOpen ? "" : " locked");
     card.innerHTML =
       '<div class="mc-icon">' + mod.icon + '</div>' +
       '<div class="mc-name">' + esc(mod.ten) + '</div>' +
       (hasAccess
         ? '<div style="text-align:center">' + quyenTags(Object.keys(permGroups[mod.ma].allQuyen), true) + '</div>'
-        : '<div class="mc-lock">🔒</div>');
+        : hasDashboard
+          ? '<div style="text-align:center"><span class="q-tag q-sm">Dashboard</span></div>'
+          : '<div class="mc-lock">🔒</div>');
 
-    if(hasAccess){
-      card.onclick = () => openModuleFuncs(mod.ma, permGroups[mod.ma]);
+    if(canOpen){
+      card.onclick = () => openModuleFuncs(mod.ma, permGroups[mod.ma] || { tenModule: mod.ten, allQuyen: {}, funcs: [] });
     } else {
       card.onclick = () => showToast("Bạn chưa có quyền truy cập " + mod.ten, 2000);
     }
