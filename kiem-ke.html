@@ -227,7 +227,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <div class="field"><label class="label">Từ ngày</label><input type="date" id="dbFrom" class="input"/></div>
         <div class="field"><label class="label">Đến ngày</label><input type="date" id="dbTo" class="input"/></div>
       </div>
-      <button class="btn teal" onclick="loadDashboard()">&#128202; Xem Dashboard</button>
+      <div class="filter-row">
+        <div class="field"><label class="label">Người KK</label><input id="dbNguoi" class="input" placeholder="Tất cả" list="dlDbNguoi"/></div>
+        <div class="field"><label class="label">Vị trí</label><input id="dbViTri" class="input" placeholder="Tất cả" list="dlDbViTri"/></div>
+      </div>
+      <div class="field"><label class="label">LSX</label><input id="dbLsx" class="input" placeholder="Tất cả" list="dlDbLsx"/></div>
+      <datalist id="dlDbNguoi"></datalist>
+      <datalist id="dlDbViTri"></datalist>
+      <datalist id="dlDbLsx"></datalist>
+      <button class="btn teal" onclick="loadDashboard()" style="margin-top:8px;">&#128202; Xem Dashboard</button>
     </div>
     <div id="dbResult"></div>
   </div>
@@ -257,6 +265,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <button class="btn gray" onclick="closeManualModal()" style="flex:1;">Hủy</button>
       <button class="btn green" onclick="addManual()" style="flex:1;">Thêm &#10003;</button>
     </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: CHI TIẾT DRILL-DOWN ══════ -->
+<div id="modalDetail" class="modal-overlay" onclick="if(event.target===this)closeDetailModal()">
+  <div class="modal" style="max-width:420px;">
+    <h3 id="detailTitle">Chi tiết</h3>
+    <div id="detailContent" style="max-height:60vh;overflow-y:auto;"></div>
+    <button class="btn gray" onclick="closeDetailModal()" style="margin-top:10px;">Đóng</button>
   </div>
 </div>
 
@@ -767,19 +784,25 @@ function toggleRptAcc(id){
    ══════════════════════════════════════════════════════════════ */
 function goToDashboard(){
   var today=todayISO();
-  // Mặc định 7 ngày gần nhất
   var d=new Date(); d.setDate(d.getDate()-6);
   var weekAgo=d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
   document.getElementById("dbFrom").value=weekAgo;
   document.getElementById("dbTo").value=today;
+  document.getElementById("dbNguoi").value="";
+  document.getElementById("dbViTri").value="";
+  document.getElementById("dbLsx").value="";
   document.getElementById("dbResult").innerHTML="";
   show("scrDashboard");
+  loadFilterHints();
   loadDashboard();
 }
 
 async function loadDashboard(){
   var dateFrom=document.getElementById("dbFrom").value;
   var dateTo=document.getElementById("dbTo").value;
+  var nguoi=document.getElementById("dbNguoi").value.trim();
+  var viTri=document.getElementById("dbViTri").value.trim();
+  var lsx=document.getElementById("dbLsx").value.trim();
   if(!dateFrom&&!dateTo){showToast("Vui lòng chọn ngày","err");return;}
   if(!dateFrom) dateFrom=dateTo;
   if(!dateTo) dateTo=dateFrom;
@@ -791,6 +814,9 @@ async function loadDashboard(){
     var url=CONFIG.XUAT_HANG_URL+"?action=stkDashboard"
       +"&dateFrom="+encodeURIComponent(dateFrom)
       +"&dateTo="+encodeURIComponent(dateTo)
+      +"&nguoi="+encodeURIComponent(nguoi)
+      +"&viTri="+encodeURIComponent(viTri)
+      +"&lsx="+encodeURIComponent(lsx)
       +"&t="+Date.now();
     var res=await fetch(url);
     var out=await res.json();
@@ -820,8 +846,9 @@ function renderDashboard(data){
     html+='<div class="db-section"><div class="db-section-title">&#128205; Theo vị trí</div>';
     for(var i=0;i<data.byViTri.length;i++){
       var v=data.byViTri[i];
-      html+='<div class="db-row"><span class="dr-name">'+esc(v.viTri)+'</span>'
-        +'<span class="dr-stats">'+v.lsx+' LSX | <strong>'+v.pcs+'</strong> PCS | <strong>'+v.kg+'</strong> kg</span></div>';
+      html+='<div class="db-row" style="cursor:pointer;" onclick="showDrillDown(\'viTri\',\''+esc(v.viTri).replace(/'/g,"\\'")+'\')">'
+        +'<span class="dr-name">'+esc(v.viTri)+'</span>'
+        +'<span class="dr-stats">'+v.lsx+' LSX | <strong>'+v.pcs+'</strong> PCS | <strong>'+v.kg+'</strong> kg &#9654;</span></div>';
     }
     html+='</div>';
   }
@@ -831,13 +858,27 @@ function renderDashboard(data){
     html+='<div class="db-section"><div class="db-section-title">&#128100; Theo người</div>';
     for(var i=0;i<data.byNguoi.length;i++){
       var n=data.byNguoi[i];
-      html+='<div class="db-row"><span class="dr-name">'+esc(n.nguoi)+'</span>'
-        +'<span class="dr-stats">'+n.lsx+' LSX | <strong>'+n.pcs+'</strong> PCS | <strong>'+n.kg+'</strong> kg</span></div>';
+      html+='<div class="db-row" style="cursor:pointer;" onclick="showDrillDown(\'nguoi\',\''+esc(n.nguoi).replace(/'/g,"\\'")+'\')">'
+        +'<span class="dr-name">'+esc(n.nguoi)+'</span>'
+        +'<span class="dr-stats">'+n.lsx+' LSX | <strong>'+n.pcs+'</strong> PCS | <strong>'+n.kg+'</strong> kg &#9654;</span></div>';
     }
     html+='</div>';
   }
 
-  if(!data.byViTri.length&&!data.byNguoi.length){
+  // Theo LSX
+  if(data.byLsx&&data.byLsx.length>0){
+    html+='<div class="db-section"><div class="db-section-title">&#128203; Theo LSX</div>';
+    for(var i=0;i<data.byLsx.length;i++){
+      var l=data.byLsx[i];
+      html+='<div class="db-row" style="cursor:pointer;" onclick="showDrillDown(\'lsx\',\''+esc(l.lsx).replace(/'/g,"\\'")+'\')">'
+        +'<span class="dr-name">'+esc(l.lsx)+'</span>'
+        +'<span class="dr-stats">'+l.viTri+' VT | '+l.nguoi+' ng | <strong>'+l.pcs+'</strong> PCS | <strong>'+l.kg+'</strong> kg &#9654;</span></div>';
+    }
+    html+='</div>';
+  }
+
+  var noData=(!data.byViTri||!data.byViTri.length)&&(!data.byNguoi||!data.byNguoi.length)&&(!data.byLsx||!data.byLsx.length);
+  if(noData){
     html+='<div class="loading-text">Chưa có dữ liệu kiểm kê trong khoảng thời gian này</div>';
   }
 
@@ -845,16 +886,83 @@ function renderDashboard(data){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   FILTER HINTS (auto-suggest cho báo cáo)
+   DRILL-DOWN (bấm vào dòng dashboard → xem chi tiết)
+   ══════════════════════════════════════════════════════════════ */
+function showDrillDown(type,value){
+  var dateFrom=document.getElementById("dbFrom").value;
+  var dateTo=document.getElementById("dbTo").value;
+
+  var title="";
+  var params="action=stkReport&dateFrom="+encodeURIComponent(dateFrom)+"&dateTo="+encodeURIComponent(dateTo);
+  if(type==="nguoi"){params+="&nguoi="+encodeURIComponent(value);title="&#128100; "+value;}
+  if(type==="viTri"){params+="&viTri="+encodeURIComponent(value);title="&#128205; "+value;}
+  if(type==="lsx"){params+="&lsx="+encodeURIComponent(value);title="&#128203; "+value;}
+
+  document.getElementById("detailTitle").innerHTML=title;
+  document.getElementById("detailContent").innerHTML='<div class="loading-text"><span class="spin"></span> Đang tải...</div>';
+  document.getElementById("modalDetail").classList.add("show");
+
+  fetch(CONFIG.XUAT_HANG_URL+"?"+params+"&t="+Date.now())
+    .then(function(r){return r.json();})
+    .then(function(out){
+      if(out.result==="ok"){renderDrillDown(out);}
+      else{document.getElementById("detailContent").innerHTML='<div class="loading-text" style="color:var(--red)">'+esc(out.error||"Lỗi")+'</div>';}
+    })
+    .catch(function(){
+      document.getElementById("detailContent").innerHTML='<div class="loading-text" style="color:var(--red)">Không kết nối được</div>';
+    });
+}
+
+function renderDrillDown(data){
+  var el=document.getElementById("detailContent");
+  var s=data.summary;
+  var html='<div class="rpt-summary" style="margin-bottom:10px;">'
+    +'<div class="rs-item"><div class="rs-val">'+s.sessions+'</div><div class="rs-label">Phiên</div></div>'
+    +'<div class="rs-item"><div class="rs-val">'+s.lsx+'</div><div class="rs-label">LSX</div></div>'
+    +'<div class="rs-item"><div class="rs-val">'+s.pcs+'</div><div class="rs-label">PCS</div></div>'
+    +'<div class="rs-item"><div class="rs-val">'+s.kg+'</div><div class="rs-label">KG</div></div>'
+    +'</div>';
+
+  if(data.byLocation){
+    for(var i=0;i<data.byLocation.length;i++){
+      var loc=data.byLocation[i];
+      html+='<div style="margin:8px 0 4px;font-size:13px;font-weight:700;color:var(--teal);">&#128205; '+esc(loc.viTri)+' ('+loc.rows.length+')</div>';
+      for(var j=0;j<loc.rows.length;j++){
+        var r=loc.rows[j];
+        html+='<div class="rpt-row">'
+          +'<div class="rr-head"><span class="rr-lsx">'+esc(r.lsx)+'</span><span class="rr-qty">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg</span></div>'
+          +'<div class="rr-meta">'+esc(r.nguoiScan)+' | '+esc(r.ngay)+' '+esc(r.gio)+'</div>'
+          +'</div>';
+      }
+    }
+  }
+
+  if(!data.byLocation||data.byLocation.length===0){
+    html+='<div class="loading-text">Không có dữ liệu</div>';
+  }
+  el.innerHTML=html;
+}
+
+function closeDetailModal(){
+  document.getElementById("modalDetail").classList.remove("show");
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FILTER HINTS (auto-suggest cho báo cáo + dashboard)
    ══════════════════════════════════════════════════════════════ */
 async function loadFilterHints(){
   try{
     var res=await fetch(CONFIG.XUAT_HANG_URL+"?action=stkFilterHints&t="+Date.now());
     var out=await res.json();
     if(out.result==="ok"){
+      // Báo cáo
       fillDatalist("dlNguoi",out.nguoi);
       fillDatalist("dlViTri",out.viTri);
       fillDatalist("dlLsx",out.lsx);
+      // Dashboard
+      fillDatalist("dlDbNguoi",out.nguoi);
+      fillDatalist("dlDbViTri",out.viTri);
+      fillDatalist("dlDbLsx",out.lsx);
     }
   }catch(e){}
 }
