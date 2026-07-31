@@ -164,6 +164,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <button class="btn outline" onclick="openManualModal()">&#9997; Nhập tay</button>
     </div>
     <div class="summary-bar">
+      <div class="summary-item"><div class="si-val" id="sumLoc">0</div><div class="si-label">Vị trí</div></div>
       <div class="summary-item"><div class="si-val" id="sumLsx">0</div><div class="si-label">LSX</div></div>
       <div class="summary-item"><div class="si-val" id="sumPcs">0</div><div class="si-label">PCS</div></div>
       <div class="summary-item"><div class="si-val" id="sumKg">0</div><div class="si-label">KG</div></div>
@@ -326,7 +327,8 @@ function saveDraft(){
   if(state.scanList.length===0){localStorage.removeItem("stkDraft_v1");return;}
   try{
     localStorage.setItem("stkDraft_v1", JSON.stringify({
-      viTri:state.viTri, nguoiScan:state.user, rows:state.scanList, savedAt:Date.now()
+      viTri:state.viTri, nguoiScan:state.user, rows:state.scanList,
+      sessionId:state.sessionId, savedAt:Date.now()
     }));
   }catch(e){}
 }
@@ -344,12 +346,15 @@ function clearDraft(){try{localStorage.removeItem("stkDraft_v1");}catch(e){}}
 function checkRestore(){
   var draft=loadDraft();
   if(!draft) return;
-  var msg="Có "+draft.rows.length+" dòng kiểm kê chưa gửi tại "+draft.viTri+".\nKhôi phục?";
+  var locSet={};
+  for(var i=0;i<draft.rows.length;i++) locSet[draft.rows[i].viTri||"?"]=true;
+  var locCount=Object.keys(locSet).length;
+  var msg="Có "+draft.rows.length+" dòng kiểm kê chưa gửi ("+locCount+" vị trí).\nKhôi phục?";
   if(confirm(msg)){
-    state.viTri=draft.viTri;
+    state.viTri=draft.viTri||"";
     state.scanList=draft.rows;
-    state.sessionId="STK_"+Date.now();
-    document.getElementById("scanLocLabel").textContent=state.viTri;
+    state.sessionId=draft.sessionId||"STK_"+Date.now();
+    document.getElementById("scanLocLabel").textContent=state.viTri||"Chưa chọn";
     renderScanList();
     show("scrScan");
   } else {
@@ -380,8 +385,7 @@ function confirmLocation(){
   if(!loc) return;
   stopLocCamera();
   state.viTri=loc;
-  state.scanList=[];
-  state.sessionId="STK_"+Date.now();
+  if(!state.sessionId) state.sessionId="STK_"+Date.now();
   document.getElementById("scanLocLabel").textContent=loc;
   renderScanList();
   setHint("info","Nhấn \"Bắt đầu Scan\" để quét QR");
@@ -426,6 +430,8 @@ function backFromScan(){
       return;
     } else {
       clearDraft();
+      state.scanList=[];
+      state.sessionId="";
     }
   }
   stopCamera();
@@ -433,11 +439,6 @@ function backFromScan(){
 }
 
 function changeLocation(){
-  if(state.scanList.length>0){
-    if(!confirm("Đổi vị trí sẽ GỬI "+state.scanList.length+" dòng hiện tại trước. Tiếp tục?")){return;}
-    submitData(function(){goToLocation();}, true);
-    return;
-  }
   stopCamera();
   goToLocation();
 }
@@ -499,7 +500,7 @@ function processQR(text){
 }
 
 function addScanRow(lsx, pcs, dvt, kg){
-  state.scanList.push({lsx:lsx, pcs:pcs, dvt:dvt, kg:kg, ts:Date.now()});
+  state.scanList.push({lsx:lsx, pcs:pcs, dvt:dvt, kg:kg, ts:Date.now(), viTri:state.viTri});
   renderScanList();
   saveDraft();
 }
@@ -515,21 +516,36 @@ function deleteScanRow(idx){
 
 function renderScanList(){
   var el=document.getElementById("scanListEl");
-  var html="";
-  var totalPcs=0, totalKg=0, lsxSet={};
-  for(var i=state.scanList.length-1;i>=0;i--){
+  // Group by viTri, giữ thứ tự xuất hiện
+  var groups={}, groupOrder=[];
+  var totalPcs=0, totalKg=0, lsxSet={}, locSet={};
+  for(var i=0;i<state.scanList.length;i++){
     var r=state.scanList[i];
-    totalPcs+=r.pcs; totalKg+=r.kg; lsxSet[r.lsx]=true;
-    html+='<div class="scan-row">'
-      +'<div class="sr-info">'
-      +'<div class="sr-lsx">'+esc(r.lsx)+'</div>'
-      +'<div class="sr-detail">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg</div>'
-      +'</div>'
-      +'<button class="sr-del" onclick="deleteScanRow('+i+')">&#128465;</button>'
-      +'</div>';
+    var vt=r.viTri||"?";
+    if(!groups[vt]){groups[vt]=[];groupOrder.push(vt);}
+    groups[vt].push({row:r,idx:i});
+    totalPcs+=r.pcs; totalKg+=r.kg; lsxSet[r.lsx]=true; locSet[vt]=true;
+  }
+  var html="";
+  for(var g=0;g<groupOrder.length;g++){
+    var vt=groupOrder[g];
+    var items=groups[vt];
+    html+='<div style="margin:'+(g>0?'14':'6')+'px 0 4px;font-size:13px;font-weight:700;color:var(--teal);">&#128205; '+esc(vt)+' ('+items.length+')</div>';
+    for(var j=items.length-1;j>=0;j--){
+      var r=items[j].row, idx=items[j].idx;
+      html+='<div class="scan-row">'
+        +'<div class="sr-info">'
+        +'<div class="sr-lsx">'+esc(r.lsx)+'</div>'
+        +'<div class="sr-detail">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg</div>'
+        +'</div>'
+        +'<button class="sr-del" onclick="deleteScanRow('+idx+')">&#128465;</button>'
+        +'</div>';
+    }
   }
   el.innerHTML=html;
   var lsxCount=Object.keys(lsxSet).length;
+  var locCount=Object.keys(locSet).length;
+  document.getElementById("sumLoc").textContent=locCount;
   document.getElementById("sumLsx").textContent=lsxCount;
   document.getElementById("sumPcs").textContent=totalPcs;
   document.getElementById("sumKg").textContent=Math.round(totalKg*100)/100;
@@ -569,9 +585,14 @@ function addManual(){
 /* ══════════════════════════════════════════════════════════════
    GỬI KIỂM KÊ
    ══════════════════════════════════════════════════════════════ */
-async function submitData(callback, skipConfirm){
+async function submitData(){
   if(state.scanList.length===0){showToast("Không có dữ liệu","err");return;}
-  if(!skipConfirm && !confirm("Gửi "+state.scanList.length+" dòng kiểm kê tại "+state.viTri+"?")) return;
+  // Đếm vị trí
+  var locSet={};
+  for(var i=0;i<state.scanList.length;i++) locSet[state.scanList[i].viTri||"?"]=true;
+  var locCount=Object.keys(locSet).length;
+  var msg="Gửi "+state.scanList.length+" dòng kiểm kê tại "+locCount+" vị trí?";
+  if(!confirm(msg)) return;
 
   var btn=document.getElementById("btnSubmit");
   btn.disabled=true; btn.textContent="Đang gửi...";
@@ -580,21 +601,20 @@ async function submitData(callback, skipConfirm){
     var body={
       action:"stkSubmit",
       sessionId:state.sessionId,
-      viTri:state.viTri,
       nguoiScan:state.user,
       rows:state.scanList
     };
-    var res=await fetch(CONFIG.XUAT_HANG_URL,{method:"POST",body:JSON.stringify(body),headers:{"Content-Type":"text/plain"}});
+    var res=await fetch(CONFIG.XUAT_HANG_URL,{method:"POST",body:JSON.stringify(body),headers:{"Content-Type":"text/plain;charset=utf-8"}});
     var out=await res.json();
     if(out.result==="ok"){
       FB.ok();
       showToast("Đã gửi "+out.count+" dòng thành công!","ok",3000);
       state.scanList=[];
+      state.sessionId="";
       clearDraft();
       renderScanList();
       stopCamera();
-      if(typeof callback==="function"){callback();}
-      else{goToLocation();}
+      show("scrMenu");
     } else {
       showToast(out.error||"Lỗi gửi dữ liệu","err",4000);
       btn.disabled=false;
