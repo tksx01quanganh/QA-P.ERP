@@ -98,17 +98,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .modal-overlay.show{display:flex;}
 .modal{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;max-height:90vh;overflow-y:auto;}
 .modal h3{text-align:center;margin-bottom:16px;font-size:18px;}
-/* Dashboard */
-.db-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
-.db-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;}
-.db-card .dc-val{font-size:22px;font-weight:800;color:var(--teal);}
-.db-card .dc-label{font-size:11px;color:var(--muted);margin-top:2px;}
-.db-section{margin-bottom:14px;}
-.db-section-title{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--txt);}
-.db-row{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:5px;}
-.db-row .dr-name{font-weight:600;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.db-row .dr-stats{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;}
-.db-row .dr-stats strong{color:var(--teal);}
 </style>
 </head>
 <body>
@@ -128,10 +117,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <div class="menu-card" onclick="goToLocation()">
         <div class="mc-icon">&#128203;</div>
         <div class="mc-label">Kiểm kê thành phẩm</div>
-      </div>
-      <div class="menu-card" onclick="goToDashboard()">
-        <div class="mc-icon">&#128200;</div>
-        <div class="mc-label">Dashboard</div>
       </div>
     </div>
   </div>
@@ -214,33 +199,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 </div>
 
-<!-- ══════ SCREEN: DASHBOARD ══════ -->
-<div id="scrDashboard" class="screen">
-  <div class="topbar">
-    <button class="icon-btn" onclick="backToMenu()">&#9664;</button>
-    <span class="ttl">Dashboard kiểm kê</span>
-    <span class="ver">v1.0</span>
-  </div>
-  <div class="wrap">
-    <div class="filter-box">
-      <div class="filter-row">
-        <div class="field"><label class="label">Từ ngày</label><input type="date" id="dbFrom" class="input"/></div>
-        <div class="field"><label class="label">Đến ngày</label><input type="date" id="dbTo" class="input"/></div>
-      </div>
-      <div class="filter-row">
-        <div class="field"><label class="label">Người KK</label><input id="dbNguoi" class="input" placeholder="Tất cả" list="dlDbNguoi"/></div>
-        <div class="field"><label class="label">Vị trí</label><input id="dbViTri" class="input" placeholder="Tất cả" list="dlDbViTri"/></div>
-      </div>
-      <div class="field"><label class="label">LSX</label><input id="dbLsx" class="input" placeholder="Tất cả" list="dlDbLsx"/></div>
-      <datalist id="dlDbNguoi"></datalist>
-      <datalist id="dlDbViTri"></datalist>
-      <datalist id="dlDbLsx"></datalist>
-      <button class="btn teal" onclick="loadDashboard()" style="margin-top:8px;">&#128202; Xem Dashboard</button>
-    </div>
-    <div id="dbResult"></div>
-  </div>
-</div>
-
 <!-- ══════ MODAL: NHẬP TAY ══════ -->
 <div id="modalManual" class="modal-overlay" onclick="if(event.target===this)closeManualModal()">
   <div class="modal">
@@ -268,14 +226,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 </div>
 
-<!-- ══════ MODAL: CHI TIẾT DRILL-DOWN ══════ -->
-<div id="modalDetail" class="modal-overlay" onclick="if(event.target===this)closeDetailModal()">
-  <div class="modal" style="max-width:420px;">
-    <h3 id="detailTitle">Chi tiết</h3>
-    <div id="detailContent" style="max-height:60vh;overflow-y:auto;"></div>
-    <button class="btn gray" onclick="closeDetailModal()" style="margin-top:10px;">Đóng</button>
-  </div>
-</div>
 
 <div id="toast" class="toast"></div>
 
@@ -367,8 +317,6 @@ function enterMenu(){
   // URL param mode → thẳng chức năng tương ứng
   if(window.location.search.indexOf("mode=report")>=0){
     goToReport();
-  } else if(window.location.search.indexOf("mode=dashboard")>=0){
-    goToDashboard();
   }
 }
 
@@ -779,190 +727,18 @@ function toggleRptAcc(id){
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   DASHBOARD
-   ══════════════════════════════════════════════════════════════ */
-function goToDashboard(){
-  var today=todayISO();
-  var d=new Date(); d.setDate(d.getDate()-6);
-  var weekAgo=d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);
-  document.getElementById("dbFrom").value=weekAgo;
-  document.getElementById("dbTo").value=today;
-  document.getElementById("dbNguoi").value="";
-  document.getElementById("dbViTri").value="";
-  document.getElementById("dbLsx").value="";
-  document.getElementById("dbResult").innerHTML="";
-  show("scrDashboard");
-  loadFilterHints();
-  loadDashboard();
-}
-
-async function loadDashboard(){
-  var dateFrom=document.getElementById("dbFrom").value;
-  var dateTo=document.getElementById("dbTo").value;
-  var nguoi=document.getElementById("dbNguoi").value.trim();
-  var viTri=document.getElementById("dbViTri").value.trim();
-  var lsx=document.getElementById("dbLsx").value.trim();
-  if(!dateFrom&&!dateTo){showToast("Vui lòng chọn ngày","err");return;}
-  if(!dateFrom) dateFrom=dateTo;
-  if(!dateTo) dateTo=dateFrom;
-
-  var el=document.getElementById("dbResult");
-  el.innerHTML='<div class="loading-text"><span class="spin"></span> Đang tải...</div>';
-
-  try{
-    var url=CONFIG.XUAT_HANG_URL+"?action=stkDashboard"
-      +"&dateFrom="+encodeURIComponent(dateFrom)
-      +"&dateTo="+encodeURIComponent(dateTo)
-      +"&nguoi="+encodeURIComponent(nguoi)
-      +"&viTri="+encodeURIComponent(viTri)
-      +"&lsx="+encodeURIComponent(lsx)
-      +"&t="+Date.now();
-    var res=await fetch(url);
-    var out=await res.json();
-    if(out.result==="ok"){
-      renderDashboard(out);
-    } else {
-      el.innerHTML='<div class="loading-text" style="color:var(--red)">'+esc(out.error||"Lỗi")+'</div>';
-    }
-  }catch(e){
-    el.innerHTML='<div class="loading-text" style="color:var(--red)">Không kết nối được server</div>';
-  }
-}
-
-function renderDashboard(data){
-  var el=document.getElementById("dbResult");
-  var html='<div class="db-cards">'
-    +'<div class="db-card"><div class="dc-val">'+data.tongPhien+'</div><div class="dc-label">Phiên KK</div></div>'
-    +'<div class="db-card"><div class="dc-val">'+data.tongNguoi+'</div><div class="dc-label">Người tham gia</div></div>'
-    +'<div class="db-card"><div class="dc-val">'+data.tongViTri+'</div><div class="dc-label">Vị trí</div></div>'
-    +'<div class="db-card"><div class="dc-val">'+data.tongLsx+'</div><div class="dc-label">LSX</div></div>'
-    +'<div class="db-card"><div class="dc-val">'+data.tongPcs.toLocaleString()+'</div><div class="dc-label">Tổng PCS</div></div>'
-    +'<div class="db-card"><div class="dc-val">'+data.tongKg.toLocaleString()+'</div><div class="dc-label">Tổng KG</div></div>'
-    +'</div>';
-
-  // Theo vị trí
-  if(data.byViTri&&data.byViTri.length>0){
-    html+='<div class="db-section"><div class="db-section-title">&#128205; Theo vị trí</div>';
-    for(var i=0;i<data.byViTri.length;i++){
-      var v=data.byViTri[i];
-      html+='<div class="db-row" style="cursor:pointer;" onclick="showDrillDown(\'viTri\',\''+esc(v.viTri).replace(/'/g,"\\'")+'\')">'
-        +'<span class="dr-name">'+esc(v.viTri)+'</span>'
-        +'<span class="dr-stats">'+v.lsx+' LSX | <strong>'+v.pcs+'</strong> PCS | <strong>'+v.kg+'</strong> kg &#9654;</span></div>';
-    }
-    html+='</div>';
-  }
-
-  // Theo người
-  if(data.byNguoi&&data.byNguoi.length>0){
-    html+='<div class="db-section"><div class="db-section-title">&#128100; Theo người</div>';
-    for(var i=0;i<data.byNguoi.length;i++){
-      var n=data.byNguoi[i];
-      html+='<div class="db-row" style="cursor:pointer;" onclick="showDrillDown(\'nguoi\',\''+esc(n.nguoi).replace(/'/g,"\\'")+'\')">'
-        +'<span class="dr-name">'+esc(n.nguoi)+'</span>'
-        +'<span class="dr-stats">'+n.lsx+' LSX | <strong>'+n.pcs+'</strong> PCS | <strong>'+n.kg+'</strong> kg &#9654;</span></div>';
-    }
-    html+='</div>';
-  }
-
-  // Theo LSX
-  if(data.byLsx&&data.byLsx.length>0){
-    html+='<div class="db-section"><div class="db-section-title">&#128203; Theo LSX</div>';
-    for(var i=0;i<data.byLsx.length;i++){
-      var l=data.byLsx[i];
-      html+='<div class="db-row" style="cursor:pointer;" onclick="showDrillDown(\'lsx\',\''+esc(l.lsx).replace(/'/g,"\\'")+'\')">'
-        +'<span class="dr-name">'+esc(l.lsx)+'</span>'
-        +'<span class="dr-stats">'+l.viTri+' VT | '+l.nguoi+' ng | <strong>'+l.pcs+'</strong> PCS | <strong>'+l.kg+'</strong> kg &#9654;</span></div>';
-    }
-    html+='</div>';
-  }
-
-  var noData=(!data.byViTri||!data.byViTri.length)&&(!data.byNguoi||!data.byNguoi.length)&&(!data.byLsx||!data.byLsx.length);
-  if(noData){
-    html+='<div class="loading-text">Chưa có dữ liệu kiểm kê trong khoảng thời gian này</div>';
-  }
-
-  el.innerHTML=html;
-}
 
 /* ══════════════════════════════════════════════════════════════
-   DRILL-DOWN (bấm vào dòng dashboard → xem chi tiết)
-   ══════════════════════════════════════════════════════════════ */
-function showDrillDown(type,value){
-  var dateFrom=document.getElementById("dbFrom").value;
-  var dateTo=document.getElementById("dbTo").value;
-
-  var title="";
-  var params="action=stkReport&dateFrom="+encodeURIComponent(dateFrom)+"&dateTo="+encodeURIComponent(dateTo);
-  if(type==="nguoi"){params+="&nguoi="+encodeURIComponent(value);title="&#128100; "+value;}
-  if(type==="viTri"){params+="&viTri="+encodeURIComponent(value);title="&#128205; "+value;}
-  if(type==="lsx"){params+="&lsx="+encodeURIComponent(value);title="&#128203; "+value;}
-
-  document.getElementById("detailTitle").innerHTML=title;
-  document.getElementById("detailContent").innerHTML='<div class="loading-text"><span class="spin"></span> Đang tải...</div>';
-  document.getElementById("modalDetail").classList.add("show");
-
-  fetch(CONFIG.XUAT_HANG_URL+"?"+params+"&t="+Date.now())
-    .then(function(r){return r.json();})
-    .then(function(out){
-      if(out.result==="ok"){renderDrillDown(out);}
-      else{document.getElementById("detailContent").innerHTML='<div class="loading-text" style="color:var(--red)">'+esc(out.error||"Lỗi")+'</div>';}
-    })
-    .catch(function(){
-      document.getElementById("detailContent").innerHTML='<div class="loading-text" style="color:var(--red)">Không kết nối được</div>';
-    });
-}
-
-function renderDrillDown(data){
-  var el=document.getElementById("detailContent");
-  var s=data.summary;
-  var html='<div class="rpt-summary" style="margin-bottom:10px;">'
-    +'<div class="rs-item"><div class="rs-val">'+s.sessions+'</div><div class="rs-label">Phiên</div></div>'
-    +'<div class="rs-item"><div class="rs-val">'+s.lsx+'</div><div class="rs-label">LSX</div></div>'
-    +'<div class="rs-item"><div class="rs-val">'+s.pcs+'</div><div class="rs-label">PCS</div></div>'
-    +'<div class="rs-item"><div class="rs-val">'+s.kg+'</div><div class="rs-label">KG</div></div>'
-    +'</div>';
-
-  if(data.byLocation){
-    for(var i=0;i<data.byLocation.length;i++){
-      var loc=data.byLocation[i];
-      html+='<div style="margin:8px 0 4px;font-size:13px;font-weight:700;color:var(--teal);">&#128205; '+esc(loc.viTri)+' ('+loc.rows.length+')</div>';
-      for(var j=0;j<loc.rows.length;j++){
-        var r=loc.rows[j];
-        html+='<div class="rpt-row">'
-          +'<div class="rr-head"><span class="rr-lsx">'+esc(r.lsx)+'</span><span class="rr-qty">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg</span></div>'
-          +'<div class="rr-meta">'+esc(r.nguoiScan)+' | '+esc(r.ngay)+' '+esc(r.gio)+'</div>'
-          +'</div>';
-      }
-    }
-  }
-
-  if(!data.byLocation||data.byLocation.length===0){
-    html+='<div class="loading-text">Không có dữ liệu</div>';
-  }
-  el.innerHTML=html;
-}
-
-function closeDetailModal(){
-  document.getElementById("modalDetail").classList.remove("show");
-}
-
-/* ══════════════════════════════════════════════════════════════
-   FILTER HINTS (auto-suggest cho báo cáo + dashboard)
+   FILTER HINTS (auto-suggest cho báo cáo)
    ══════════════════════════════════════════════════════════════ */
 async function loadFilterHints(){
   try{
     var res=await fetch(CONFIG.XUAT_HANG_URL+"?action=stkFilterHints&t="+Date.now());
     var out=await res.json();
     if(out.result==="ok"){
-      // Báo cáo
       fillDatalist("dlNguoi",out.nguoi);
       fillDatalist("dlViTri",out.viTri);
       fillDatalist("dlLsx",out.lsx);
-      // Dashboard
-      fillDatalist("dlDbNguoi",out.nguoi);
-      fillDatalist("dlDbViTri",out.viTri);
-      fillDatalist("dlDbLsx",out.lsx);
     }
   }catch(e){}
 }
