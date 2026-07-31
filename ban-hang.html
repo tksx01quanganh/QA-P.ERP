@@ -72,8 +72,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <body>
 
 <div class="topbar">
+  <button class="icon-btn" onclick="history.back()" style="font-size:20px;padding:8px;">←</button>
   <div class="ttl">📊 Dashboard Bán hàng</div>
-  <button class="icon-btn" onclick="location.href='index.html'">Menu</button>
+  <button class="icon-btn" onclick="location.href='index.html'">🏠</button>
 </div>
 
 <div class="tab-bar">
@@ -234,11 +235,6 @@ function renderTab1(json){
   NGANHS.forEach(n => html += `<td>${fmtKg(ng(n).kl)}</td>`);
   html += `</tr>`;
 
-  // Row: Số lượng
-  html += `<tr><td class="row-label">Số lượng</td><td><b>${fmtNum(s.tongSL)}</b></td>`;
-  NGANHS.forEach(n => html += `<td>${fmtNum(ng(n).sl)}</td>`);
-  html += `</tr>`;
-
   // Row: Số khách hàng
   html += `<tr><td class="row-label">Số khách hàng</td><td><b>${fmtNum(s.soKH)}</b></td>`;
   NGANHS.forEach(n => html += `<td>${fmtNum(ng(n).soKH)}</td>`);
@@ -262,13 +258,13 @@ function renderTab1(json){
   // ── Bảng theo ngày ──
   const days = json.byDay || [];
   if(days.length){
-    let tbl = `<table class="day-table"><thead><tr><th>Ngày</th><th>Số đơn</th><th>KL (kg)</th><th>Số lượng</th><th>Số KH</th></tr></thead><tbody>`;
-    let tDon=0, tKL=0, tSL=0;
+    let tbl = `<table class="day-table"><thead><tr><th>Ngày</th><th>Số đơn</th><th>KL (kg)</th><th>Số KH</th></tr></thead><tbody>`;
+    let tDon=0, tKL=0;
     days.forEach(d => {
-      tDon+=d.don; tKL+=d.kl; tSL+=d.sl;
-      tbl += `<tr><td>${fmtDate(d.ngay)}</td><td>${d.don}</td><td>${fmtKg(d.kl)}</td><td>${fmtNum(d.sl)}</td><td>${d.soKH}</td></tr>`;
+      tDon+=d.don; tKL+=d.kl;
+      tbl += `<tr><td>${fmtDate(d.ngay)}</td><td>${d.don}</td><td>${fmtKg(d.kl)}</td><td>${d.soKH}</td></tr>`;
     });
-    tbl += `<tr class="tfoot"><td>Tổng</td><td>${tDon}</td><td>${fmtKg(tKL)}</td><td>${fmtNum(tSL)}</td><td>${s.soKH}</td></tr>`;
+    tbl += `<tr class="tfoot"><td>Tổng</td><td>${tDon}</td><td>${fmtKg(tKL)}</td><td>${s.soKH}</td></tr>`;
     tbl += `</tbody></table>`;
     document.getElementById("dayWrap1").innerHTML = tbl;
   }
@@ -313,17 +309,17 @@ function renderTab2(json){
   let period = "";
   if(json.from && json.to) period = `<div style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:10px;">Từ ${fmtDate(json.from)} đến ${fmtDate(json.to)}</div>`;
 
-  // Bảng ma trận 5 cột × 4 hàng
+  // Bảng ma trận 4 cột × 4 hàng
   let html = period + `<div class="matrix-wrap"><table class="matrix">
-    <thead><tr><th>Ngành hàng</th><th>Số KH</th><th>Số đơn hàng</th><th>Số lượng</th><th>Khối lượng (kg)</th></tr></thead><tbody>`;
+    <thead><tr><th>Ngành hàng</th><th>Số KH</th><th>Số đơn hàng</th><th>Khối lượng (kg)</th></tr></thead><tbody>`;
 
   NGANHS.forEach(n => {
     const d = ng(n);
-    html += `<tr><td class="row-label">${n}</td><td>${fmtNum(d.soKH)}</td><td>${fmtNum(d.don)}</td><td>${fmtNum(d.sl)}</td><td>${fmtKg(d.kl)}</td></tr>`;
+    html += `<tr><td class="row-label">${n}</td><td>${fmtNum(d.soKH)}</td><td>${fmtNum(d.don)}</td><td>${fmtKg(d.kl)}</td></tr>`;
   });
 
   // Hàng tổng
-  html += `<tr class="row-total"><td class="row-label">Tổng cộng</td><td><b>${fmtNum(sm.soKH)}</b></td><td><b>${fmtNum(sm.don)}</b></td><td><b>${fmtNum(sm.sl)}</b></td><td><b>${fmtKg(sm.kl)}</b></td></tr>`;
+  html += `<tr class="row-total"><td class="row-label">Tổng cộng</td><td><b>${fmtNum(sm.soKH)}</b></td><td><b>${fmtNum(sm.don)}</b></td><td><b>${fmtKg(sm.kl)}</b></td></tr>`;
   html += `</tbody></table></div>`;
 
   if(!sm.don) html += '<div class="empty">Không có đơn hàng nào trong khoảng thời gian này.</div>';
