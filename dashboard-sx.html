@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0f766e" />
+<link rel="manifest" href="manifest.json" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>Dashboard SX — QA-P.ERP</title>
+<style>
+:root{
+  --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
+  --amber:#d97706; --blue:#2563eb; --purple:#7c3aed;
+  --gray:#64748b; --bg:#f1f5f9; --card:#fff;
+  --txt:#0f172a; --muted:#64748b; --border:#e2e8f0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;height:100%;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:16px;line-height:1.4;}
+
+.topbar{background:var(--teal);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:10;}
+.topbar .ttl{font-weight:700;font-size:16px;display:flex;align-items:center;gap:6px;}
+.icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+
+/* ── tab bar ── */
+.tab-bar{display:flex;background:#fff;border-bottom:2px solid var(--border);position:sticky;top:48px;z-index:9;}
+.tab-btn{flex:1;padding:12px 8px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);border:0;background:none;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;}
+.tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);}
+.tab-content{display:none;padding:12px;}
+.tab-content.active{display:block;}
+
+/* ── filter ── */
+.filter-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.filter-bar input[type="date"]{flex:1;min-width:120px;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:15px;}
+.btn-filter{padding:10px 16px;border:0;border-radius:10px;font-size:14px;font-weight:700;color:#fff;background:var(--teal);cursor:pointer;}
+.quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.quick-btn{padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;background:#fff;color:var(--txt);font-weight:500;}
+.quick-btn.active{background:var(--teal);color:#fff;border-color:var(--teal);}
+
+/* ── summary cards ── */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
+.card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.card .label{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.card .val{font-size:22px;font-weight:800;}
+.card .sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.card.teal .val{color:var(--teal);}
+.card.blue .val{color:var(--blue);}
+.card.green .val{color:var(--green);}
+.card.amber .val{color:var(--amber);}
+.card.red .val{color:var(--red);}
+
+/* ── team cards ── */
+.team-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+.team-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:4px solid var(--teal);cursor:pointer;transition:.15s;}
+.team-card:active{transform:scale(.98);}
+.team-card .tc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.team-card .tc-name{font-weight:700;font-size:15px;color:var(--teal);}
+.team-card .tc-arrow{color:var(--muted);font-size:18px;transition:.2s;}
+.team-card.open .tc-arrow{transform:rotate(90deg);}
+.tc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.tc-stat{text-align:center;}
+.tc-stat .ts-val{font-size:18px;font-weight:800;}
+.tc-stat .ts-label{font-size:11px;color:var(--muted);}
+.tc-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.team-card.open .tc-detail{display:block;}
+
+/* ── day table ── */
+.day-table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-top:14px;}
+.day-table th{background:var(--teal);color:#fff;padding:10px 8px;font-size:12px;text-align:center;}
+.day-table td{padding:8px;font-size:13px;text-align:center;border-bottom:1px solid var(--border);}
+.day-table tr:last-child td{border:0;}
+.day-table .tfoot td{background:#f8fafc;font-weight:700;}
+
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:15px;}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px;color:var(--muted);}
+
+/* ── BTP detail ── */
+.btp-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.btp-row:last-child{border:0;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="ttl">Dashboard San xuat</div>
+  <button class="icon-btn" onclick="location.href='index.html'">Menu</button>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('tp')">Thanh pham (TP)</button>
+  <button class="tab-btn" onclick="switchTab('btp')">Ban TP Thoi/In</button>
+</div>
+
+<!-- TAB 1: THÀNH PHẨM -->
+<div id="tab-tp" class="tab-content active">
+  <div class="quick-btns" id="quickBtnsTP">
+    <button class="quick-btn" onclick="quickTP('today')">Hom nay</button>
+    <button class="quick-btn active" onclick="quickTP('week')">Tuan nay</button>
+    <button class="quick-btn" onclick="quickTP('month')">Thang nay</button>
+  </div>
+  <div class="filter-bar">
+    <input type="date" id="tpFrom" />
+    <input type="date" id="tpTo" />
+    <button class="btn-filter" onclick="loadTP()">Loc</button>
+  </div>
+  <div id="tpSummary" class="cards"></div>
+  <div id="tpTeams" class="team-grid"></div>
+  <div style="overflow-x:auto;"><table class="day-table" id="tpDayTable" style="display:none;">
+    <thead><tr><th>Ngay</th><th>So lan</th><th>SL</th><th>KL (kg)</th></tr></thead>
+    <tbody id="tpDayBody"></tbody>
+  </table></div>
+  <div id="loadTP" class="loading" style="display:none;"><div class="spinner"></div>Dang tai...</div>
+</div>
+
+<!-- TAB 2: BTP THỔI/IN -->
+<div id="tab-btp" class="tab-content">
+  <div class="quick-btns" id="quickBtnsBTP">
+    <button class="quick-btn" onclick="quickBTP('today')">Hom nay</button>
+    <button class="quick-btn active" onclick="quickBTP('week')">Tuan nay</button>
+    <button class="quick-btn" onclick="quickBTP('month')">Thang nay</button>
+  </div>
+  <div class="filter-bar">
+    <input type="date" id="btpFrom" />
+    <input type="date" id="btpTo" />
+    <button class="btn-filter" onclick="loadBTP()">Loc</button>
+  </div>
+  <div id="btpSummary" class="cards"></div>
+  <div id="btpTeams" class="team-grid"></div>
+  <div id="loadBTP" class="loading" style="display:none;"><div class="spinner"></div>Dang tai...</div>
+</div>
+
+<script>
+const CONFIG = {
+  CENTRAL_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
+  TKSX_URL: "https://script.google.com/macros/s/AKfycbztgdaMXNFinyvZWXeO18tGHFFUKXW6V0XvvbWNR71L311WnsbVVWDreYSuLsdpZnrsiA/exec"
+};
+
+// ── WS name mapping ──
+const WS_NAMES = {CAT:"To Cat", TCO:"To Thu cong", GTB:"To Giay/Thung/Bia", THO:"To Thoi", INT:"To In", KHAC:"Khac"};
+
+function toISO(d){ return d.toISOString().slice(0,10); }
+function fmtNum(n){ return n.toLocaleString("vi-VN"); }
+function fmtKg(n){ return n.toLocaleString("vi-VN",{maximumFractionDigits:1}); }
+function fmtDate(iso){ const p=iso.split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
+
+/* ═══ TAB SWITCHING ═══ */
+let btpLoaded = false;
+function switchTab(tab){
+  document.querySelectorAll(".tab-btn").forEach((b,i) => b.classList.toggle("active", (tab==="tp"&&i===0)||(tab==="btp"&&i===1)));
+  document.getElementById("tab-tp").classList.toggle("active", tab==="tp");
+  document.getElementById("tab-btp").classList.toggle("active", tab==="btp");
+  if(tab==="btp" && !btpLoaded){ quickBTP("week"); btpLoaded=true; }
+}
+
+/* ═══ QUICK FILTERS ═══ */
+function getRange(period){
+  const now = new Date();
+  let from, to;
+  switch(period){
+    case "today": from=to=toISO(now); break;
+    case "week": {
+      const d=now.getDay()||7;
+      const m=new Date(now); m.setDate(now.getDate()-d+1);
+      from=toISO(m); to=toISO(now); break;
+    }
+    case "month":
+      from=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
+      to=toISO(now); break;
+  }
+  return {from, to};
+}
+
+function quickTP(p){
+  const r=getRange(p);
+  document.getElementById("tpFrom").value=r.from;
+  document.getElementById("tpTo").value=r.to;
+  document.querySelectorAll("#quickBtnsTP .quick-btn").forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
+  loadTP();
+}
+function quickBTP(p){
+  const r=getRange(p);
+  document.getElementById("btpFrom").value=r.from;
+  document.getElementById("btpTo").value=r.to;
+  document.querySelectorAll("#quickBtnsBTP .quick-btn").forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
+  loadBTP();
+}
+
+/* ═══ TP — THÀNH PHẨM (teamDaily from Code.gs) ═══ */
+async function loadTP(){
+  const from=document.getElementById("tpFrom").value;
+  const to=document.getElementById("tpTo").value;
+  if(!from||!to) return;
+
+  document.getElementById("loadTP").style.display="block";
+  try{
+    const url=CONFIG.CENTRAL_URL+"?action=teamDaily&from="+from+"&to="+to+"&t="+Date.now();
+    const res=await fetch(url);
+    const json=await res.json();
+    if(json.result!=="ok") throw new Error(json.error||"Loi");
+    renderTP(json.days, from, to);
+  }catch(e){
+    document.getElementById("tpSummary").innerHTML='<div class="empty">Loi: '+e.message+'</div>';
+  }
+  document.getElementById("loadTP").style.display="none";
+}
+
+function renderTP(days, from, to){
+  // Aggregate across all days
+  let tongSL=0, tongKL=0, tongRows=0;
+  const teamAgg={}; // ws → {sl, kg, rows, lsxSet, maySet}
+
+  days.forEach(d => {
+    tongSL+=d.sl; tongKL+=d.kg; tongRows+=d.rows;
+    d.to.forEach(t => {
+      if(!teamAgg[t.ws]) teamAgg[t.ws]={sl:0,kg:0,rows:0,lsxSet:new Set(),maySet:new Set()};
+      const a=teamAgg[t.ws];
+      a.sl+=t.sl; a.kg+=t.kg; a.rows+=t.rows;
+      // Count unique LSX and machines from daily data
+      if(t.may) t.may.forEach(m => {
+        a.maySet.add(m.may);
+        if(m.lsx) m.lsx.forEach(l => a.lsxSet.add(l.lsx));
+      });
+      // Fallback: use lsxCount
+      if(t.lsxCount && !t.may) for(let x=0;x<t.lsxCount;x++) a.lsxSet.add("_"+x);
+    });
+  });
+
+  // All unique machines
+  let allMay = new Set();
+  for(const ws in teamAgg) teamAgg[ws].maySet.forEach(m=>allMay.add(m));
+
+  // Summary cards
+  document.getElementById("tpSummary").innerHTML = `
+    <div class="card teal"><div class="label">Tong lan ghi</div><div class="val">${fmtNum(tongRows)}</div><div class="sub">lan</div></div>
+    <div class="card blue"><div class="label">Tong KL</div><div class="val">${fmtKg(tongKL)}</div><div class="sub">kg</div></div>
+    <div class="card green"><div class="label">Tong SL</div><div class="val">${fmtNum(Math.round(tongSL))}</div><div class="sub">cai</div></div>
+    <div class="card amber"><div class="label">So may chay</div><div class="val">${allMay.size}</div><div class="sub">may</div></div>
+  `;
+
+  // Team cards
+  const wsOrder = Object.keys(teamAgg).sort();
+  let teamsHTML = "";
+  wsOrder.forEach(ws => {
+    const a = teamAgg[ws];
+    const name = WS_NAMES[ws] || ws;
+    const colors = {CAT:"var(--green)",TCO:"var(--blue)",GTB:"var(--purple)",THO:"var(--amber)",INT:"var(--red)"};
+    const color = colors[ws] || "var(--teal)";
+
+    // Build detail: daily breakdown for this team
+    let detailHTML = '<table class="day-table" style="margin:0;"><thead><tr><th>Ngay</th><th>Lan</th><th>SL</th><th>KL</th><th>May</th></tr></thead><tbody>';
+    days.forEach(d => {
+      const t = d.to.find(x=>x.ws===ws);
+      if(!t) return;
+      const mayCount = t.may ? t.may.length : 0;
+      detailHTML += `<tr><td>${fmtDate(d.ngay)}</td><td>${t.rows}</td><td>${fmtNum(Math.round(t.sl))}</td><td>${fmtKg(t.kg)}</td><td>${mayCount}</td></tr>`;
+    });
+    detailHTML += '</tbody></table>';
+
+    teamsHTML += `<div class="team-card" onclick="this.classList.toggle('open')" style="border-left-color:${color}">
+      <div class="tc-header"><div class="tc-name" style="color:${color}">${name}</div><div class="tc-arrow">&#9654;</div></div>
+      <div class="tc-stats">
+        <div class="tc-stat"><div class="ts-val">${a.lsxSet.size}</div><div class="ts-label">LSX</div></div>
+        <div class="tc-stat"><div class="ts-val">${fmtNum(Math.round(a.sl))}</div><div class="ts-label">SL</div></div>
+        <div class="tc-stat"><div class="ts-val">${fmtKg(a.kg)}</div><div class="ts-label">KL(kg)</div></div>
+        <div class="tc-stat"><div class="ts-val">${a.maySet.size}</div><div class="ts-label">May</div></div>
+      </div>
+      <div class="tc-detail">${detailHTML}</div>
+    </div>`;
+  });
+  document.getElementById("tpTeams").innerHTML = teamsHTML;
+
+  // Day summary table
+  if(days.length){
+    document.getElementById("tpDayTable").style.display="table";
+    let rowsHTML="", tR=0, tS=0, tK=0;
+    days.forEach(d => {
+      tR+=d.rows; tS+=d.sl; tK+=d.kg;
+      rowsHTML+=`<tr><td>${fmtDate(d.ngay)}</td><td>${d.rows}</td><td>${fmtNum(Math.round(d.sl))}</td><td>${fmtKg(d.kg)}</td></tr>`;
+    });
+    rowsHTML+=`<tr class="tfoot"><td>Tong</td><td>${tR}</td><td>${fmtNum(Math.round(tS))}</td><td>${fmtKg(tK)}</td></tr>`;
+    document.getElementById("tpDayBody").innerHTML=rowsHTML;
+  } else {
+    document.getElementById("tpDayTable").style.display="none";
+  }
+}
+
+/* ═══ BTP — BÁN THÀNH PHẨM THỔI/IN (tksxDaily from Code_ThoiIn.gs) ═══ */
+function jsonp(url, timeout){
+  return new Promise((resolve,reject)=>{
+    const cb="__btp_"+Date.now()+"_"+Math.random().toString(36).slice(2,6);
+    const s=document.createElement("script");
+    const timer=setTimeout(()=>{cleanup();reject(new Error("Timeout"))},timeout||15000);
+    function cleanup(){clearTimeout(timer);delete window[cb];if(s.parentNode)s.remove();}
+    window[cb]=function(d){cleanup();resolve(d);};
+    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb;
+    s.onerror=function(){cleanup();reject(new Error("JSONP error"));};
+    document.head.appendChild(s);
+  });
+}
+
+async function loadBTP(){
+  const from=document.getElementById("btpFrom").value;
+  const to=document.getElementById("btpTo").value;
+  if(!from||!to) return;
+
+  document.getElementById("loadBTP").style.display="block";
+  try{
+    const json = await jsonp(CONFIG.TKSX_URL+"?action=tksxDaily&from="+from+"&to="+to, 30000);
+    if(json.result!=="ok") throw new Error(json.error||"Loi");
+    renderBTP(json);
+  }catch(e){
+    document.getElementById("btpSummary").innerHTML='<div class="empty">Loi: '+e.message+'</div>';
+  }
+  document.getElementById("loadBTP").style.display="none";
+}
+
+function renderBTP(json){
+  const sx = json.sx || [];     // [{loai, ngay, may, tong, soLan}]
+  const sxd = json.sxd || [];   // detail rows
+  const phe = json.phe || [];
+
+  // Aggregate by loai (Thổi / In)
+  const loaiAgg = {}; // loai → {tong, soLan, maySet, lsxSet, byDay:{ngay→{tong,soLan}}}
+  sxd.forEach(r => {
+    const loai = r.loai || "Khac";
+    if(!loaiAgg[loai]) loaiAgg[loai]={tong:0,soLan:0,maySet:new Set(),lsxSet:new Set(),byDay:{}};
+    const a = loaiAgg[loai];
+    a.tong += r.kq;
+    a.soLan++;
+    a.maySet.add(r.may);
+    a.lsxSet.add(r.lsx);
+    if(!a.byDay[r.ngay]) a.byDay[r.ngay]={tong:0,soLan:0};
+    a.byDay[r.ngay].tong += r.kq;
+    a.byDay[r.ngay].soLan++;
+  });
+
+  // Total
+  let tongKG=0, tongLan=0, allMay=new Set(), allLsx=new Set();
+  for(const l in loaiAgg){
+    tongKG+=loaiAgg[l].tong; tongLan+=loaiAgg[l].soLan;
+    loaiAgg[l].maySet.forEach(m=>allMay.add(m));
+    loaiAgg[l].lsxSet.forEach(x=>allLsx.add(x));
+  }
+
+  // Phế
+  let tongPheTron=0, tongPheMau=0;
+  phe.forEach(p=>{tongPheTron+=p.tron||0; tongPheMau+=p.mau||0;});
+
+  // Summary
+  document.getElementById("btpSummary").innerHTML = `
+    <div class="card teal"><div class="label">Tong SX</div><div class="val">${fmtKg(tongKG)}</div><div class="sub">kg (${tongLan} lan)</div></div>
+    <div class="card blue"><div class="label">So LSX</div><div class="val">${allLsx.size}</div><div class="sub">lenh SX</div></div>
+    <div class="card green"><div class="label">So may</div><div class="val">${allMay.size}</div><div class="sub">may chay</div></div>
+    <div class="card red"><div class="label">Phe</div><div class="val">${fmtKg(tongPheTron+tongPheMau)}</div><div class="sub">tron: ${fmtKg(tongPheTron)}, mau: ${fmtKg(tongPheMau)}</div></div>
+  `;
+
+  // Team cards (by loai)
+  const colors = {"Thoi":"var(--amber)","Thổi":"var(--amber)","In":"var(--blue)"};
+  let teamsHTML = "";
+  for(const loai in loaiAgg){
+    const a = loaiAgg[loai];
+    const color = colors[loai] || "var(--teal)";
+
+    // Day detail
+    const dayKeys = Object.keys(a.byDay).sort().reverse();
+    let detailHTML = '<table class="day-table" style="margin:0;"><thead><tr><th>Ngay</th><th>Lan</th><th>KL (kg)</th></tr></thead><tbody>';
+    dayKeys.forEach(dk => {
+      const dv = a.byDay[dk];
+      detailHTML += `<tr><td>${fmtDate(dk)}</td><td>${dv.soLan}</td><td>${fmtKg(dv.tong)}</td></tr>`;
+    });
+    detailHTML += '</tbody></table>';
+
+    teamsHTML += `<div class="team-card" onclick="this.classList.toggle('open')" style="border-left-color:${color}">
+      <div class="tc-header"><div class="tc-name" style="color:${color}">${loai}</div><div class="tc-arrow">&#9654;</div></div>
+      <div class="tc-stats">
+        <div class="tc-stat"><div class="ts-val">${a.lsxSet.size}</div><div class="ts-label">LSX</div></div>
+        <div class="tc-stat"><div class="ts-val">${fmtKg(a.tong)}</div><div class="ts-label">KL(kg)</div></div>
+        <div class="tc-stat"><div class="ts-val">${a.soLan}</div><div class="ts-label">Lan SX</div></div>
+        <div class="tc-stat"><div class="ts-val">${a.maySet.size}</div><div class="ts-label">May</div></div>
+      </div>
+      <div class="tc-detail">${detailHTML}</div>
+    </div>`;
+  }
+  document.getElementById("btpTeams").innerHTML = teamsHTML;
+}
+
+/* ═══ INIT ═══ */
+window.addEventListener("DOMContentLoaded", () => {
+  quickTP("week");
+});
+</script>
+</body>
+</html>
