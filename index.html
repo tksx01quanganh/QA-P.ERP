@@ -661,6 +661,12 @@ const FUNC_HIERARCHY = {
       name: "Chuyển công đoạn",
       icon: "🔄",
       childUrls: ["thoi-in.html?mode=chuyen", "thoi-in.html?mode=chuyenstat", "chuyen-btp.html", "chuyen-btp-check.html"]
+    },
+    {
+      name: "Dashboard sản xuất",
+      icon: "📊",
+      childUrls: [],
+      directUrl: "dashboard-sx.html"
     }
   ],
   WH: [
@@ -674,8 +680,7 @@ const FUNC_HIERARCHY = {
       icon: "📋",
       childUrls: ["kiem-ke.html"],
       directItems: [
-        { name: "Báo cáo kiểm kê", icon: "📊", url: "kiem-ke.html?mode=report" },
-        { name: "Dashboard KK", icon: "📈", url: "kiem-ke.html?mode=dashboard" }
+        { name: "Báo cáo kiểm kê", icon: "📊", url: "kiem-ke.html?mode=report" }
       ]
     }
   ],
@@ -690,6 +695,20 @@ const FUNC_HIERARCHY = {
       icon: "📊",
       childUrls: [],
       directUrl: "qc.html?mode=tracuu"
+    }
+  ],
+  SA: [
+    {
+      name: "Dashboard nhận đơn hàng",
+      icon: "📋",
+      childUrls: [],
+      directUrl: "ban-hang.html"
+    },
+    {
+      name: "Dự báo giao hàng",
+      icon: "🚚",
+      childUrls: [],
+      directUrl: "ban-hang.html?tab=giaohang"
     }
   ]
 };
