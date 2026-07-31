@@ -18,492 +18,316 @@
 html,body{margin:0;height:100%;}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:16px;line-height:1.4;}
 
-/* ── topbar ── */
 .topbar{background:var(--teal);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:10;}
 .topbar .ttl{font-weight:700;font-size:16px;display:flex;align-items:center;gap:6px;}
 .icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
 
-/* ── tab navigation ── */
 .tab-bar{display:flex;background:#fff;border-bottom:2px solid var(--border);position:sticky;top:48px;z-index:9;}
 .tab-btn{flex:1;padding:12px 8px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);border:0;background:none;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;}
 .tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);}
-
-/* ── content ── */
 .tab-content{display:none;padding:12px;}
 .tab-content.active{display:block;}
 
-/* ── date filter ── */
 .filter-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
 .filter-bar input[type="date"]{flex:1;min-width:120px;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:15px;}
-.filter-bar .btn-filter{padding:10px 16px;border:0;border-radius:10px;font-size:14px;font-weight:700;color:#fff;background:var(--teal);cursor:pointer;}
+.btn-filter{padding:10px 16px;border:0;border-radius:10px;font-size:14px;font-weight:700;color:#fff;background:var(--teal);cursor:pointer;}
 .quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
 .quick-btn{padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;background:#fff;color:var(--txt);font-weight:500;}
 .quick-btn.active{background:var(--teal);color:#fff;border-color:var(--teal);}
 
-/* ── summary cards ── */
-.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
-.card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
-.card .label{font-size:12px;color:var(--muted);margin-bottom:4px;}
-.card .val{font-size:22px;font-weight:800;}
-.card .sub{font-size:12px;color:var(--muted);margin-top:2px;}
-.card.wide{grid-column:1/-1;}
-.card.teal .val{color:var(--teal);}
-.card.blue .val{color:var(--blue);}
-.card.green .val{color:var(--green);}
-.card.amber .val{color:var(--amber);}
-.card.purple .val{color:var(--purple);}
-.card.red .val{color:var(--red);}
+/* ── matrix table ── */
+.matrix-wrap{overflow-x:auto;margin-bottom:14px;}
+.matrix{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.matrix th{background:var(--teal);color:#fff;padding:10px 8px;font-size:12px;text-align:center;white-space:nowrap;}
+.matrix td{padding:10px 8px;font-size:14px;text-align:center;border-bottom:1px solid var(--border);}
+.matrix tr:last-child td{border:0;}
+.matrix .row-label{text-align:left;font-weight:600;color:var(--teal);white-space:nowrap;}
+.matrix .row-total{background:#f0fdf4;font-weight:700;}
+.matrix .row-total .row-label{color:var(--green);}
 
-/* ── ngành hàng breakdown ── */
-.nganh-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
-.nganh-card{background:#fff;border-radius:12px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08);}
-.nganh-card .nh-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
-.nganh-card .nh-val{font-size:20px;font-weight:800;}
-.nganh-card .nh-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+/* ── top KH per ngành ── */
+.top-section{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:14px;}
+.top-section .ts-title{font-size:14px;font-weight:700;color:var(--teal);margin-bottom:10px;}
+.top-nganh{margin-bottom:10px;}
+.top-nganh:last-child{margin-bottom:0;}
+.top-nganh .tn-label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;}
+.top-nganh .tn-list{font-size:13px;line-height:1.6;}
+.top-nganh .tn-rank{display:inline-block;width:20px;height:20px;border-radius:50%;background:var(--teal);color:#fff;text-align:center;line-height:20px;font-size:11px;font-weight:700;margin-right:4px;}
+.top-nganh .tn-rank.r2{background:var(--blue);}
+.top-nganh .tn-rank.r3{background:var(--gray);}
 
-/* ── top KH ── */
-.top-list{background:#fff;border-radius:14px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:14px;}
-.top-list .top-title{font-size:13px;font-weight:700;color:var(--teal);margin-bottom:8px;}
-.top-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
-.top-item:last-child{border:0;}
-.top-rank{width:26px;height:26px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;}
-.top-rank.r2{background:var(--blue);}
-.top-rank.r3{background:var(--gray);}
-.top-info{flex:1;min-width:0;}
-.top-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.top-kg{font-size:13px;color:var(--muted);}
-
-/* ── bảng theo ngày ── */
+/* ── day table ── */
 .day-table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);}
-.day-table th{background:var(--teal);color:#fff;padding:10px 8px;font-size:12px;text-align:center;position:sticky;top:96px;}
+.day-table th{background:var(--teal);color:#fff;padding:10px 8px;font-size:12px;text-align:center;}
 .day-table td{padding:8px;font-size:13px;text-align:center;border-bottom:1px solid var(--border);}
 .day-table tr:last-child td{border:0;}
 .day-table .tfoot td{background:#f8fafc;font-weight:700;}
 
-/* ── delivery forecast cards ── */
-.fc-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
-.fc-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:4px solid var(--teal);cursor:pointer;transition:.15s;}
-.fc-card:active{transform:scale(.98);}
-.fc-card .fc-days{font-size:13px;font-weight:700;color:var(--teal);margin-bottom:6px;}
-.fc-card .fc-val{font-size:20px;font-weight:800;}
-.fc-card .fc-sub{font-size:12px;color:var(--muted);margin-top:4px;}
-.fc-card.highlight{border-left-color:var(--red);background:#fef2f2;}
-.fc-card.highlight .fc-days{color:var(--red);}
-
-/* ── detail modal ── */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;align-items:flex-end;justify-content:center;}
-.modal-overlay.open{display:flex;}
-.modal-box{background:#fff;border-radius:16px 16px 0 0;max-height:80vh;width:100%;max-width:500px;overflow:auto;padding:16px;animation:slideUp .2s;}
-@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-.modal-header h3{font-size:16px;margin:0;}
-.modal-close{background:none;border:0;font-size:24px;cursor:pointer;color:var(--muted);padding:4px 8px;}
-
-/* ── loading ── */
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:15px;}
 .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px;}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── empty state ── */
 .empty{text-align:center;padding:40px;color:var(--muted);}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
 <div class="topbar">
-  <div class="ttl">Dashboard Ban hang</div>
+  <div class="ttl">📊 Dashboard Bán hàng</div>
   <button class="icon-btn" onclick="location.href='index.html'">Menu</button>
 </div>
 
-<!-- TAB BAR -->
 <div class="tab-bar">
-  <button class="tab-btn active" onclick="switchTab('nhandon')">Nhan don hang</button>
-  <button class="tab-btn" onclick="switchTab('giaohang')">Sap giao hang</button>
+  <button class="tab-btn active" onclick="switchTab('nhandon')">Nhận đơn hàng</button>
+  <button class="tab-btn" onclick="switchTab('giaohang')">Sắp giao hàng</button>
 </div>
 
-<!-- TAB 1: NHẬN ĐƠN HÀNG -->
+<!-- ═══ TAB 1: NHẬN ĐƠN HÀNG ═══ -->
 <div id="tab-nhandon" class="tab-content active">
-  <!-- Date filter -->
-  <div class="quick-btns" id="quickBtns">
-    <button class="quick-btn" onclick="quickFilter('today')">Hom nay</button>
-    <button class="quick-btn" onclick="quickFilter('week')">Tuan nay</button>
-    <button class="quick-btn active" onclick="quickFilter('month')">Thang nay</button>
-    <button class="quick-btn" onclick="quickFilter('quarter')">Quy nay</button>
+  <div class="quick-btns" id="quickBtns1">
+    <button class="quick-btn" onclick="quick1('today')">Hôm nay</button>
+    <button class="quick-btn" onclick="quick1('week')">Tuần này</button>
+    <button class="quick-btn active" onclick="quick1('month')">Tháng này</button>
+    <button class="quick-btn" onclick="quick1('quarter')">Quý này</button>
   </div>
   <div class="filter-bar">
-    <input type="date" id="dateFrom" />
-    <input type="date" id="dateTo" />
-    <button class="btn-filter" onclick="loadSalesDashboard()">Loc</button>
+    <input type="date" id="from1" />
+    <input type="date" id="to1" />
+    <button class="btn-filter" onclick="loadTab1()">Lọc</button>
   </div>
-
-  <!-- Summary cards -->
-  <div id="summaryCards" class="cards"></div>
-
-  <!-- Ngành hàng -->
-  <div id="nganhGrid" class="nganh-grid"></div>
-
-  <!-- Top 3 KH -->
-  <div id="topKH" class="top-list" style="display:none;"></div>
-
-  <!-- Bảng theo ngày -->
-  <div style="overflow-x:auto;">
-    <table class="day-table" id="dayTable" style="display:none;">
-      <thead><tr><th>Ngay</th><th>So don</th><th>KL (kg)</th><th>SL</th><th>So KH</th></tr></thead>
-      <tbody id="dayBody"></tbody>
-    </table>
-  </div>
-
-  <div id="loadingNhanDon" class="loading" style="display:none;">
-    <div class="spinner"></div>Dang tai du lieu...
-  </div>
+  <div id="matrix1"></div>
+  <div id="topKH1"></div>
+  <div id="dayWrap1" style="overflow-x:auto;"></div>
+  <div id="load1" class="loading" style="display:none;"><div class="spinner"></div>Đang tải dữ liệu...</div>
 </div>
 
-<!-- TAB 2: SẮP GIAO HÀNG -->
+<!-- ═══ TAB 2: SẮP GIAO HÀNG ═══ -->
 <div id="tab-giaohang" class="tab-content">
-  <div id="fcCards" class="fc-cards"></div>
-  <div id="loadingGiao" class="loading" style="display:none;">
-    <div class="spinner"></div>Dang tai du lieu...
+  <div class="quick-btns" id="quickBtns2">
+    <button class="quick-btn" onclick="quick2('3d')">3 ngày</button>
+    <button class="quick-btn active" onclick="quick2('7d')">7 ngày</button>
+    <button class="quick-btn" onclick="quick2('30d')">30 ngày</button>
+    <button class="quick-btn" onclick="quick2('60d')">60 ngày</button>
   </div>
-
-  <!-- Detail list for clicked forecast card -->
-  <div id="fcDetail" style="display:none;"></div>
-</div>
-
-<!-- DETAIL MODAL (for forecast drill-down) -->
-<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal();">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h3 id="modalTitle">Chi tiet</h3>
-      <button class="modal-close" onclick="closeModal()">&times;</button>
-    </div>
-    <div id="modalBody"></div>
+  <div class="filter-bar">
+    <input type="date" id="from2" />
+    <input type="date" id="to2" />
+    <button class="btn-filter" onclick="loadTab2()">Lọc</button>
   </div>
+  <div id="matrix2"></div>
+  <div id="load2" class="loading" style="display:none;"><div class="spinner"></div>Đang tải dữ liệu...</div>
 </div>
 
 <script>
-/* ═══════════════════════════════════════════════════════════
-   CONFIG
-═══════════════════════════════════════════════════════════ */
 const CONFIG = {
-  // ⚠ Thay URL sau khi deploy Code_BanHang.gs
-  BAN_HANG_URL: "https://script.google.com/macros/s/AKfycbyhCUKM79pBVfFt2JEKhyuA8vLT4gnSHiiApcRB5D4tdIraShM9ZaRSL-yd9oCMBGuVng/exec",
-  CACHE_KEY: "bh_cache_v1",
-  CACHE_TTL: 5 * 60 * 1000
+  BAN_HANG_URL: "https://script.google.com/macros/s/AKfycbyhCUKM79pBVfFt2JEKhyuA8vLT4gnSHiiApcRB5D4tdIraShM9ZaRSL-yd9oCMBGuVng/exec"
 };
 
-/* ═══ STATE ═══ */
-let allOrders = [];
-let dataLoaded = false;
-
-/* ═══ SESSION CHECK ═══ */
-function checkSession(){
-  try{
-    const s = JSON.parse(localStorage.getItem("ghinhan_session") || "null");
-    return !!(s && s.username && s.ts && (Date.now() - s.ts < 8*3600*1000));
-  }catch(e){ return false; }
-}
+/* ═══ UTILS ═══ */
+function toISO(d){ return d.toISOString().slice(0,10); }
+function fmtNum(n){ return (n||0).toLocaleString("vi-VN"); }
+function fmtKg(n){ return (n||0).toLocaleString("vi-VN",{maximumFractionDigits:1}); }
+function fmtDate(iso){ if(!iso) return ""; const p=iso.split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
 
 /* ═══ TAB SWITCHING ═══ */
+let tab2Loaded = false;
 function switchTab(tab){
-  document.querySelectorAll(".tab-btn").forEach((b,i) => {
-    b.classList.toggle("active", (tab==="nhandon" && i===0) || (tab==="giaohang" && i===1));
-  });
-  document.getElementById("tab-nhandon").classList.toggle("active", tab==="nhandon");
-  document.getElementById("tab-giaohang").classList.toggle("active", tab==="giaohang");
-
-  if(tab==="giaohang" && document.getElementById("fcCards").innerHTML===""){
-    renderDeliveryForecast();
-  }
+  document.querySelectorAll(".tab-btn").forEach((b,i)=>b.classList.toggle("active",(tab==="nhandon"&&i===0)||(tab==="giaohang"&&i===1)));
+  document.getElementById("tab-nhandon").classList.toggle("active",tab==="nhandon");
+  document.getElementById("tab-giaohang").classList.toggle("active",tab==="giaohang");
+  if(tab==="giaohang" && !tab2Loaded){ quick2("7d"); tab2Loaded=true; }
 }
 
-/* ═══ DATE UTILS ═══ */
-function toISO(d){ return d.toISOString().slice(0,10); }
-function parseISO(s){ const d=new Date(s+"T00:00:00"); return isNaN(d)?null:d; }
-function parseDMY(s){
-  const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
-  if(!m) return null;
-  return new Date(+m[3], +m[2]-1, +m[1]);
-}
-function fmtNum(n){ return n.toLocaleString("vi-VN"); }
-function fmtKg(n){ return n.toLocaleString("vi-VN",{maximumFractionDigits:1}); }
-function fmtDate(iso){
-  if(!iso) return "";
-  const p=iso.split("-");
-  return p[2]+"/"+p[1]+"/"+p[0];
-}
-
-/* ═══ QUICK FILTER ═══ */
-function quickFilter(period){
-  const now = new Date();
-  let from, to;
+/* ═══ QUICK FILTERS ═══ */
+function getRange(period){
+  const now=new Date(); let from,to;
   switch(period){
-    case "today":
-      from = to = toISO(now); break;
-    case "week": {
-      const day = now.getDay() || 7;
-      const mon = new Date(now); mon.setDate(now.getDate() - day + 1);
-      from = toISO(mon); to = toISO(now); break;
-    }
-    case "month":
-      from = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
-      to = toISO(now); break;
-    case "quarter": {
-      const q = Math.floor(now.getMonth()/3);
-      from = now.getFullYear()+"-"+String(q*3+1).padStart(2,"0")+"-01";
-      to = toISO(now); break;
-    }
+    case "today": from=to=toISO(now); break;
+    case "week": { const d=now.getDay()||7; const m=new Date(now); m.setDate(now.getDate()-d+1); from=toISO(m); to=toISO(now); break; }
+    case "month": from=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01"; to=toISO(now); break;
+    case "quarter": { const q=Math.floor(now.getMonth()/3); from=now.getFullYear()+"-"+String(q*3+1).padStart(2,"0")+"-01"; to=toISO(now); break; }
+    case "3d":  from=toISO(now); to=toISO(new Date(now.getTime()+3*864e5)); break;
+    case "7d":  from=toISO(now); to=toISO(new Date(now.getTime()+7*864e5)); break;
+    case "30d": from=toISO(now); to=toISO(new Date(now.getTime()+30*864e5)); break;
+    case "60d": from=toISO(now); to=toISO(new Date(now.getTime()+60*864e5)); break;
   }
-  document.getElementById("dateFrom").value = from;
-  document.getElementById("dateTo").value = to;
-  document.querySelectorAll(".quick-btn").forEach(b => b.classList.remove("active"));
+  return {from,to};
+}
+function quick1(p){
+  const r=getRange(p);
+  document.getElementById("from1").value=r.from;
+  document.getElementById("to1").value=r.to;
+  document.querySelectorAll("#quickBtns1 .quick-btn").forEach(b=>b.classList.remove("active"));
   event.target.classList.add("active");
-  loadSalesDashboard();
+  loadTab1();
+}
+function quick2(p){
+  const r=getRange(p);
+  document.getElementById("from2").value=r.from;
+  document.getElementById("to2").value=r.to;
+  document.querySelectorAll("#quickBtns2 .quick-btn").forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
+  loadTab2();
 }
 
-/* ═══ LOAD ALL DATA (once) ═══ */
-async function loadAllData(){
-  if(dataLoaded && allOrders.length) return;
-
-  // Try cache
-  try{
-    const c = JSON.parse(localStorage.getItem(CONFIG.CACHE_KEY));
-    if(c && Date.now()-c.ts < CONFIG.CACHE_TTL){
-      allOrders = c.data;
-      dataLoaded = true;
-      return;
-    }
-  }catch(e){}
-
-  // Fetch from backend
-  const url = CONFIG.BAN_HANG_URL;
-  const sep = url.includes("?") ? "&" : "?";
-  const res = await fetch(url + sep + "action=allData&t=" + Date.now());
+/* ═══ FETCH HELPER ═══ */
+async function callAPI(action, params){
+  let url = CONFIG.BAN_HANG_URL + "?action=" + action + "&t=" + Date.now();
+  for(const k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
+  const res = await fetch(url);
   const json = await res.json();
-  if(json.result === "ok"){
-    allOrders = json.orders || [];
-    dataLoaded = true;
-    try{
-      localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({data:allOrders, ts:Date.now()}));
-    }catch(e){}
-  }
+  if(json.result !== "ok") throw new Error(json.error || "Lỗi không xác định");
+  return json;
 }
 
-/* ═══ SALES DASHBOARD ═══ */
-async function loadSalesDashboard(){
-  const fromVal = document.getElementById("dateFrom").value;
-  const toVal = document.getElementById("dateTo").value;
-  if(!fromVal || !toVal) return;
+/* ═══ TAB 1: NHẬN ĐƠN HÀNG — gọi salesDashboard ═══ */
+async function loadTab1(){
+  const from = document.getElementById("from1").value;
+  const to = document.getElementById("to1").value;
+  if(!from || !to) return;
 
-  show("loadingNhanDon", true);
+  document.getElementById("load1").style.display = "block";
+  document.getElementById("matrix1").innerHTML = "";
+  document.getElementById("topKH1").innerHTML = "";
+  document.getElementById("dayWrap1").innerHTML = "";
 
-  try{
-    await loadAllData();
-
-    // Filter by dateFrom..dateTo using isoNhan
-    const filtered = allOrders.filter(o => o.isoNhan >= fromVal && o.isoNhan <= toVal);
-
-    renderSalesDashboard(filtered);
-  }catch(e){
-    console.error(e);
-    document.getElementById("summaryCards").innerHTML = '<div class="empty">Loi tai du lieu: '+e.message+'</div>';
+  try {
+    const json = await callAPI("salesDashboard", {from, to});
+    renderTab1(json);
+  } catch(e){
+    document.getElementById("matrix1").innerHTML = '<div class="empty">Lỗi: '+e.message+'</div>';
   }
-  show("loadingNhanDon", false);
+  document.getElementById("load1").style.display = "none";
 }
 
-function renderSalesDashboard(data){
-  // Aggregate
-  let tongKL=0, tongSL=0;
-  const khSet={}, khKL={}, nganhMap={}, byDay={};
+function renderTab1(json){
+  const s = json.summary || {};
+  const bn = json.byNganh || {};
+  const NGANHS = ["Nylon","Giấy","Khác"];
 
-  data.forEach(o => {
-    tongKL += o.khoiluong;
-    tongSL += o.soluong;
-    khSet[o.khachhang] = 1;
-    if(!khKL[o.khachhang]) khKL[o.khachhang]=0;
-    khKL[o.khachhang] += o.khoiluong;
+  // Lấy data per ngành, đảm bảo luôn có 3 ngành
+  function ng(name){ return bn[name] || {don:0, kl:0, sl:0, soKH:0, topKH:[]}; }
 
-    const nh = o.nganhHang || "Khac";
-    if(!nganhMap[nh]) nganhMap[nh]={don:0, kl:0};
-    nganhMap[nh].don++;
-    nganhMap[nh].kl += o.khoiluong;
+  // ── Bảng ma trận ──
+  let html = `<div class="matrix-wrap"><table class="matrix">
+    <thead><tr><th>Chỉ tiêu</th><th>Tổng</th>`;
+  NGANHS.forEach(n => html += `<th>${n}</th>`);
+  html += `</tr></thead><tbody>`;
 
-    const dk = o.isoNhan;
-    if(!byDay[dk]) byDay[dk]={don:0, kl:0, sl:0, kh:{}};
-    byDay[dk].don++;
-    byDay[dk].kl += o.khoiluong;
-    byDay[dk].sl += o.soluong;
-    byDay[dk].kh[o.khachhang]=1;
+  // Row: Số đơn hàng
+  html += `<tr><td class="row-label">Số đơn hàng</td><td><b>${fmtNum(s.tongDon)}</b></td>`;
+  NGANHS.forEach(n => html += `<td>${fmtNum(ng(n).don)}</td>`);
+  html += `</tr>`;
+
+  // Row: Khối lượng
+  html += `<tr><td class="row-label">Khối lượng (kg)</td><td><b>${fmtKg(s.tongKL)}</b></td>`;
+  NGANHS.forEach(n => html += `<td>${fmtKg(ng(n).kl)}</td>`);
+  html += `</tr>`;
+
+  // Row: Số lượng
+  html += `<tr><td class="row-label">Số lượng</td><td><b>${fmtNum(s.tongSL)}</b></td>`;
+  NGANHS.forEach(n => html += `<td>${fmtNum(ng(n).sl)}</td>`);
+  html += `</tr>`;
+
+  // Row: Số khách hàng
+  html += `<tr><td class="row-label">Số khách hàng</td><td><b>${fmtNum(s.soKH)}</b></td>`;
+  NGANHS.forEach(n => html += `<td>${fmtNum(ng(n).soKH)}</td>`);
+  html += `</tr>`;
+
+  html += `</tbody></table></div>`;
+  document.getElementById("matrix1").innerHTML = html;
+
+  // ── Top 3 KH per ngành ──
+  let topHTML = `<div class="top-section"><div class="ts-title">Top 3 khách hàng (theo khối lượng)</div>`;
+  // Overall top
+  const overallTop = json.topKH || [];
+  topHTML += buildTopNganh("Tổng", overallTop);
+  NGANHS.forEach(n => {
+    const top = ng(n).topKH || [];
+    if(top.length) topHTML += buildTopNganh(n, top);
   });
+  topHTML += `</div>`;
+  document.getElementById("topKH1").innerHTML = topHTML;
 
-  // Summary cards
-  const soKH = Object.keys(khSet).length;
-  document.getElementById("summaryCards").innerHTML = `
-    <div class="card teal"><div class="label">Tong don hang</div><div class="val">${fmtNum(data.length)}</div><div class="sub">don</div></div>
-    <div class="card blue"><div class="label">Tong khoi luong</div><div class="val">${fmtKg(tongKL)}</div><div class="sub">kg</div></div>
-    <div class="card green"><div class="label">Tong so luong</div><div class="val">${fmtNum(tongSL)}</div><div class="sub">cai/chiec</div></div>
-    <div class="card purple"><div class="label">So khach hang</div><div class="val">${fmtNum(soKH)}</div><div class="sub">khach hang</div></div>
-  `;
-
-  // Ngành hàng
-  const nhColors = {"Nylon":"teal","Giay":"blue","Khac":"amber"};
-  let nganhHTML = "";
-  // Ensure 3 categories always show
-  ["Nylon","Giay","Khac"].forEach(nh => {
-    // Try matching exact or with diacritics
-    let matched = nganhMap[nh] || nganhMap["Giấy"] && nh==="Giay" ? nganhMap["Giấy"] : null;
-    if(!matched){
-      // Search case-insensitive
-      for(const k in nganhMap){
-        if(k.toLowerCase().replace(/[ấ]/g,"a").indexOf(nh.toLowerCase())===0){ matched=nganhMap[k]; break; }
-      }
-    }
-    if(!matched) matched = {don:0, kl:0};
-    const displayName = nh==="Giay" ? "Giay" : nh;
-    nganhHTML += `<div class="nganh-card"><div class="nh-label">${displayName}</div><div class="nh-val">${fmtNum(matched.don)}</div><div class="nh-sub">${fmtKg(matched.kl)} kg</div></div>`;
-  });
-  // Also show any other categories
-  for(const k in nganhMap){
-    const kNorm = k.toLowerCase().replace(/[ấ]/g,"a");
-    if(kNorm!=="nylon" && kNorm!=="giay" && kNorm!=="khac" && kNorm!=="giấy" && kNorm!=="khác"){
-      nganhHTML += `<div class="nganh-card"><div class="nh-label">${k}</div><div class="nh-val">${fmtNum(nganhMap[k].don)}</div><div class="nh-sub">${fmtKg(nganhMap[k].kl)} kg</div></div>`;
-    }
-  }
-  document.getElementById("nganhGrid").innerHTML = nganhHTML;
-
-  // Top 3 KH
-  const khArr = Object.entries(khKL).map(([kh,kl])=>({kh,kl})).sort((a,b)=>b.kl-a.kl).slice(0,3);
-  if(khArr.length){
-    const topEl = document.getElementById("topKH");
-    topEl.style.display = "block";
-    let topHTML = '<div class="top-title">Top 3 khach hang (theo KL)</div>';
-    khArr.forEach((item,i) => {
-      topHTML += `<div class="top-item">
-        <div class="top-rank ${i===1?"r2":i===2?"r3":""}">${i+1}</div>
-        <div class="top-info"><div class="top-name">${item.kh||"(khong ten)"}</div><div class="top-kg">${fmtKg(item.kl)} kg</div></div>
-      </div>`;
-    });
-    topEl.innerHTML = topHTML;
-  } else {
-    document.getElementById("topKH").style.display = "none";
-  }
-
-  // Bảng theo ngày
-  const dayKeys = Object.keys(byDay).sort().reverse();
-  if(dayKeys.length){
-    document.getElementById("dayTable").style.display = "table";
-    let rows = "";
+  // ── Bảng theo ngày ──
+  const days = json.byDay || [];
+  if(days.length){
+    let tbl = `<table class="day-table"><thead><tr><th>Ngày</th><th>Số đơn</th><th>KL (kg)</th><th>Số lượng</th><th>Số KH</th></tr></thead><tbody>`;
     let tDon=0, tKL=0, tSL=0;
-    dayKeys.forEach(dk => {
-      const dv = byDay[dk];
-      tDon+=dv.don; tKL+=dv.kl; tSL+=dv.sl;
-      rows += `<tr><td>${fmtDate(dk)}</td><td>${dv.don}</td><td>${fmtKg(dv.kl)}</td><td>${fmtNum(dv.sl)}</td><td>${Object.keys(dv.kh).length}</td></tr>`;
+    days.forEach(d => {
+      tDon+=d.don; tKL+=d.kl; tSL+=d.sl;
+      tbl += `<tr><td>${fmtDate(d.ngay)}</td><td>${d.don}</td><td>${fmtKg(d.kl)}</td><td>${fmtNum(d.sl)}</td><td>${d.soKH}</td></tr>`;
     });
-    rows += `<tr class="tfoot"><td>Tong</td><td>${tDon}</td><td>${fmtKg(tKL)}</td><td>${fmtNum(tSL)}</td><td>${soKH}</td></tr>`;
-    document.getElementById("dayBody").innerHTML = rows;
-  } else {
-    document.getElementById("dayTable").style.display = "none";
+    tbl += `<tr class="tfoot"><td>Tổng</td><td>${tDon}</td><td>${fmtKg(tKL)}</td><td>${fmtNum(tSL)}</td><td>${s.soKH}</td></tr>`;
+    tbl += `</tbody></table>`;
+    document.getElementById("dayWrap1").innerHTML = tbl;
   }
 }
 
-/* ═══ DELIVERY FORECAST ═══ */
-async function renderDeliveryForecast(){
-  show("loadingGiao", true);
-  try{
-    await loadAllData();
+function buildTopNganh(label, arr){
+  if(!arr.length) return "";
+  let h = `<div class="top-nganh"><div class="tn-label">${label}</div><div class="tn-list">`;
+  arr.forEach((item,i) => {
+    const cls = i===0?"":i===1?" r2":" r3";
+    h += `<div><span class="tn-rank${cls}">${i+1}</span> ${item.kh||"(không tên)"} — ${fmtKg(item.kl)} kg</div>`;
+  });
+  h += `</div></div>`;
+  return h;
+}
 
-    const now = new Date();
-    const todayISO = toISO(now);
-    const windows = [3, 7, 10, 30, 60];
-    const colors = ["var(--red)","var(--amber)","var(--teal)","var(--blue)","var(--purple)"];
+/* ═══ TAB 2: SẮP GIAO HÀNG — gọi deliveryByRange ═══ */
+async function loadTab2(){
+  const from = document.getElementById("from2").value;
+  const to = document.getElementById("to2").value;
+  if(!from || !to) return;
 
-    let html = "";
-    windows.forEach((days,i) => {
-      const endDate = new Date(now.getTime() + days*86400000);
-      const endISO = toISO(endDate);
+  document.getElementById("load2").style.display = "block";
+  document.getElementById("matrix2").innerHTML = "";
 
-      let don=0, kl=0, sl=0;
-      const khSet={};
-      allOrders.forEach(o => {
-        if(o.isoGiao >= todayISO && o.isoGiao <= endISO){
-          don++; kl+=o.khoiluong; sl+=o.soluong;
-          khSet[o.khachhang]=1;
-        }
-      });
-
-      const isUrgent = days <= 3 && don > 0;
-      html += `<div class="fc-card ${isUrgent?"highlight":""}" onclick="showForecastDetail(${days})" style="border-left-color:${colors[i]}">
-        <div class="fc-days" style="color:${colors[i]}">${days} ngay toi</div>
-        <div class="fc-val">${fmtNum(don)} <span style="font-size:14px;font-weight:400">don</span></div>
-        <div class="fc-sub">${fmtKg(kl)} kg &middot; ${Object.keys(khSet).length} KH</div>
-      </div>`;
-    });
-
-    document.getElementById("fcCards").innerHTML = html;
-  }catch(e){
-    document.getElementById("fcCards").innerHTML = '<div class="empty">Loi: '+e.message+'</div>';
+  try {
+    const json = await callAPI("deliveryByRange", {from, to});
+    renderTab2(json);
+  } catch(e){
+    document.getElementById("matrix2").innerHTML = '<div class="empty">Lỗi: '+e.message+'</div>';
   }
-  show("loadingGiao", false);
+  document.getElementById("load2").style.display = "none";
 }
 
-function showForecastDetail(days){
-  const now = new Date();
-  const todayISO = toISO(now);
-  const endDate = new Date(now.getTime() + days*86400000);
-  const endISO = toISO(endDate);
+function renderTab2(json){
+  const sm = json.summary || {};
+  const bn = json.byNganh || {};
+  const NGANHS = ["Nylon","Giấy","Khác"];
+  function ng(name){ return bn[name] || {don:0, kl:0, sl:0, soKH:0}; }
 
-  const items = allOrders.filter(o => o.isoGiao >= todayISO && o.isoGiao <= endISO)
-    .sort((a,b) => a.isoGiao.localeCompare(b.isoGiao));
+  // Hiển thị khoảng ngày
+  let period = "";
+  if(json.from && json.to) period = `<div style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:10px;">Từ ${fmtDate(json.from)} đến ${fmtDate(json.to)}</div>`;
 
-  document.getElementById("modalTitle").textContent = "Giao hang trong " + days + " ngay toi (" + items.length + " don)";
+  // Bảng ma trận 5 cột × 4 hàng
+  let html = period + `<div class="matrix-wrap"><table class="matrix">
+    <thead><tr><th>Ngành hàng</th><th>Số KH</th><th>Số đơn hàng</th><th>Số lượng</th><th>Khối lượng (kg)</th></tr></thead><tbody>`;
 
-  if(!items.length){
-    document.getElementById("modalBody").innerHTML = '<div class="empty">Khong co don hang nao.</div>';
-  } else {
-    // Group by date
-    const groups = {};
-    items.forEach(o => {
-      if(!groups[o.isoGiao]) groups[o.isoGiao]=[];
-      groups[o.isoGiao].push(o);
-    });
+  NGANHS.forEach(n => {
+    const d = ng(n);
+    html += `<tr><td class="row-label">${n}</td><td>${fmtNum(d.soKH)}</td><td>${fmtNum(d.don)}</td><td>${fmtNum(d.sl)}</td><td>${fmtKg(d.kl)}</td></tr>`;
+  });
 
-    let html = "";
-    Object.keys(groups).sort().forEach(dk => {
-      const list = groups[dk];
-      const totalKL = list.reduce((s,o)=>s+o.khoiluong,0);
-      html += `<div style="margin-bottom:12px;">
-        <div style="font-weight:700;font-size:14px;color:var(--teal);margin-bottom:6px;">${fmtDate(dk)} &mdash; ${list.length} don, ${fmtKg(totalKL)} kg</div>`;
-      list.forEach(o => {
-        html += `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
-          <div style="font-weight:600;">${o.khachhang||"(KH)"} &mdash; ${o.lsx||o.lsxct}</div>
-          <div style="color:var(--muted);">${o.mota||""} &middot; ${fmtKg(o.khoiluong)} kg &middot; ${o.nganhHang||""}</div>
-        </div>`;
-      });
-      html += "</div>";
-    });
-    document.getElementById("modalBody").innerHTML = html;
-  }
+  // Hàng tổng
+  html += `<tr class="row-total"><td class="row-label">Tổng cộng</td><td><b>${fmtNum(sm.soKH)}</b></td><td><b>${fmtNum(sm.don)}</b></td><td><b>${fmtNum(sm.sl)}</b></td><td><b>${fmtKg(sm.kl)}</b></td></tr>`;
+  html += `</tbody></table></div>`;
 
-  document.getElementById("modalOverlay").classList.add("open");
+  if(!sm.don) html += '<div class="empty">Không có đơn hàng nào trong khoảng thời gian này.</div>';
+
+  document.getElementById("matrix2").innerHTML = html;
 }
-
-function closeModal(){
-  document.getElementById("modalOverlay").classList.remove("open");
-}
-
-/* ═══ HELPERS ═══ */
-function show(id, v){ document.getElementById(id).style.display = v ? "block" : "none"; }
 
 /* ═══ INIT ═══ */
 window.addEventListener("DOMContentLoaded", () => {
-  // Check URL param ?tab=giaohang
   const params = new URLSearchParams(location.search);
   const tab = params.get("tab");
   if(tab === "giaohang"){
     switchTab("giaohang");
   } else {
-    // Default: tháng này
-    quickFilter("month");
+    quick1("month");
   }
 });
 </script>
