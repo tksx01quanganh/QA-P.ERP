@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0f766e" />
 <link rel="manifest" href="manifest.json" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<title>Dashboard SX — QA-P.ERP</title>
+<title>Dashboard Sản xuất — QA-P.ERP</title>
 <style>
 :root{
   --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
@@ -22,14 +22,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .topbar .ttl{font-weight:700;font-size:16px;display:flex;align-items:center;gap:6px;}
 .icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
 
-/* ── tab bar ── */
 .tab-bar{display:flex;background:#fff;border-bottom:2px solid var(--border);position:sticky;top:48px;z-index:9;}
 .tab-btn{flex:1;padding:12px 8px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);border:0;background:none;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;}
 .tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);}
 .tab-content{display:none;padding:12px;}
 .tab-content.active{display:block;}
 
-/* ── filter ── */
 .filter-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
 .filter-bar input[type="date"]{flex:1;min-width:120px;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:15px;}
 .btn-filter{padding:10px 16px;border:0;border-radius:10px;font-size:14px;font-weight:700;color:#fff;background:var(--teal);cursor:pointer;}
@@ -37,7 +35,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .quick-btn{padding:6px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;background:#fff;color:var(--txt);font-weight:500;}
 .quick-btn.active{background:var(--teal);color:#fff;border-color:var(--teal);}
 
-/* ── summary cards ── */
 .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
 .card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
 .card .label{font-size:12px;color:var(--muted);margin-bottom:4px;}
@@ -49,7 +46,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .card.amber .val{color:var(--amber);}
 .card.red .val{color:var(--red);}
 
-/* ── team cards ── */
 .team-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
 .team-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:4px solid var(--teal);cursor:pointer;transition:.15s;}
 .team-card:active{transform:scale(.98);}
@@ -64,7 +60,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .tc-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
 .team-card.open .tc-detail{display:block;}
 
-/* ── day table ── */
 .day-table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-top:14px;}
 .day-table th{background:var(--teal);color:#fff;padding:10px 8px;font-size:12px;text-align:center;}
 .day-table td{padding:8px;font-size:13px;text-align:center;border-bottom:1px solid var(--border);}
@@ -75,70 +70,72 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:40px;color:var(--muted);}
-
-/* ── BTP detail ── */
-.btp-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
-.btp-row:last-child{border:0;}
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="ttl">Dashboard San xuat</div>
+  <div class="ttl">📊 Dashboard Sản xuất</div>
   <button class="icon-btn" onclick="location.href='index.html'">Menu</button>
 </div>
 
 <div class="tab-bar">
-  <button class="tab-btn active" onclick="switchTab('tp')">Thanh pham (TP)</button>
-  <button class="tab-btn" onclick="switchTab('btp')">Ban TP Thoi/In</button>
+  <button class="tab-btn active" onclick="switchTab('tp')">Thành phẩm (TP)</button>
+  <button class="tab-btn" onclick="switchTab('btp')">Bán TP Thổi/In</button>
 </div>
 
 <!-- TAB 1: THÀNH PHẨM -->
 <div id="tab-tp" class="tab-content active">
   <div class="quick-btns" id="quickBtnsTP">
-    <button class="quick-btn" onclick="quickTP('today')">Hom nay</button>
-    <button class="quick-btn active" onclick="quickTP('week')">Tuan nay</button>
-    <button class="quick-btn" onclick="quickTP('month')">Thang nay</button>
+    <button class="quick-btn" onclick="quickTP('today')">Hôm nay</button>
+    <button class="quick-btn active" onclick="quickTP('week')">Tuần này</button>
+    <button class="quick-btn" onclick="quickTP('month')">Tháng này</button>
   </div>
   <div class="filter-bar">
     <input type="date" id="tpFrom" />
     <input type="date" id="tpTo" />
-    <button class="btn-filter" onclick="loadTP()">Loc</button>
+    <button class="btn-filter" onclick="loadTP()">Lọc</button>
   </div>
   <div id="tpSummary" class="cards"></div>
   <div id="tpTeams" class="team-grid"></div>
   <div style="overflow-x:auto;"><table class="day-table" id="tpDayTable" style="display:none;">
-    <thead><tr><th>Ngay</th><th>So lan</th><th>SL</th><th>KL (kg)</th></tr></thead>
+    <thead><tr><th>Ngày</th><th>Số lần</th><th>Số lượng</th><th>Khối lượng (kg)</th></tr></thead>
     <tbody id="tpDayBody"></tbody>
   </table></div>
-  <div id="loadTP" class="loading" style="display:none;"><div class="spinner"></div>Dang tai...</div>
+  <div id="loadTP" class="loading" style="display:none;"><div class="spinner"></div>Đang tải...</div>
 </div>
 
 <!-- TAB 2: BTP THỔI/IN -->
 <div id="tab-btp" class="tab-content">
   <div class="quick-btns" id="quickBtnsBTP">
-    <button class="quick-btn" onclick="quickBTP('today')">Hom nay</button>
-    <button class="quick-btn active" onclick="quickBTP('week')">Tuan nay</button>
-    <button class="quick-btn" onclick="quickBTP('month')">Thang nay</button>
+    <button class="quick-btn" onclick="quickBTP('today')">Hôm nay</button>
+    <button class="quick-btn active" onclick="quickBTP('week')">Tuần này</button>
+    <button class="quick-btn" onclick="quickBTP('month')">Tháng này</button>
   </div>
   <div class="filter-bar">
     <input type="date" id="btpFrom" />
     <input type="date" id="btpTo" />
-    <button class="btn-filter" onclick="loadBTP()">Loc</button>
+    <button class="btn-filter" onclick="loadBTP()">Lọc</button>
   </div>
   <div id="btpSummary" class="cards"></div>
   <div id="btpTeams" class="team-grid"></div>
-  <div id="loadBTP" class="loading" style="display:none;"><div class="spinner"></div>Dang tai...</div>
+  <div id="loadBTP" class="loading" style="display:none;"><div class="spinner"></div>Đang tải...</div>
 </div>
 
 <script>
 const CONFIG = {
-  CENTRAL_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
-  TKSX_URL: "https://script.google.com/macros/s/AKfycbztgdaMXNFinyvZWXeO18tGHFFUKXW6V0XvvbWNR71L311WnsbVVWDreYSuLsdpZnrsiA/exec"
+  /* Code.gs — routes tksx* actions, hỗ trợ JSONP callback qua reply_() */
+  CENTRAL_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec"
 };
 
-// ── WS name mapping ──
-const WS_NAMES = {CAT:"To Cat", TCO:"To Thu cong", GTB:"To Giay/Thung/Bia", THO:"To Thoi", INT:"To In", KHAC:"Khac"};
+const WS_NAMES = {
+  CAT: "Tổ Cắt",
+  TCO: "Tổ Thủ công",
+  GTB: "Tổ Giấy/Thùng/Bìa",
+  THO: "Tổ Thổi",
+  INT: "Tổ In",
+  KHAC: "Khác"
+};
 
 function toISO(d){ return d.toISOString().slice(0,10); }
 function fmtNum(n){ return n.toLocaleString("vi-VN"); }
@@ -189,7 +186,21 @@ function quickBTP(p){
   loadBTP();
 }
 
-/* ═══ TP — THÀNH PHẨM (teamDaily from Code.gs) ═══ */
+/* ═══ JSONP helper ═══ */
+function jsonp(url, timeout){
+  return new Promise((resolve,reject)=>{
+    const cb="__dsx_"+Date.now()+"_"+Math.random().toString(36).slice(2,6);
+    const s=document.createElement("script");
+    const timer=setTimeout(()=>{cleanup();reject(new Error("Hết thời gian chờ"))},timeout||15000);
+    function cleanup(){clearTimeout(timer);delete window[cb];if(s.parentNode)s.remove();}
+    window[cb]=function(d){cleanup();resolve(d);};
+    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb;
+    s.onerror=function(){cleanup();reject(new Error("Lỗi kết nối JSONP"));};
+    document.head.appendChild(s);
+  });
+}
+
+/* ═══ TP — THÀNH PHẨM (teamDaily từ Code.gs) ═══ */
 async function loadTP(){
   const from=document.getElementById("tpFrom").value;
   const to=document.getElementById("tpTo").value;
@@ -200,18 +211,17 @@ async function loadTP(){
     const url=CONFIG.CENTRAL_URL+"?action=teamDaily&from="+from+"&to="+to+"&t="+Date.now();
     const res=await fetch(url);
     const json=await res.json();
-    if(json.result!=="ok") throw new Error(json.error||"Loi");
+    if(json.result!=="ok") throw new Error(json.error||"Lỗi");
     renderTP(json.days, from, to);
   }catch(e){
-    document.getElementById("tpSummary").innerHTML='<div class="empty">Loi: '+e.message+'</div>';
+    document.getElementById("tpSummary").innerHTML='<div class="empty">Lỗi: '+e.message+'</div>';
   }
   document.getElementById("loadTP").style.display="none";
 }
 
 function renderTP(days, from, to){
-  // Aggregate across all days
   let tongSL=0, tongKL=0, tongRows=0;
-  const teamAgg={}; // ws → {sl, kg, rows, lsxSet, maySet}
+  const teamAgg={};
 
   days.forEach(d => {
     tongSL+=d.sl; tongKL+=d.kg; tongRows+=d.rows;
@@ -219,39 +229,33 @@ function renderTP(days, from, to){
       if(!teamAgg[t.ws]) teamAgg[t.ws]={sl:0,kg:0,rows:0,lsxSet:new Set(),maySet:new Set()};
       const a=teamAgg[t.ws];
       a.sl+=t.sl; a.kg+=t.kg; a.rows+=t.rows;
-      // Count unique LSX and machines from daily data
       if(t.may) t.may.forEach(m => {
         a.maySet.add(m.may);
         if(m.lsx) m.lsx.forEach(l => a.lsxSet.add(l.lsx));
       });
-      // Fallback: use lsxCount
       if(t.lsxCount && !t.may) for(let x=0;x<t.lsxCount;x++) a.lsxSet.add("_"+x);
     });
   });
 
-  // All unique machines
   let allMay = new Set();
   for(const ws in teamAgg) teamAgg[ws].maySet.forEach(m=>allMay.add(m));
 
-  // Summary cards
   document.getElementById("tpSummary").innerHTML = `
-    <div class="card teal"><div class="label">Tong lan ghi</div><div class="val">${fmtNum(tongRows)}</div><div class="sub">lan</div></div>
-    <div class="card blue"><div class="label">Tong KL</div><div class="val">${fmtKg(tongKL)}</div><div class="sub">kg</div></div>
-    <div class="card green"><div class="label">Tong SL</div><div class="val">${fmtNum(Math.round(tongSL))}</div><div class="sub">cai</div></div>
-    <div class="card amber"><div class="label">So may chay</div><div class="val">${allMay.size}</div><div class="sub">may</div></div>
+    <div class="card teal"><div class="label">Tổng lần ghi</div><div class="val">${fmtNum(tongRows)}</div><div class="sub">lần</div></div>
+    <div class="card blue"><div class="label">Tổng khối lượng</div><div class="val">${fmtKg(tongKL)}</div><div class="sub">kg</div></div>
+    <div class="card green"><div class="label">Tổng số lượng</div><div class="val">${fmtNum(Math.round(tongSL))}</div><div class="sub">cái</div></div>
+    <div class="card amber"><div class="label">Số máy chạy</div><div class="val">${allMay.size}</div><div class="sub">máy</div></div>
   `;
 
-  // Team cards
   const wsOrder = Object.keys(teamAgg).sort();
+  const colors = {CAT:"var(--green)",TCO:"var(--blue)",GTB:"var(--purple)",THO:"var(--amber)",INT:"var(--red)"};
   let teamsHTML = "";
   wsOrder.forEach(ws => {
     const a = teamAgg[ws];
     const name = WS_NAMES[ws] || ws;
-    const colors = {CAT:"var(--green)",TCO:"var(--blue)",GTB:"var(--purple)",THO:"var(--amber)",INT:"var(--red)"};
     const color = colors[ws] || "var(--teal)";
 
-    // Build detail: daily breakdown for this team
-    let detailHTML = '<table class="day-table" style="margin:0;"><thead><tr><th>Ngay</th><th>Lan</th><th>SL</th><th>KL</th><th>May</th></tr></thead><tbody>';
+    let detailHTML = '<table class="day-table" style="margin:0;"><thead><tr><th>Ngày</th><th>Lần</th><th>Số lượng</th><th>Khối lượng</th><th>Máy</th></tr></thead><tbody>';
     days.forEach(d => {
       const t = d.to.find(x=>x.ws===ws);
       if(!t) return;
@@ -264,16 +268,15 @@ function renderTP(days, from, to){
       <div class="tc-header"><div class="tc-name" style="color:${color}">${name}</div><div class="tc-arrow">&#9654;</div></div>
       <div class="tc-stats">
         <div class="tc-stat"><div class="ts-val">${a.lsxSet.size}</div><div class="ts-label">LSX</div></div>
-        <div class="tc-stat"><div class="ts-val">${fmtNum(Math.round(a.sl))}</div><div class="ts-label">SL</div></div>
-        <div class="tc-stat"><div class="ts-val">${fmtKg(a.kg)}</div><div class="ts-label">KL(kg)</div></div>
-        <div class="tc-stat"><div class="ts-val">${a.maySet.size}</div><div class="ts-label">May</div></div>
+        <div class="tc-stat"><div class="ts-val">${fmtNum(Math.round(a.sl))}</div><div class="ts-label">Số lượng</div></div>
+        <div class="tc-stat"><div class="ts-val">${fmtKg(a.kg)}</div><div class="ts-label">KL (kg)</div></div>
+        <div class="tc-stat"><div class="ts-val">${a.maySet.size}</div><div class="ts-label">Máy</div></div>
       </div>
       <div class="tc-detail">${detailHTML}</div>
     </div>`;
   });
   document.getElementById("tpTeams").innerHTML = teamsHTML;
 
-  // Day summary table
   if(days.length){
     document.getElementById("tpDayTable").style.display="table";
     let rowsHTML="", tR=0, tS=0, tK=0;
@@ -281,52 +284,41 @@ function renderTP(days, from, to){
       tR+=d.rows; tS+=d.sl; tK+=d.kg;
       rowsHTML+=`<tr><td>${fmtDate(d.ngay)}</td><td>${d.rows}</td><td>${fmtNum(Math.round(d.sl))}</td><td>${fmtKg(d.kg)}</td></tr>`;
     });
-    rowsHTML+=`<tr class="tfoot"><td>Tong</td><td>${tR}</td><td>${fmtNum(Math.round(tS))}</td><td>${fmtKg(tK)}</td></tr>`;
+    rowsHTML+=`<tr class="tfoot"><td>Tổng</td><td>${tR}</td><td>${fmtNum(Math.round(tS))}</td><td>${fmtKg(tK)}</td></tr>`;
     document.getElementById("tpDayBody").innerHTML=rowsHTML;
   } else {
     document.getElementById("tpDayTable").style.display="none";
   }
 }
 
-/* ═══ BTP — BÁN THÀNH PHẨM THỔI/IN (tksxDaily from Code_ThoiIn.gs) ═══ */
-function jsonp(url, timeout){
-  return new Promise((resolve,reject)=>{
-    const cb="__btp_"+Date.now()+"_"+Math.random().toString(36).slice(2,6);
-    const s=document.createElement("script");
-    const timer=setTimeout(()=>{cleanup();reject(new Error("Timeout"))},timeout||15000);
-    function cleanup(){clearTimeout(timer);delete window[cb];if(s.parentNode)s.remove();}
-    window[cb]=function(d){cleanup();resolve(d);};
-    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb;
-    s.onerror=function(){cleanup();reject(new Error("JSONP error"));};
-    document.head.appendChild(s);
-  });
-}
-
+/* ═══ BTP — BÁN THÀNH PHẨM THỔI/IN ═══ */
+/* FIX: Dùng CENTRAL_URL thay vì TKSX_URL riêng.
+   Code.gs routes tksx* actions → tksxDoGet_() và hỗ trợ JSONP callback qua reply_(). */
 async function loadBTP(){
   const from=document.getElementById("btpFrom").value;
   const to=document.getElementById("btpTo").value;
   if(!from||!to) return;
 
   document.getElementById("loadBTP").style.display="block";
+  document.getElementById("btpSummary").innerHTML="";
+  document.getElementById("btpTeams").innerHTML="";
   try{
-    const json = await jsonp(CONFIG.TKSX_URL+"?action=tksxDaily&from="+from+"&to="+to, 30000);
-    if(json.result!=="ok") throw new Error(json.error||"Loi");
+    const json = await jsonp(CONFIG.CENTRAL_URL+"?action=tksxDaily&from="+from+"&to="+to+"&t="+Date.now(), 30000);
+    if(json.result!=="ok") throw new Error(json.error||"Lỗi");
     renderBTP(json);
   }catch(e){
-    document.getElementById("btpSummary").innerHTML='<div class="empty">Loi: '+e.message+'</div>';
+    document.getElementById("btpSummary").innerHTML='<div class="empty">Lỗi: '+e.message+'</div>';
   }
   document.getElementById("loadBTP").style.display="none";
 }
 
 function renderBTP(json){
-  const sx = json.sx || [];     // [{loai, ngay, may, tong, soLan}]
-  const sxd = json.sxd || [];   // detail rows
+  const sxd = json.sxd || [];
   const phe = json.phe || [];
 
-  // Aggregate by loai (Thổi / In)
-  const loaiAgg = {}; // loai → {tong, soLan, maySet, lsxSet, byDay:{ngay→{tong,soLan}}}
+  const loaiAgg = {};
   sxd.forEach(r => {
-    const loai = r.loai || "Khac";
+    const loai = r.loai || "Khác";
     if(!loaiAgg[loai]) loaiAgg[loai]={tong:0,soLan:0,maySet:new Set(),lsxSet:new Set(),byDay:{}};
     const a = loaiAgg[loai];
     a.tong += r.kq;
@@ -338,7 +330,6 @@ function renderBTP(json){
     a.byDay[r.ngay].soLan++;
   });
 
-  // Total
   let tongKG=0, tongLan=0, allMay=new Set(), allLsx=new Set();
   for(const l in loaiAgg){
     tongKG+=loaiAgg[l].tong; tongLan+=loaiAgg[l].soLan;
@@ -346,28 +337,24 @@ function renderBTP(json){
     loaiAgg[l].lsxSet.forEach(x=>allLsx.add(x));
   }
 
-  // Phế
   let tongPheTron=0, tongPheMau=0;
   phe.forEach(p=>{tongPheTron+=p.tron||0; tongPheMau+=p.mau||0;});
 
-  // Summary
   document.getElementById("btpSummary").innerHTML = `
-    <div class="card teal"><div class="label">Tong SX</div><div class="val">${fmtKg(tongKG)}</div><div class="sub">kg (${tongLan} lan)</div></div>
-    <div class="card blue"><div class="label">So LSX</div><div class="val">${allLsx.size}</div><div class="sub">lenh SX</div></div>
-    <div class="card green"><div class="label">So may</div><div class="val">${allMay.size}</div><div class="sub">may chay</div></div>
-    <div class="card red"><div class="label">Phe</div><div class="val">${fmtKg(tongPheTron+tongPheMau)}</div><div class="sub">tron: ${fmtKg(tongPheTron)}, mau: ${fmtKg(tongPheMau)}</div></div>
+    <div class="card teal"><div class="label">Tổng sản xuất</div><div class="val">${fmtKg(tongKG)}</div><div class="sub">kg (${tongLan} lần)</div></div>
+    <div class="card blue"><div class="label">Số LSX</div><div class="val">${allLsx.size}</div><div class="sub">lệnh SX</div></div>
+    <div class="card green"><div class="label">Số máy</div><div class="val">${allMay.size}</div><div class="sub">máy chạy</div></div>
+    <div class="card red"><div class="label">Phế</div><div class="val">${fmtKg(tongPheTron+tongPheMau)}</div><div class="sub">trộn: ${fmtKg(tongPheTron)}, màu: ${fmtKg(tongPheMau)}</div></div>
   `;
 
-  // Team cards (by loai)
-  const colors = {"Thoi":"var(--amber)","Thổi":"var(--amber)","In":"var(--blue)"};
+  const colors = {"Thổi":"var(--amber)","In":"var(--blue)"};
   let teamsHTML = "";
   for(const loai in loaiAgg){
     const a = loaiAgg[loai];
     const color = colors[loai] || "var(--teal)";
 
-    // Day detail
     const dayKeys = Object.keys(a.byDay).sort().reverse();
-    let detailHTML = '<table class="day-table" style="margin:0;"><thead><tr><th>Ngay</th><th>Lan</th><th>KL (kg)</th></tr></thead><tbody>';
+    let detailHTML = '<table class="day-table" style="margin:0;"><thead><tr><th>Ngày</th><th>Lần</th><th>KL (kg)</th></tr></thead><tbody>';
     dayKeys.forEach(dk => {
       const dv = a.byDay[dk];
       detailHTML += `<tr><td>${fmtDate(dk)}</td><td>${dv.soLan}</td><td>${fmtKg(dv.tong)}</td></tr>`;
@@ -378,9 +365,9 @@ function renderBTP(json){
       <div class="tc-header"><div class="tc-name" style="color:${color}">${loai}</div><div class="tc-arrow">&#9654;</div></div>
       <div class="tc-stats">
         <div class="tc-stat"><div class="ts-val">${a.lsxSet.size}</div><div class="ts-label">LSX</div></div>
-        <div class="tc-stat"><div class="ts-val">${fmtKg(a.tong)}</div><div class="ts-label">KL(kg)</div></div>
-        <div class="tc-stat"><div class="ts-val">${a.soLan}</div><div class="ts-label">Lan SX</div></div>
-        <div class="tc-stat"><div class="ts-val">${a.maySet.size}</div><div class="ts-label">May</div></div>
+        <div class="tc-stat"><div class="ts-val">${fmtKg(a.tong)}</div><div class="ts-label">KL (kg)</div></div>
+        <div class="tc-stat"><div class="ts-val">${a.soLan}</div><div class="ts-label">Lần SX</div></div>
+        <div class="tc-stat"><div class="ts-val">${a.maySet.size}</div><div class="ts-label">Máy</div></div>
       </div>
       <div class="tc-detail">${detailHTML}</div>
     </div>`;
