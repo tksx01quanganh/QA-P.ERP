@@ -63,8 +63,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .day-table tr:last-child td{border:0;}
 .day-table .tfoot td{background:#f8fafc;font-weight:700;}
 
-.loading{text-align:center;padding:40px;color:var(--muted);font-size:15px;}
-.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px;}
+.loading-overlay{position:relative;min-height:120px;}
+.loading-overlay::after{content:"";position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(241,245,249,.7);z-index:5;}
+.load-box{text-align:center;padding:40px;color:var(--muted);font-size:15px;}
+.spinner{width:36px;height:36px;border:3.5px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 10px;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:40px;color:var(--muted);}
 </style>
@@ -85,20 +87,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <!-- ═══ TAB 1: NHẬN ĐƠN HÀNG ═══ -->
 <div id="tab-nhandon" class="tab-content active">
   <div class="quick-btns" id="quickBtns1">
+    <button class="quick-btn" onclick="quick1('yesterday')">Hôm qua</button>
     <button class="quick-btn" onclick="quick1('today')">Hôm nay</button>
     <button class="quick-btn" onclick="quick1('week')">Tuần này</button>
     <button class="quick-btn active" onclick="quick1('month')">Tháng này</button>
-    <button class="quick-btn" onclick="quick1('quarter')">Quý này</button>
   </div>
   <div class="filter-bar">
     <input type="date" id="from1" />
     <input type="date" id="to1" />
     <button class="btn-filter" onclick="loadTab1()">Lọc</button>
   </div>
-  <div id="matrix1"></div>
-  <div id="topKH1"></div>
-  <div id="dayWrap1" style="overflow-x:auto;"></div>
-  <div id="load1" class="loading" style="display:none;"><div class="spinner"></div>Đang tải dữ liệu...</div>
+  <div id="tab1Content">
+    <div id="matrix1"></div>
+    <div id="topKH1"></div>
+    <div id="dayWrap1" style="overflow-x:auto;"></div>
+  </div>
+  <div id="load1" class="load-box" style="display:none;"><div class="spinner"></div>Đang tải dữ liệu...</div>
 </div>
 
 <!-- ═══ TAB 2: SẮP GIAO HÀNG ═══ -->
@@ -114,8 +118,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <input type="date" id="to2" />
     <button class="btn-filter" onclick="loadTab2()">Lọc</button>
   </div>
-  <div id="matrix2"></div>
-  <div id="load2" class="loading" style="display:none;"><div class="spinner"></div>Đang tải dữ liệu...</div>
+  <div id="tab2Content">
+    <div id="matrix2"></div>
+  </div>
+  <div id="load2" class="load-box" style="display:none;"><div class="spinner"></div>Đang tải dữ liệu...</div>
 </div>
 
 <script>
@@ -142,10 +148,10 @@ function switchTab(tab){
 function getRange(period){
   const now=new Date(); let from,to;
   switch(period){
+    case "yesterday": { const y=new Date(now); y.setDate(y.getDate()-1); from=to=toISO(y); break; }
     case "today": from=to=toISO(now); break;
     case "week": { const d=now.getDay()||7; const m=new Date(now); m.setDate(now.getDate()-d+1); from=toISO(m); to=toISO(now); break; }
     case "month": from=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01"; to=toISO(now); break;
-    case "quarter": { const q=Math.floor(now.getMonth()/3); from=now.getFullYear()+"-"+String(q*3+1).padStart(2,"0")+"-01"; to=toISO(now); break; }
     case "3d":  from=toISO(now); to=toISO(new Date(now.getTime()+3*864e5)); break;
     case "7d":  from=toISO(now); to=toISO(new Date(now.getTime()+7*864e5)); break;
     case "30d": from=toISO(now); to=toISO(new Date(now.getTime()+30*864e5)); break;
@@ -170,6 +176,12 @@ function quick2(p){
   loadTab2();
 }
 
+/* ═══ localStorage stale-while-revalidate ═══ */
+const LS_PFX = "bh_";
+const LS_TTL = 30*60*1000; // 30 phút
+function lsGet(k){ try{ var r=localStorage.getItem(LS_PFX+k); if(!r) return null; var o=JSON.parse(r); if(Date.now()-o.ts>LS_TTL){localStorage.removeItem(LS_PFX+k);return null;} return o.d; }catch(e){return null;} }
+function lsSet(k,d){ try{localStorage.setItem(LS_PFX+k,JSON.stringify({d:d,ts:Date.now()}));}catch(e){} }
+
 /* ═══ JSONP HELPER — nhanh hơn fetch (tránh redirect 302 của GAS) ═══ */
 function jsonp(url, timeout){
   return new Promise((resolve,reject)=>{
@@ -186,7 +198,7 @@ function jsonp(url, timeout){
 async function callAPI(action, params){
   let url = CONFIG.BAN_HANG_URL + "?action=" + action + "&t=" + Date.now();
   for(const k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
-  const json = await jsonp(url, 25000);
+  const json = await jsonp(url, 45000);
   if(json.result !== "ok") throw new Error(json.error || "Lỗi không xác định");
   return json;
 }
@@ -197,17 +209,29 @@ async function loadTab1(){
   const to = document.getElementById("to1").value;
   if(!from || !to) return;
 
-  document.getElementById("load1").style.display = "block";
-  document.getElementById("matrix1").innerHTML = "";
-  document.getElementById("topKH1").innerHTML = "";
-  document.getElementById("dayWrap1").innerHTML = "";
+  const ck = "sd_"+from+"_"+to;
+  const cached = lsGet(ck);
+
+  // Hiện dữ liệu cũ ngay lập tức
+  if(cached){ renderTab1(cached); }
+
+  if(!cached){
+    document.getElementById("tab1Content").classList.add("loading-overlay");
+    document.getElementById("load1").style.display = "block";
+  }
 
   try {
     const json = await callAPI("salesDashboard", {from, to});
+    lsSet(ck, json);
     renderTab1(json);
   } catch(e){
-    document.getElementById("matrix1").innerHTML = '<div class="empty">Lỗi: '+e.message+'</div>';
+    if(!cached){
+      document.getElementById("matrix1").innerHTML = '<div class="empty">Lỗi: '+e.message+'</div>';
+      document.getElementById("topKH1").innerHTML = "";
+      document.getElementById("dayWrap1").innerHTML = "";
+    }
   }
+  document.getElementById("tab1Content").classList.remove("loading-overlay");
   document.getElementById("load1").style.display = "none";
 }
 
@@ -287,15 +311,26 @@ async function loadTab2(){
   const to = document.getElementById("to2").value;
   if(!from || !to) return;
 
-  document.getElementById("load2").style.display = "block";
-  document.getElementById("matrix2").innerHTML = "";
+  const ck = "dr_"+from+"_"+to;
+  const cached = lsGet(ck);
+
+  if(cached){ renderTab2(cached); }
+
+  if(!cached){
+    document.getElementById("tab2Content").classList.add("loading-overlay");
+    document.getElementById("load2").style.display = "block";
+  }
 
   try {
     const json = await callAPI("deliveryByRange", {from, to});
+    lsSet(ck, json);
     renderTab2(json);
   } catch(e){
-    document.getElementById("matrix2").innerHTML = '<div class="empty">Lỗi: '+e.message+'</div>';
+    if(!cached){
+      document.getElementById("matrix2").innerHTML = '<div class="empty">Lỗi: '+e.message+'</div>';
+    }
   }
+  document.getElementById("tab2Content").classList.remove("loading-overlay");
   document.getElementById("load2").style.display = "none";
 }
 
@@ -329,6 +364,9 @@ function renderTab2(json){
 
 /* ═══ INIT ═══ */
 window.addEventListener("DOMContentLoaded", () => {
+  // Warm-up: đánh thức GAS (cold start) song song với load dữ liệu
+  jsonp(CONFIG.BAN_HANG_URL+"?action=version&t="+Date.now(),10000).catch(()=>{});
+
   const params = new URLSearchParams(location.search);
   const tab = params.get("tab");
   if(tab === "giaohang"){
