@@ -66,8 +66,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .day-table tr:last-child td{border:0;}
 .day-table .tfoot td{background:#f8fafc;font-weight:700;}
 
-.loading{text-align:center;padding:40px;color:var(--muted);font-size:15px;}
-.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px;}
+.loading-overlay{position:relative;min-height:120px;}
+.loading-overlay::after{content:"";position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(241,245,249,.7);z-index:5;}
+.load-box{text-align:center;padding:40px;color:var(--muted);font-size:15px;}
+.spinner{width:36px;height:36px;border:3.5px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 10px;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:40px;color:var(--muted);}
 </style>
@@ -88,6 +90,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <!-- TAB 1: THÀNH PHẨM -->
 <div id="tab-tp" class="tab-content active">
   <div class="quick-btns" id="quickBtnsTP">
+    <button class="quick-btn" onclick="quickTP('yesterday')">Hôm qua</button>
     <button class="quick-btn" onclick="quickTP('today')">Hôm nay</button>
     <button class="quick-btn active" onclick="quickTP('week')">Tuần này</button>
     <button class="quick-btn" onclick="quickTP('month')">Tháng này</button>
@@ -97,18 +100,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <input type="date" id="tpTo" />
     <button class="btn-filter" onclick="loadTP()">Lọc</button>
   </div>
-  <div id="tpSummary" class="cards"></div>
-  <div id="tpTeams" class="team-grid"></div>
-  <div style="overflow-x:auto;"><table class="day-table" id="tpDayTable" style="display:none;">
-    <thead><tr><th>Ngày</th><th>Số lần</th><th>Số lượng</th><th>Khối lượng (kg)</th></tr></thead>
-    <tbody id="tpDayBody"></tbody>
-  </table></div>
-  <div id="loadTP" class="loading" style="display:none;"><div class="spinner"></div>Đang tải...</div>
+  <div id="tpContent">
+    <div id="tpSummary" class="cards"></div>
+    <div id="tpTeams" class="team-grid"></div>
+    <div style="overflow-x:auto;"><table class="day-table" id="tpDayTable" style="display:none;">
+      <thead><tr><th>Ngày</th><th>Số lần</th><th>Số lượng</th><th>Khối lượng (kg)</th></tr></thead>
+      <tbody id="tpDayBody"></tbody>
+    </table></div>
+  </div>
+  <div id="loadTP" class="load-box" style="display:none;"><div class="spinner"></div>Đang tải dữ liệu...</div>
 </div>
 
 <!-- TAB 2: BTP THỔI/IN -->
 <div id="tab-btp" class="tab-content">
   <div class="quick-btns" id="quickBtnsBTP">
+    <button class="quick-btn" onclick="quickBTP('yesterday')">Hôm qua</button>
     <button class="quick-btn" onclick="quickBTP('today')">Hôm nay</button>
     <button class="quick-btn active" onclick="quickBTP('week')">Tuần này</button>
     <button class="quick-btn" onclick="quickBTP('month')">Tháng này</button>
@@ -118,9 +124,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <input type="date" id="btpTo" />
     <button class="btn-filter" onclick="loadBTP()">Lọc</button>
   </div>
-  <div id="btpSummary" class="cards"></div>
-  <div id="btpTeams" class="team-grid"></div>
-  <div id="loadBTP" class="loading" style="display:none;"><div class="spinner"></div>Đang tải...</div>
+  <div id="btpContent">
+    <div id="btpSummary" class="cards"></div>
+    <div id="btpTeams" class="team-grid"></div>
+  </div>
+  <div id="loadBTP" class="load-box" style="display:none;"><div class="spinner"></div>Đang tải dữ liệu...</div>
 </div>
 
 <script>
@@ -157,6 +165,7 @@ function getRange(period){
   const now = new Date();
   let from, to;
   switch(period){
+    case "yesterday": { const y=new Date(now); y.setDate(y.getDate()-1); from=to=toISO(y); break; }
     case "today": from=to=toISO(now); break;
     case "week": {
       const d=now.getDay()||7;
@@ -187,6 +196,12 @@ function quickBTP(p){
   loadBTP();
 }
 
+/* ═══ localStorage stale-while-revalidate ═══ */
+const LS_PFX = "dsx_";
+const LS_TTL = 30*60*1000; // 30 phút
+function lsGet(k){ try{ var r=localStorage.getItem(LS_PFX+k); if(!r) return null; var o=JSON.parse(r); if(Date.now()-o.ts>LS_TTL){localStorage.removeItem(LS_PFX+k);return null;} return o.d; }catch(e){return null;} }
+function lsSet(k,d){ try{localStorage.setItem(LS_PFX+k,JSON.stringify({d:d,ts:Date.now()}));}catch(e){} }
+
 /* ═══ JSONP helper ═══ */
 function jsonp(url, timeout){
   return new Promise((resolve,reject)=>{
@@ -207,15 +222,32 @@ async function loadTP(){
   const to=document.getElementById("tpTo").value;
   if(!from||!to) return;
 
-  document.getElementById("loadTP").style.display="block";
+  const ck="tp_"+from+"_"+to;
+  const cached=lsGet(ck);
+
+  // Hiện dữ liệu cũ ngay lập tức (nếu có)
+  if(cached){ renderTP(cached.days, from, to); }
+
+  // Loading overlay (nhẹ hơn nếu đã có cache)
+  if(!cached){
+    document.getElementById("tpContent").classList.add("loading-overlay");
+    document.getElementById("loadTP").style.display="block";
+  }
+
   try{
     const url=CONFIG.CENTRAL_URL+"?action=teamDaily&from="+from+"&to="+to+"&t="+Date.now();
-    const json=await jsonp(url, 25000);
+    const json=await jsonp(url, 45000);
     if(json.result!=="ok") throw new Error(json.error||"Lỗi");
+    lsSet(ck, json);
     renderTP(json.days, from, to);
   }catch(e){
-    document.getElementById("tpSummary").innerHTML='<div class="empty">Lỗi: '+e.message+'</div>';
+    if(!cached){
+      document.getElementById("tpSummary").innerHTML='<div class="empty">Lỗi: '+e.message+'</div>';
+      document.getElementById("tpTeams").innerHTML="";
+      document.getElementById("tpDayTable").style.display="none";
+    }
   }
+  document.getElementById("tpContent").classList.remove("loading-overlay");
   document.getElementById("loadTP").style.display="none";
 }
 
@@ -299,16 +331,28 @@ async function loadBTP(){
   const to=document.getElementById("btpTo").value;
   if(!from||!to) return;
 
-  document.getElementById("loadBTP").style.display="block";
-  document.getElementById("btpSummary").innerHTML="";
-  document.getElementById("btpTeams").innerHTML="";
+  const ck="btp_"+from+"_"+to;
+  const cached=lsGet(ck);
+
+  if(cached){ renderBTP(cached); }
+
+  if(!cached){
+    document.getElementById("btpContent").classList.add("loading-overlay");
+    document.getElementById("loadBTP").style.display="block";
+  }
+
   try{
-    const json = await jsonp(CONFIG.CENTRAL_URL+"?action=tksxDaily&from="+from+"&to="+to+"&t="+Date.now(), 30000);
+    const json = await jsonp(CONFIG.CENTRAL_URL+"?action=tksxDaily&from="+from+"&to="+to+"&t="+Date.now(), 45000);
     if(json.result!=="ok") throw new Error(json.error||"Lỗi");
+    lsSet(ck, json);
     renderBTP(json);
   }catch(e){
-    document.getElementById("btpSummary").innerHTML='<div class="empty">Lỗi: '+e.message+'</div>';
+    if(!cached){
+      document.getElementById("btpSummary").innerHTML='<div class="empty">Lỗi: '+e.message+'</div>';
+      document.getElementById("btpTeams").innerHTML="";
+    }
   }
+  document.getElementById("btpContent").classList.remove("loading-overlay");
   document.getElementById("loadBTP").style.display="none";
 }
 
@@ -377,6 +421,8 @@ function renderBTP(json){
 
 /* ═══ INIT ═══ */
 window.addEventListener("DOMContentLoaded", () => {
+  // Warm-up: đánh thức GAS (cold start) song song với load dữ liệu
+  jsonp(CONFIG.CENTRAL_URL+"?action=version&t="+Date.now(),10000).catch(()=>{});
   quickTP("week");
 });
 </script>
