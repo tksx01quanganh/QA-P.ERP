@@ -161,20 +161,29 @@ function switchTab(tab){
 }
 
 /* ═══ QUICK FILTERS ═══ */
-function getRange(period){
+/* Ngày SX tính theo ca: ca đêm 19h–7h tính vào ngày trước.
+   Nếu giờ hiện tại < 7h → ngày SX = hôm qua. */
+function sxToday(){
   const now = new Date();
+  if(now.getHours() < 7) now.setDate(now.getDate()-1);
+  return toISO(now);
+}
+
+function getRange(period){
+  const today = sxToday();
+  const td = new Date(today+"T12:00:00"); // parse an toàn (giữa ngày)
   let from, to;
   switch(period){
-    case "yesterday": { const y=new Date(now); y.setDate(y.getDate()-1); from=to=toISO(y); break; }
-    case "today": from=to=toISO(now); break;
+    case "yesterday": { const y=new Date(td); y.setDate(y.getDate()-1); from=to=toISO(y); break; }
+    case "today": from=to=today; break;
     case "week": {
-      const d=now.getDay()||7;
-      const m=new Date(now); m.setDate(now.getDate()-d+1);
-      from=toISO(m); to=toISO(now); break;
+      const d=td.getDay()||7;
+      const m=new Date(td); m.setDate(td.getDate()-d+1);
+      from=toISO(m); to=today; break;
     }
     case "month":
-      from=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
-      to=toISO(now); break;
+      from=today.slice(0,8)+"01";
+      to=today; break;
   }
   return {from, to};
 }
