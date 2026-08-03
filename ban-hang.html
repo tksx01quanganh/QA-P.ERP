@@ -126,7 +126,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
 <script>
 const CONFIG = {
-  BAN_HANG_URL: "https://script.google.com/macros/s/AKfycbyhCUKM79pBVfFt2JEKhyuA8vLT4gnSHiiApcRB5D4tdIraShM9ZaRSL-yd9oCMBGuVng/exec"
+  BAN_HANG_URL: "https://script.google.com/macros/s/AKfycbyhCUKM79pBVfFt2JEKhyuA8vLT4gnSHiiApcRB5D4tdIraShM9ZaRSL-yd9oCMBGuVng/exec",
+  // SỬA 03/08/2026: 45s không đủ. Khi cache máy chủ nguội, loadAllOrders_ phải
+  // đọc 24.592 x 27 = 664.000 ô — có thể mất 40-60 giây.
+  TIMEOUT_MS: 75000,
+  TIMEOUT_VERSION: 10000
 };
 
 /* ═══ UTILS ═══ */
@@ -195,12 +199,44 @@ function jsonp(url, timeout){
     document.head.appendChild(s);
   });
 }
+/**
+ * Gọi API, tự THỬ LẠI MỘT LẦN nếu lần đầu hết thời gian chờ.
+ * Thêm 03/08/2026.
+ *
+ * Vì sao thử lại lại có tác dụng: khi trình duyệt bỏ cuộc vì hết thời gian chờ,
+ * script trên máy chủ VẪN CHẠY TIẾP cho đến khi xong và ghi kết quả vào cache.
+ * Nên lần gọi thứ hai thường trúng cache và trả về sau 1-2 giây.
+ *
+ * Đây là lý do trước đây "bấm tải lại thì được" — nay tự làm thay người dùng.
+ */
 async function callAPI(action, params){
   let url = CONFIG.BAN_HANG_URL + "?action=" + action + "&t=" + Date.now();
   for(const k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
-  const json = await jsonp(url, 45000);
+
+  let json;
+  try {
+    json = await jsonp(url, CONFIG.TIMEOUT_MS);
+  } catch(e1){
+    if(String(e1.message).indexOf("Hết thời gian") === -1) throw e1;
+    // Lần đầu hết giờ — máy chủ vẫn đang tính và sẽ ghi cache. Chờ 3 giây rồi thử lại.
+    await new Promise(r => setTimeout(r, 3000));
+    const url2 = CONFIG.BAN_HANG_URL + "?action=" + action + "&t=" + Date.now() +
+                 Object.keys(params||{}).map(k => "&"+k+"="+encodeURIComponent(params[k])).join("");
+    json = await jsonp(url2, CONFIG.TIMEOUT_MS);
+  }
   if(json.result !== "ok") throw new Error(json.error || "Lỗi không xác định");
   return json;
+}
+
+/** Diễn giải lỗi thành câu người dùng hiểu được và biết phải làm gì. */
+function moTaLoi(e){
+  const m = String((e && e.message) || e || "");
+  if(m.indexOf("Hết thời gian") !== -1)
+    return "Máy chủ đang xử lý lâu hơn bình thường (đã thử lại 1 lần).<br>" +
+           "Chờ khoảng 1 phút rồi bấm lại — dữ liệu sẽ được nạp sẵn và hiện ngay.";
+  if(m.indexOf("kết nối") !== -1)
+    return "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.";
+  return "Lỗi: " + m;
 }
 
 /* ═══ TAB 1: NHẬN ĐƠN HÀNG — gọi salesDashboard ═══ */
@@ -226,7 +262,7 @@ async function loadTab1(){
     renderTab1(json);
   } catch(e){
     if(!cached){
-      document.getElementById("matrix1").innerHTML = '<div class="empty">Lỗi: '+e.message+'</div>';
+      document.getElementById("matrix1").innerHTML = '<div class="empty">'+moTaLoi(e)+'</div>';
       document.getElementById("topKH1").innerHTML = "";
       document.getElementById("dayWrap1").innerHTML = "";
     }
@@ -327,7 +363,7 @@ async function loadTab2(){
     renderTab2(json);
   } catch(e){
     if(!cached){
-      document.getElementById("matrix2").innerHTML = '<div class="empty">Lỗi: '+e.message+'</div>';
+      document.getElementById("matrix2").innerHTML = '<div class="empty">'+moTaLoi(e)+'</div>';
     }
   }
   document.getElementById("tab2Content").classList.remove("loading-overlay");
@@ -365,7 +401,7 @@ function renderTab2(json){
 /* ═══ INIT ═══ */
 window.addEventListener("DOMContentLoaded", () => {
   // Warm-up: đánh thức GAS (cold start) song song với load dữ liệu
-  jsonp(CONFIG.BAN_HANG_URL+"?action=version&t="+Date.now(),10000).catch(()=>{});
+  jsonp(CONFIG.BAN_HANG_URL+"?action=version&t="+Date.now(),CONFIG.TIMEOUT_VERSION).catch(()=>{});
 
   const params = new URLSearchParams(location.search);
   const tab = params.get("tab");
