@@ -38,6 +38,16 @@ body{background:var(--bg);color:var(--txt);}
 .chip.on{border-color:currentColor;box-shadow:0 1px 4px rgba(0,0,0,.12);}
 .chip.on::before{content:"\2713 ";font-weight:900;}
 
+/* nút Tìm (thêm 03/08/2026 — trước đây lọc tự động theo từng ký tự gõ) */
+.btn-row{display:flex;gap:8px;margin-top:8px;}
+.btn-find{flex:2;padding:11px;border:0;border-radius:10px;background:var(--teal);color:#fff;
+  font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn-find:active{transform:scale(.98);}
+.btn-clear-all{flex:1;padding:11px;border:2px solid var(--border);border-radius:10px;
+  background:var(--card);color:var(--muted);font-size:14px;font-weight:600;
+  font-family:inherit;cursor:pointer;}
+.btn-clear-all:active{transform:scale(.98);}
+
 /* status */
 .hint{padding:10px 14px;border-radius:10px;font-size:14px;text-align:center;margin:8px 12px;}
 .hint.info{background:#e0f2fe;color:#0369a1;}
@@ -147,12 +157,18 @@ body{background:var(--bg);color:var(--txt);}
 <div class="search-area">
   <div class="search-row" style="flex-direction:column;">
     <div class="search-wrap">
-      <input id="qKH" class="search-box" type="text" placeholder="Khách hàng..." oninput="debounceRender()" style="padding-right:32px;">
-      <button class="clear-btn" id="qKH_clr" onclick="document.getElementById('qKH').value='';this.classList.remove('show');render()">&times;</button>
+      <input id="qKH" class="search-box" type="text" placeholder="Khách hàng..."
+             oninput="toggleClear()" onkeydown="if(event.key==='Enter')doSearch()" style="padding-right:32px;">
+      <button class="clear-btn" id="qKH_clr" onclick="xoaO('qKH')">&times;</button>
     </div>
     <div class="search-wrap">
-      <input id="q" class="search-box" type="text" placeholder="LSX / Mã SP..." oninput="debounceRender()" style="padding-right:32px;">
-      <button class="clear-btn" id="q_clr" onclick="document.getElementById('q').value='';this.classList.remove('show');render()">&times;</button>
+      <input id="q" class="search-box" type="text" placeholder="LSX / Mã SP..."
+             oninput="toggleClear()" onkeydown="if(event.key==='Enter')doSearch()" style="padding-right:32px;">
+      <button class="clear-btn" id="q_clr" onclick="xoaO('q')">&times;</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-find" onclick="doSearch()">&#128269; Tìm</button>
+      <button class="btn-clear-all" onclick="xoaTatCa()">Xóa lọc</button>
     </div>
   </div>
 </div>
@@ -181,8 +197,13 @@ const CONFIG = {
   CENTRAL_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
   TKSX_URL: "https://script.google.com/macros/s/AKfycbztgdaMXNFinyvZWXeO18tGHFFUKXW6V0XvvbWNR71L311WnsbVVWDreYSuLsdpZnrsiA/exec",
   RENDER_LIMIT: 150,
-  CACHE_KEY: "tddh_cache_v2",
-  CACHE_TTL: 5 * 60 * 1000
+  CACHE_KEY: "tddh_cache_v3",     // đổi v2→v3: cấu trúc đệm đã thay đổi (03/08/2026)
+  CACHE_TTL: 5 * 60 * 1000,
+  // Giới hạn thời gian chờ (ms) — trước đây fetch không có timeout nên có thể treo vô hạn.
+  // chainAll khi cache máy chủ nguội có thể mất 40-60 giây, nên để rộng.
+  TIMEOUT_CHAIN:  75000,
+  TIMEOUT_MASTER: 30000,
+  TIMEOUT_DETAIL: 30000
 };
 
 /* ═══ STATE ═══ */
@@ -261,30 +282,75 @@ async function loadAll(force){
     }catch(e){}
   }
 
-  try{
-    const [central, tksx] = await Promise.all([
-      fetch(CONFIG.CENTRAL_URL + "?action=chainAll&t=" + Date.now()).then(r=>r.json()),
-      jsonp(CONFIG.TKSX_URL + "?action=masterall", 30000).catch(()=>({rows:[]}))
-    ]);
+  // SỬA 03/08/2026 — xem ghi chú ở đầu hàm jsonp() về 4 vấn đề đã khắc phục.
+  // Dùng allSettled thay Promise.all: một nguồn hỏng KHÔNG làm hỏng cả trang.
+  const [rCentral, rTksx] = await Promise.allSettled([
+    jsonp(CONFIG.CENTRAL_URL + "?action=chainAll", CONFIG.TIMEOUT_CHAIN),
+    jsonp(CONFIG.TKSX_URL + "?action=masterall",   CONFIG.TIMEOUT_MASTER)
+  ]);
+
+  const central = rCentral.status === "fulfilled" ? rCentral.value : null;
+  const tksx    = rTksx.status    === "fulfilled" ? rTksx.value    : { rows: [] };
+
+  if(central && central.orders){
     mergeData(central, tksx);
-    try{
-      localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({
-        ts: Date.now(), data: data, customers: customers
-      }));
-    }catch(e){}
+    luuCache();
     st.style.display = "none";
     render();
-  }catch(e){
+    // Thổi/In hỏng nhưng TP vẫn có → báo nhẹ, không chặn
+    if(rTksx.status === "rejected"){
+      showToast("Không tải được dữ liệu Thổi/In (" + moTaLoi(rTksx.reason) + ") — cột Thổi/In sẽ trống", 4000);
+    }
+  } else {
+    // Nguồn chính hỏng
+    const ly = moTaLoi(rCentral.reason);
     if(!data.length){
       st.className = "hint err";
-      st.textContent = "Không tải được dữ liệu — kiểm tra mạng rồi bấm Tải lại.";
+      st.innerHTML = "Không tải được dữ liệu — <b>" + esc(ly) + "</b>.<br>" +
+        'Bấm <b>Tải lại</b> (🔄 góc trên) hoặc <b>Kiểm tra kết nối</b> để xem chi tiết.';
     } else {
       st.style.display = "none";
-      showToast("Lỗi cập nhật — đang hiện dữ liệu cache", 3000);
+      showToast("Lỗi cập nhật (" + ly + ") — đang hiện dữ liệu đã lưu", 4000);
     }
   }
   loading = false;
   setLoading(false);
+}
+
+/** Diễn giải lỗi thành câu người dùng hiểu được. */
+function moTaLoi(err){
+  const m = String((err && err.message) || err || "không rõ");
+  if(m === "timeout") return "máy chủ không trả lời trong " + (CONFIG.TIMEOUT_CHAIN/1000) + " giây";
+  if(m === "network") return "không kết nối được máy chủ";
+  return m;
+}
+
+/**
+ * Lưu bộ nhớ đệm trên máy — CHỈ các trường cần cho danh sách.
+ *
+ * SỬA 03/08/2026: trước đây lưu nguyên `data` (~6,1 MB) trong khi giới hạn
+ * localStorage chỉ ~5 MB. Lệnh setItem ném QuotaExceededError và bị catch rỗng
+ * nuốt mất → bộ đệm KHÔNG BAO GIỜ hoạt động, mỗi lần mở trang đều tải lại 6 MB.
+ *
+ * Nay chỉ lưu 15 trường thực sự dùng để vẽ danh sách (bỏ ygh, dvt và các trường
+ * chỉ dùng trong modal chi tiết — modal vốn gọi API riêng). Kích thước xuống ~2 MB.
+ * Nếu vẫn quá dung lượng thì xóa đệm và báo, không im lặng.
+ */
+function luuCache(){
+  try{
+    const gon = data.map(e => ({
+      lsx:e.lsx, lsxct:e.lsxct, kh:e.kh, masp:e.masp, mota:e.mota, cl:e.cl, ng:e.ng,
+      slYC:e.slYC, klYC:e.klYC, slDone:e.slDone, klDone:e.klDone,
+      thoi:e.thoi, in:e.in
+    }));
+    localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({
+      ts: Date.now(), data: gon, customers: customers
+    }));
+  }catch(e){
+    // Hết dung lượng — dọn đệm cũ để lần sau không lỗi tiếp, và cho biết
+    try{ localStorage.removeItem(CONFIG.CACHE_KEY); }catch(e2){}
+    console.warn("Không lưu được bộ đệm:", e && e.name, e && e.message);
+  }
 }
 
 function mergeData(central, tksx){
@@ -351,17 +417,50 @@ function mergeData(central, tksx){
 }
 
 /* ═══ RENDER ═══ */
-let renderTimer = null;
-function debounceRender(){
-  clearTimeout(renderTimer);
-  renderTimer = setTimeout(()=>{
-    // Toggle clear buttons
-    const qKH = document.getElementById("qKH");
-    const q = document.getElementById("q");
-    document.getElementById("qKH_clr").classList.toggle("show", !!qKH.value);
-    document.getElementById("q_clr").classList.toggle("show", !!q.value);
-    render();
-  }, 200);
+/* ══════════════════════════════════════════════
+   TÌM KIẾM — bấm nút thay vì lọc theo từng ký tự
+   Thêm 03/08/2026.
+
+   Trước đây mỗi ký tự gõ vào đều kích hoạt render() sau 200ms. Với hơn 24.000
+   dòng, mỗi lần render phải duyệt toàn bộ danh sách rồi dựng lại HTML —
+   trên điện thoại gõ vài chữ là giật.
+
+   Nay chỉ lọc khi người dùng bấm Tìm hoặc nhấn Enter. Từ khóa đang áp dụng
+   được giữ trong qApplied / qKHApplied, tách khỏi nội dung đang gõ trong ô,
+   để bấm chip lọc tình trạng không vô tình áp dụng chữ chưa tìm.
+══════════════════════════════════════════════ */
+
+let qApplied   = "";   // từ khóa LSX / Mã SP đang áp dụng
+let qKHApplied = "";   // từ khóa Khách hàng đang áp dụng
+
+/** Hiện/ẩn dấu × trong ô nhập. Chạy mỗi lần gõ — nhẹ, không đụng danh sách. */
+function toggleClear(){
+  document.getElementById("qKH_clr").classList.toggle("show", !!document.getElementById("qKH").value);
+  document.getElementById("q_clr").classList.toggle("show", !!document.getElementById("q").value);
+}
+
+/** Bấm nút Tìm hoặc nhấn Enter → áp dụng từ khóa rồi vẽ lại danh sách. */
+function doSearch(){
+  qApplied   = (document.getElementById("q").value   || "").trim().toLowerCase();
+  qKHApplied = (document.getElementById("qKH").value || "").trim().toLowerCase();
+  toggleClear();
+  render();
+  // Đóng bàn phím trên điện thoại cho dễ xem kết quả
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+}
+
+/** Dấu × trong một ô — xóa ô đó rồi tìm lại ngay. */
+function xoaO(id){
+  document.getElementById(id).value = "";
+  doSearch();
+}
+
+/** Nút "Xóa lọc" — xóa cả 2 ô nhập lẫn bộ lọc tình trạng, về xem tất cả. */
+function xoaTatCa(){
+  document.getElementById("q").value = "";
+  document.getElementById("qKH").value = "";
+  stFilter = "all";
+  doSearch();
 }
 
 function fmt(n){
@@ -425,8 +524,10 @@ function setStFilter(ma){
 }
 
 function render(){
-  const q = (document.getElementById("q").value || "").trim().toLowerCase();
-  const qKH = (document.getElementById("qKH").value || "").trim().toLowerCase();
+  // Dùng từ khóa ĐÃ ÁP DỤNG (đặt bởi doSearch), không đọc trực tiếp ô nhập —
+  // để chữ đang gõ dở không ảnh hưởng khi bấm chip lọc tình trạng.
+  const q   = qApplied;
+  const qKH = qKHApplied;
   const listEl = document.getElementById("list");
   const chipsEl = document.getElementById("chips");
 
@@ -537,11 +638,12 @@ async function openDetail(lsx){
   let tpData = null, tiData = null;
   try{
     const encLsx = encodeURIComponent(lsx);
+    // SỬA 03/08/2026: fetch → JSONP, tránh GAS 302 redirect
     const [tp, ti] = await Promise.all([
-      fetch(CONFIG.CENTRAL_URL + "?action=lsxDetail&lsx=" + encLsx + "&t=" + Date.now())
-        .then(r => r.json()).catch(() => null),
-      fetch(CONFIG.CENTRAL_URL + "?action=tksxHistory&lsx=" + encLsx + "&t=" + Date.now())
-        .then(r => r.json()).catch(() => null)
+      jsonp(CONFIG.CENTRAL_URL + "?action=lsxDetail&lsx=" + encLsx, CONFIG.TIMEOUT_DETAIL)
+        .catch(() => null),
+      jsonp(CONFIG.CENTRAL_URL + "?action=tksxHistory&lsx=" + encLsx, CONFIG.TIMEOUT_DETAIL)
+        .catch(() => null)
     ]);
     tpData = tp;
     tiData = ti;
