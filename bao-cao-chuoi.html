@@ -25,11 +25,18 @@ body{background:var(--bg);color:var(--txt);}
 
 /* chips */
 .sum-chips{display:flex;gap:6px;flex-wrap:wrap;padding:6px 12px;}
-.chip{font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;}
+/* Chip = nút lọc (bấm được từ 03/08/2026). Trước đây chỉ hiển thị số. */
+.chip{font-size:11px;font-weight:700;padding:4px 11px;border-radius:10px;
+  border:2px solid transparent;cursor:pointer;font-family:inherit;line-height:1.3;
+  transition:transform .08s;}
+.chip:active{transform:scale(.96);}
 .chip.total{background:#e0f2fe;color:#0369a1;}
 .chip.du{background:#dcfce7;color:#15803d;}
 .chip.thieu{background:#fef3c7;color:#92400e;}
 .chip.chuasx{background:#f1f5f9;color:#64748b;}
+/* Chip đang được chọn — viền đậm + dấu tick */
+.chip.on{border-color:currentColor;box-shadow:0 1px 4px rgba(0,0,0,.12);}
+.chip.on::before{content:"\2713 ";font-weight:900;}
 
 /* status */
 .hint{padding:10px 14px;border-radius:10px;font-size:14px;text-align:center;margin:8px 12px;}
@@ -182,6 +189,9 @@ const CONFIG = {
 let data = [];
 let customers = [];
 let loading = false;
+/* Bộ lọc theo tình trạng — thêm 03/08/2026.
+   Giá trị: "all" | "du" | "thieu" | "chuasx" (khớp mã trả về của getStatus). */
+let stFilter = "all";
 
 /* ═══ SESSION ═══ */
 function checkSession(){
@@ -403,6 +413,17 @@ function getStatus(e){
   return "thieu";
 }
 
+/**
+ * Bấm chip để lọc danh sách theo tình trạng.
+ * Bấm lại chính chip đang chọn thì bỏ lọc, quay về xem tất cả.
+ */
+function setStFilter(ma){
+  stFilter = (stFilter === ma) ? "all" : ma;
+  render();
+  // Cuộn lên đầu danh sách cho dễ nhìn
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function render(){
   const q = (document.getElementById("q").value || "").trim().toLowerCase();
   const qKH = (document.getElementById("qKH").value || "").trim().toLowerCase();
@@ -418,13 +439,18 @@ function render(){
   });
 
   chipsEl.style.display = "";
+  const chip = (ma, cls, so, nhan) =>
+    '<button type="button" class="chip ' + cls + (stFilter === ma ? ' on' : '') + '" ' +
+      'onclick="setStFilter(\'' + ma + '\')">' + so + ' ' + nhan + '</button>';
   chipsEl.innerHTML =
-    '<span class="chip total">' + data.length + ' LSX</span>' +
-    '<span class="chip du">' + nDu + ' đủ</span>' +
-    '<span class="chip thieu">' + nThieu + ' chưa đủ</span>' +
-    '<span class="chip chuasx">' + nChuaSX + ' chưa SX</span>';
+    chip("all",    "total",  data.length, "LSX") +
+    chip("du",     "du",     nDu,         "đủ") +
+    chip("thieu",  "thieu",  nThieu,      "chưa đủ") +
+    chip("chuasx", "chuasx", nChuaSX,     "chưa SX");
 
   let shown = data.filter(e => {
+    // Lọc theo tình trạng khi người dùng bấm vào chip
+    if(stFilter !== "all" && e._st !== stFilter) return false;
     // Ô LSX/Mã SP: tìm trong LSX + Mã SP + Mô tả + Chủng loại
     if(q){
       const haystack = (e.lsx + " " + e.lsxct + " " + e.masp + " " + e.mota + " " + e.cl).toLowerCase();
@@ -442,7 +468,13 @@ function render(){
   if(limited) shown = shown.slice(0, CONFIG.RENDER_LIMIT);
 
   if(total === 0){
-    listEl.innerHTML = '<div class="empty">Không có LSX nào khớp.</div>';
+    const NHAN = { du:"Đủ", thieu:"Chưa đủ", chuasx:"Chưa SX" };
+    listEl.innerHTML = '<div class="empty">' +
+      (stFilter === "all"
+        ? 'Không có LSX nào khớp.'
+        : 'Không có LSX nào thuộc nhóm "' + NHAN[stFilter] + '"' +
+          (q || qKH ? ' với điều kiện tìm kiếm hiện tại' : '') + '.') +
+      '</div>';
     return;
   }
 
