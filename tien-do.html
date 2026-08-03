@@ -116,6 +116,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .tabbar button.active{color:#fff;border-bottom-color:#fff;}
 .tabwrap{display:flex;flex-direction:column;flex:1;min-height:0;}
 
+/* ── thẻ thống kê LSX (thêm 03/08/2026) ──── */
+.statRow{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;}
+.statCard{border:2px solid var(--border);background:var(--card);border-radius:10px;padding:8px 4px;
+  text-align:center;cursor:pointer;font-family:inherit;transition:transform .08s;}
+.statCard:active{transform:scale(.97);}
+.statCard .sc-num{font-size:19px;font-weight:800;line-height:1.1;}
+.statCard .sc-lbl{font-size:10.5px;font-weight:600;color:var(--gray);margin-top:2px;line-height:1.25;}
+.statCard.sc-all.on{border-color:var(--teal);background:#f0fdfa;}
+.statCard.sc-du   .sc-num{color:var(--green);}
+.statCard.sc-du.on{border-color:var(--green);background:#f0fdf4;}
+.statCard.sc-cd   .sc-num{color:var(--amber);}
+.statCard.sc-cd.on{border-color:var(--amber);background:#fffbeb;}
+.statCard.sc-cs   .sc-num{color:var(--red);}
+.statCard.sc-cs.on{border-color:var(--red);background:#fef2f2;}
+@media(max-width:360px){ .statCard .sc-num{font-size:17px;} .statCard .sc-lbl{font-size:9.5px;} }
+
 /* ── tổ / ngày ───────────────────────────── */
 .presetRow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
 .chip{border:1px solid var(--border);background:var(--card);color:var(--txt);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;}
@@ -260,6 +276,7 @@ details.may-block .lsx-table td:first-child,details.may-block .lsx-table th:firs
           <button class="btn-sm gray" onclick="clearSearch()">Xóa</button>
         </div>
       </div>
+      <div id="statRow" class="statRow" style="display:none;"></div>
       <div id="summary" class="summary"></div>
     </div>
 
@@ -463,16 +480,93 @@ function progressColor(pct){
   return "var(--red)";
 }
 
+/* ══════════════════════════════════════════════
+   THỐNG KÊ LSX: Đủ / Chưa đủ / Chưa SX
+   Thêm 03/08/2026.
+
+   Quy tắc (đã chốt với người dùng):
+     - Tiêu chí : SỐ LƯỢNG (daCatSoLuong so với soluong)
+     - Ngưỡng   : đạt từ 100% trở lên mới tính là ĐỦ, không dung sai
+     - Đơn vị   : mỗi dòng LSX CT là một đơn vị đếm
+
+   Ba nhóm:
+     chuasx  — chưa ghi nhận SX lần nào (đã SX = 0)
+     chuadu  — đã SX nhưng chưa đạt SL đặt hàng
+     du      — đã SX đạt hoặc vượt SL đặt hàng
+
+   Trường hợp SL đặt hàng bằng 0 hoặc trống: không có mẫu số để tính %,
+   nên xếp theo việc đã có SX hay chưa.
+══════════════════════════════════════════════ */
+
+let lastRows   = [];      // kết quả tìm kiếm gần nhất (chưa lọc)
+let statFilter = "all";   // all | du | chuadu | chuasx
+
+function classifyRow(r){
+  const yc   = Number(r.soluong) || 0;
+  const done = Number(r.daCatSoLuong) || 0;
+  if(done <= 0)        return "chuasx";
+  if(yc   <= 0)        return "du";        // có SX nhưng không có SL yêu cầu để so
+  return done >= yc ? "du" : "chuadu";
+}
+
+function renderStats(rows){
+  const box = document.getElementById("statRow");
+  if(!rows.length){ box.style.display = "none"; return; }
+
+  const dem = { du:0, chuadu:0, chuasx:0 };
+  for(let i=0;i<rows.length;i++) dem[classifyRow(rows[i])]++;
+
+  const the = [
+    ["all",    "sc-all", rows.length, "Tất cả"],
+    ["du",     "sc-du",  dem.du,      "Đủ SL"],
+    ["chuadu", "sc-cd",  dem.chuadu,  "Chưa đủ"],
+    ["chuasx", "sc-cs",  dem.chuasx,  "Chưa SX"]
+  ];
+
+  box.innerHTML = the.map(t =>
+    '<button type="button" class="statCard '+t[1]+(statFilter===t[0]?" on":"")+'" '+
+      'onclick="setStatFilter(\''+t[0]+'\')">'+
+      '<div class="sc-num">'+t[2]+'</div>'+
+      '<div class="sc-lbl">'+t[3]+'</div>'+
+    '</button>'
+  ).join("");
+  box.style.display = "grid";
+}
+
+function setStatFilter(f){
+  statFilter = f;
+  renderList();
+}
+
+/** Lọc lastRows theo statFilter rồi vẽ lại danh sách + thẻ. */
+function renderList(){
+  const rows = statFilter === "all"
+    ? lastRows
+    : lastRows.filter(r => classifyRow(r) === statFilter);
+
+  renderStats(lastRows);   // số trên thẻ luôn tính trên TOÀN BỘ kết quả
+  renderCards(rows);
+}
+
 /* ── Render cards — batch DOM insert cho nhanh ── */
-function renderRows(rows){
+function renderCards(rows){
+  const NHAN = { du:"Đủ SL", chuadu:"Chưa đủ", chuasx:"Chưa SX" };
+
   if(!rows.length){
-    setStatus("", '<div class="empty">Không tìm thấy đơn hàng phù hợp.</div>');
+    document.getElementById("resultList").innerHTML = "";
+    setStatus("", '<div class="empty">'+
+      (statFilter === "all"
+        ? "Không tìm thấy đơn hàng phù hợp."
+        : 'Không có LSX nào thuộc nhóm "'+NHAN[statFilter]+'".')+
+      '</div>');
     document.getElementById("summary").textContent = "";
     return;
   }
   document.getElementById("statusBox").style.display = "none";
   document.getElementById("summary").textContent =
-    rows.length + " dòng LSX" + (rows.length>=300 ? " (giới hạn 300)" : "");
+    rows.length + " dòng LSX" +
+    (statFilter !== "all" ? " — nhóm " + NHAN[statFilter] : "") +
+    (lastRows.length>=300 ? " (tìm kiếm giới hạn 300)" : "");
 
   // Build HTML string — nhanh hơn nhiều so với createElement từng cái
   const parts = [];
@@ -527,7 +621,9 @@ async function runSearch(){
   try{
     const data = await apiFetch("orderSearch", {customer, q});
     if(data.result === "ok"){
-      renderRows(data.rows || []);
+      lastRows   = data.rows || [];
+      statFilter = "all";        // mỗi lần tìm mới đều bỏ bộ lọc nhóm
+      renderList();
     } else {
       setStatus("err", "Lỗi: " + esc(data.error||"không xác định"));
     }
@@ -542,6 +638,9 @@ function clearSearch(){
   document.getElementById("fQuery").value = "";
   document.getElementById("resultList").innerHTML = "";
   document.getElementById("summary").textContent = "";
+  lastRows   = [];
+  statFilter = "all";
+  document.getElementById("statRow").style.display = "none";
   setStatus("", 'Nhập Khách hàng hoặc LSX rồi bấm "Tìm kiếm"');
 }
 
