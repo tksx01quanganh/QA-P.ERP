@@ -822,56 +822,125 @@ async function submitInspection() {
     // Lấy KiemTraID (nếu backend mới trả ids)
     const kiemTraId = (res.ids && res.ids.length > 0) ? res.ids[0] : "";
 
-    // Bước 2: Upload ảnh SONG SONG (tất cả cùng lúc, nhanh hơn gấp N lần)
-    let linkAnh = "";
-    if (state.photos.length > 0) {
-      showSpinner("Đang upload " + state.photos.length + " ảnh...");
-      const uploadPromises = state.photos.map((photo, i) => {
-        const seq = ("00" + (i + 1)).slice(-2);
-        const photoName = kiemTraId
-          ? (kiemTraId + "-" + seq + ".jpg")
-          : ("qc_" + Date.now() + "_" + seq + ".jpg");
-        const upBody = { action: "uploadPhoto", dataUrl: photo.dataUrl, filename: photoName };
-        if (kiemTraId) { upBody.prefix = kiemTraId; upBody.seq = seq; }
-        return apiPost(upBody)
-          .then(r => r.result === "ok" && r.url ? { url: r.url, name: r.filename || photoName } : { error: "Ảnh " + (i+1) + ": " + (r.error || "lỗi") })
-          .catch(e => ({ error: "Ảnh " + (i+1) + ": " + String(e) }));
-      });
-
-      const results = await Promise.all(uploadPromises);
-      const urls = [], names = [], failedUploads = [];
-      results.forEach(r => {
-        if (r.url) { urls.push(r.url); names.push(r.name); }
-        else { failedUploads.push(r.error); }
-      });
-
-      linkAnh = urls.join(" | ");
-      const tenAnh = names.join(" | ");
-
-      // Bước 3: Cập nhật link ảnh + tên ảnh vào bản ghi
-      if (linkAnh && kiemTraId) {
-        try {
-          await apiPost({ action: "updateLinkAnh", kiemTraId: kiemTraId, linkAnh: linkAnh, tenAnh: tenAnh });
-        } catch(ulErr) { console.error("updateLinkAnh error:", ulErr); }
-      }
-
-      if (failedUploads.length > 0) {
-        alert("Upload ảnh thất bại:\n" + failedUploads.join("\n"));
-      }
-    }
+    // ── LƯU LẠC QUAN (04/08/2026) ──────────────────────────────
+    // Bản ghi đã nằm an toàn trên Sheet ở bước trên. Ảnh chỉ là phần bổ sung
+    // nên trả màn hình lại cho người dùng NGAY, upload ảnh chạy nền.
+    // Người kiểm tra tiếp tục quét LSX kế tiếp mà không phải đứng chờ.
+    const photos = state.photos.slice();
+    state.photos = [];
+    renderPhotos();
 
     hideSpinner();
+    show("screenHome");
 
-    if (res.result === "ok") {
-      alert("Đã ghi nhận " + phanDinh + " thành công!");
-      show("screenHome");
+    if (photos.length > 0) {
+      qcToast("✅ Đã ghi nhận " + phanDinh + " — đang tải " + photos.length + " ảnh lên nền...", 3000);
+      uploadPhotosInBackground(kiemTraId, photos);
     } else {
-      alert("Lỗi: " + (res.error || "Không xác định"));
+      qcToast("✅ Đã ghi nhận " + phanDinh + " thành công!", 2500);
     }
   } catch(e) {
     hideSpinner();
     alert("Lỗi kết nối: " + e.message);
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UPLOAD ẢNH CHẠY NỀN
+   Bản ghi kiểm tra đã lưu xong trước khi hàm này chạy. Nếu upload
+   lỗi, dữ liệu kiểm tra KHÔNG mất — chỉ thiếu ảnh, và người dùng
+   được báo kèm mã KiemTraID để bổ sung thủ công.
+══════════════════════════════════════════════════════════════ */
+let _qcPendingUploads = 0;
+
+async function uploadPhotosInBackground(kiemTraId, photos) {
+  _qcPendingUploads++;
+  updateUploadBadge();
+
+  try {
+    // Upload song song tất cả ảnh
+    const uploadPromises = photos.map((photo, i) => {
+      const seq = ("00" + (i + 1)).slice(-2);
+      const photoName = kiemTraId
+        ? (kiemTraId + "-" + seq + ".jpg")
+        : ("qc_" + Date.now() + "_" + seq + ".jpg");
+      const upBody = { action: "uploadPhoto", dataUrl: photo.dataUrl, filename: photoName };
+      if (kiemTraId) { upBody.prefix = kiemTraId; upBody.seq = seq; }
+      return apiPost(upBody)
+        .then(r => r.result === "ok" && r.url ? { url: r.url, name: r.filename || photoName } : { error: "Ảnh " + (i+1) + ": " + (r.error || "lỗi") })
+        .catch(e => ({ error: "Ảnh " + (i+1) + ": " + String(e) }));
+    });
+
+    const results = await Promise.all(uploadPromises);
+    const urls = [], names = [], failed = [];
+    results.forEach(r => {
+      if (r.url) { urls.push(r.url); names.push(r.name); }
+      else { failed.push(r.error); }
+    });
+
+    // Ghi link ảnh vào bản ghi
+    if (urls.length > 0 && kiemTraId) {
+      try {
+        await apiPost({
+          action: "updateLinkAnh",
+          kiemTraId: kiemTraId,
+          linkAnh: urls.join(" | "),
+          tenAnh: names.join(" | ")
+        });
+      } catch(ulErr) {
+        console.error("updateLinkAnh error:", ulErr);
+        failed.push("Không gắn được link ảnh vào bản ghi");
+      }
+    }
+
+    if (failed.length > 0) {
+      alert("⚠ Bản ghi " + (kiemTraId || "(vừa lưu)") + " đã lưu THÀNH CÔNG,\n"
+          + "nhưng có ảnh tải lên thất bại:\n\n" + failed.join("\n")
+          + "\n\nDữ liệu kiểm tra vẫn an toàn. Anh/chị có thể chụp lại và bổ sung sau.");
+    } else {
+      qcToast("📷 Đã tải xong " + urls.length + " ảnh cho " + (kiemTraId || "bản ghi"), 2500);
+    }
+  } finally {
+    _qcPendingUploads--;
+    updateUploadBadge();
+  }
+}
+
+function updateUploadBadge() {
+  let el = document.getElementById("qcUploadBadge");
+  if (_qcPendingUploads <= 0) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "qcUploadBadge";
+    el.style.cssText = "position:fixed;bottom:12px;left:12px;z-index:9998;"
+      + "background:#0f766e;color:#fff;padding:8px 14px;border-radius:20px;"
+      + "font-size:13px;font-weight:600;box-shadow:0 2px 10px rgba(0,0,0,.25)";
+    document.body.appendChild(el);
+  }
+  el.textContent = "📷 Đang tải ảnh (" + _qcPendingUploads + ")...";
+}
+
+/* Cảnh báo nếu đóng trang khi ảnh chưa upload xong */
+window.addEventListener("beforeunload", function(e) {
+  if (_qcPendingUploads > 0) { e.preventDefault(); e.returnValue = ""; }
+});
+
+/* Toast nhẹ — thay alert() để không chặn thao tác tiếp theo */
+function qcToast(msg, ms) {
+  let t = document.getElementById("qcToast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "qcToast";
+    t.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:70px;"
+      + "z-index:9999;background:rgba(17,24,39,.94);color:#fff;padding:12px 20px;"
+      + "border-radius:10px;font-size:15px;font-weight:600;max-width:88%;"
+      + "text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:opacity .25s";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = "1";
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = "0"; }, ms || 2500);
 }
 
 // ═══════════════════════════════════════════════════════════
