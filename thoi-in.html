@@ -193,6 +193,12 @@ table.dash-tbl{width:100%;border-collapse:collapse;font-size:14px;}
       <button class="btn amber" onclick="startPhe('Thổi')">💨 Phế Thổi</button>
       <button class="btn amber" onclick="startPhe('In')">🖨️ Phế In</button>
     </div>
+    <div style="text-align:center;margin-top:4px">
+      <button onclick="refreshMasters()"
+              style="background:none;border:none;color:#64748b;font-size:13px;text-decoration:underline;cursor:pointer;padding:8px">
+        🔄 Làm mới danh sách CN/Máy
+      </button>
+    </div>
   </div>
 </section>
 
@@ -609,15 +615,70 @@ async function apiPost(body){
 /* ══════════════════════════════════════════════════
    LOAD MASTERS (CN/Máy)
 ══════════════════════════════════════════════════ */
-async function loadMasters(){
-  if(masters) return;
-  try {
-    const r = await api("tksxMasters");
-    if(r.result === "ok") masters = r;
-    else toast("Lỗi tải danh sách CN/Máy");
-  } catch(e){
-    toast("Không kết nối được server");
+/* ── Cache danh sách CN/Máy ──────────────────────────────────
+   SỬA 04/08/2026: trước đây mỗi lần bấm icon "Thổi" hoặc "In" đều phải
+   chờ 1 round-trip tới Apps Script (đọc Master Sheet qua openById, ~1-3s).
+   Cache server chỉ sống 120s nên gần như lần bấm nào cũng phải chờ.
+
+   Hai cải tiến:
+   1. Cache localStorage 12 giờ  → lần bấm thứ 2 trở đi phản hồi tức thì.
+   2. Dedupe promise           → bấm nhanh 2 lần không tạo 2 request trùng.
+
+   Danh sách CN/Máy hầu như không đổi trong ca nên cache dài là an toàn.
+   Nếu cần cập nhật ngay: bấm nút "Làm mới danh sách" hoặc tải lại trang
+   sau khi xoá cache (hàm refreshMasters bên dưới).
+─────────────────────────────────────────────────────────────── */
+const MASTERS_CACHE_KEY = "tksx_masters_cache";
+const MASTERS_CACHE_TTL = 12 * 60 * 60 * 1000;   // 12 giờ
+let _mastersPromise = null;
+
+async function loadMasters(force){
+  if(masters && !force) return;
+
+  // 1. Thử cache localStorage trước — không tốn round-trip nào
+  if(!force){
+    try {
+      const raw = localStorage.getItem(MASTERS_CACHE_KEY);
+      if(raw){
+        const c = JSON.parse(raw);
+        if(c && c.ts && (Date.now() - c.ts < MASTERS_CACHE_TTL) && c.data){
+          masters = c.data;
+          return;
+        }
+      }
+    } catch(e){}
   }
+
+  // 2. Đang có request bay giữa chừng → dùng chung, không gọi lần 2
+  if(_mastersPromise) return _mastersPromise;
+
+  _mastersPromise = (async () => {
+    try {
+      const r = await api("tksxMasters");
+      if(r.result === "ok"){
+        masters = r;
+        try {
+          localStorage.setItem(MASTERS_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: r }));
+        } catch(e){}   // hết dung lượng localStorage → bỏ qua, vẫn chạy được
+      } else {
+        toast("Lỗi tải danh sách CN/Máy");
+      }
+    } catch(e){
+      toast("Không kết nối được server");
+    } finally {
+      _mastersPromise = null;
+    }
+  })();
+
+  return _mastersPromise;
+}
+
+/** Buộc tải lại danh sách CN/Máy từ server (khi vừa thêm/sửa máy, công nhân) */
+async function refreshMasters(){
+  try { localStorage.removeItem(MASTERS_CACHE_KEY); } catch(e){}
+  masters = null;
+  await loadMasters(true);
+  if(masters) toast("Đã cập nhật danh sách CN/Máy");
 }
 
 /* ══════════════════════════════════════════════════
