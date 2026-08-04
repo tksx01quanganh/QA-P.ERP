@@ -251,6 +251,7 @@ let dangLoc  = false;   // máy chủ đang lọc bớt đơn đã hoàn thành?
 let soDaAn   = 0;       // số đơn đã hoàn thành bị ẩn
 let hienTatCa = false;  // người dùng đã bật nút gạt chưa
 let dsXong   = [];      // kết quả tìm trong nhóm đã hoàn thành
+let khoaDaAn = new Set(); // khoá các đơn đã ẩn — xem lỗi "thẻ ma" ở mergeData
 
 /* ═══ SESSION ═══ */
 function checkSession(){
@@ -337,6 +338,7 @@ async function loadAll(force, nocache){
         customers = c.customers || [];
         dangLoc = !!c.loc;
         soDaAn  = c.soDaAn || 0;
+        khoaDaAn = new Set(c.dsAn ? String(c.dsAn).split("|") : []);
         st.style.display = "none";
         render();
         if(Date.now() - c.ts < CONFIG.CACHE_TTL){
@@ -364,6 +366,7 @@ async function loadAll(force, nocache){
     // Bản cũ (chưa deploy v4.5) không có 2 trường này → mặc định coi như không lọc.
     dangLoc = !!central.loc;
     soDaAn  = central.soDaAn || 0;
+    khoaDaAn = new Set(central.dsAn ? String(central.dsAn).split("|") : []);
 
     mergeData(central, tksx);
     luuCache();
@@ -439,7 +442,8 @@ function luuCache(){
     if(hienTatCa) return;
     localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({
       ts: Date.now(), data: gon, customers: customers,
-      loc: dangLoc, soDaAn: soDaAn
+      loc: dangLoc, soDaAn: soDaAn,
+      dsAn: Array.from(khoaDaAn).join("|")
     }));
   }catch(e){
     // Hết dung lượng — dọn đệm cũ để lần sau không lỗi tiếp, và cho biết
@@ -503,14 +507,21 @@ function mergeData(central, tksx){
     }
   });
 
+  /* LSX chỉ có ở Thổi/In, không có đơn hàng tương ứng → dựng thẻ rỗng.
+     SỬA 04/08/2026 — LỖI "THẺ MA":
+     Từ v4.5 máy chủ ẩn ~20.000 đơn đã hoàn thành, nhưng bản ghi Thổi/In của
+     chúng vẫn về đầy đủ. Nếu không loại ra, đoạn này dựng lại hàng nghìn thẻ
+     hiện "Chưa đủ" với Thổi/In 100% mà thành phẩm trống — vừa sai vừa làm
+     mất sạch lợi ích của việc lọc.
+     Máy chủ gửi kèm chainAll.dsAn = danh sách khoá đã ẩn để bỏ qua chính xác. */
   Object.keys(btpMap).forEach(key => {
-    if(!grouped[key]){
-      grouped[key] = {
-        lsx: key, lsxct: "", kh: "", masp: "", mota: "", cl: "", dvt: "", ng: "",
-        slYC: 0, klYC: 0, slDone: 0, klDone: 0,
-        thoi: btpMap[key].thoi, in: btpMap[key].in, ygh: []
-      };
-    }
+    if(grouped[key]) return;
+    if(khoaDaAn.has(key)) return;   // đơn đã hoàn thành — đừng dựng lại
+    grouped[key] = {
+      lsx: key, lsxct: "", kh: "", masp: "", mota: "", cl: "", dvt: "", ng: "",
+      slYC: 0, klYC: 0, slDone: 0, klDone: 0,
+      thoi: btpMap[key].thoi, in: btpMap[key].in, ygh: []
+    };
   });
 
   data = Object.values(grouped);
@@ -615,10 +626,16 @@ function veDanhSachXong(r){
     if(e.masp) meta.push('SP: <b>' + esc(e.masp) + '</b>');
     if(e.mota) meta.push(esc(e.mota));
 
+    /* SỬA 04/08/2026: hiện LỆNH CHI TIẾT (lsxct) chứ không phải LSX gộp.
+       Toàn bộ phần còn lại của trang gộp theo baseLSX(lsxct || lsx), nên mục này
+       hiện lsx là lệch chuẩn — người dùng quản lý theo lệnh chi tiết (26050477001),
+       nhưng lại thấy 26050477. */
+    const ma = e.lsxct || e.lsx;
+
     html += '<div class="card card-xong" onclick="openDetail(\'' +
-              esc(e.lsx).replace(/'/g,"\\'") + '\')">' +
+              esc(ma).replace(/'/g,"\\'") + '\')">' +
       '<div class="card-head">' +
-        '<span class="c-lsx">' + esc(e.lsx) + '</span>' +
+        '<span class="c-lsx">' + esc(ma) + '</span>' +
         (e.kh ? '<span class="c-kh">' + esc(e.kh) + '</span>' : '') +
         '<span class="badge b-xong">Hoàn thành</span>' +
       '</div>' +
@@ -862,10 +879,10 @@ async function openDetail(lsx){
   // Thiếu nhánh thứ hai thì bấm vào một đơn đã lưu sẽ ra modal trống (v4.5).
   let item = data.find(e => e.lsx === lsx);
   if(!item){
-    const x = dsXong.find(e => e.lsx === lsx || e.lsxct === lsx);
+    const x = dsXong.find(e => e.lsxct === lsx || e.lsx === lsx);
     if(x){
       item = {
-        lsx: x.lsx, lsxct: x.lsxct, kh: x.kh, masp: x.masp, mota: x.mota,
+        lsx: x.lsxct || x.lsx, lsxct: x.lsxct, kh: x.kh, masp: x.masp, mota: x.mota,
         cl: "", dvt: x.dvt, ng: x.ng,
         slYC: x.slYC, klYC: 0, slDone: x.slDone, klDone: x.klDone,
         thoi: {klyc:0, sx:0}, in: {klyc:0, sx:0}, ygh: [], xong: x.xong
