@@ -149,7 +149,8 @@ body{background:var(--bg);color:var(--txt);}
 <div class="topbar">
   <button class="icon-btn" onclick="goHome()">&#8592;</button>
   <div class="ttl">&#128203; Kiểm tra tiến độ đơn hàng</div>
-  <button class="icon-btn" onclick="loadAll(true)" title="Tải lại">&#128260;</button>
+  <button class="icon-btn" onclick="loadAll(true)" title="Tải lại (dùng dữ liệu máy chủ đã có)">&#128260;</button>
+  <button class="icon-btn" onclick="lamMoiDuLieu()" title="Làm mới dữ liệu — đọc lại từ Google Sheet, chậm hơn nhưng số liệu mới nhất">&#9889;</button>
   <button class="icon-btn" onclick="goHome()" title="Trang chủ">&#127968;</button>
 </div>
 <div class="load-bar" id="loadBar"></div>
@@ -257,12 +258,36 @@ function setLoading(on){
   document.getElementById("loadBar").className = "load-bar" + (on ? " active" : "");
 }
 
-async function loadAll(force){
+/**
+ * Làm mới dữ liệu — buộc MÁY CHỦ đọc lại từ Google Sheet.
+ *
+ * THÊM 04/08/2026. Phân biệt với nút 🔄 Tải lại:
+ *   🔄 Tải lại       — bỏ qua bộ đệm TRÊN MÁY, nhưng máy chủ vẫn trả cache của nó
+ *   ⚡ Làm mới dữ liệu — gửi nocache=1, máy chủ xoá cache và quét lại Sheet
+ *
+ * Cần có vì từ 04/08 cache máy chủ sống 5 giờ (trước là 15 phút) để tiết kiệm
+ * quota trigger. Xem ghi chú CACHE_NANG trong Code.gs.
+ */
+function lamMoiDuLieu(){
+  if(loading){ showToast("Đang tải, chờ chút đã…", 2000); return; }
+  if(!confirm("Đọc lại toàn bộ dữ liệu từ Google Sheet?\n\n"
+            + "Số liệu sẽ mới nhất, nhưng có thể mất 40–60 giây.\n"
+            + "Chỉ dùng khi cần số liệu vừa cập nhật xong.")) return;
+  loadAll(true, true);
+}
+
+/**
+ * @param {boolean} force   Bỏ qua bộ đệm trên máy
+ * @param {boolean} nocache Buộc máy chủ xoá cache và đọc lại từ Sheet
+ */
+async function loadAll(force, nocache){
   if(loading) return;
   loading = true;
   const st = document.getElementById("status");
   st.style.display = ""; st.className = "hint info";
-  st.innerHTML = '<span class="spin"></span> Đang tải dữ liệu...';
+  st.innerHTML = nocache
+    ? '<span class="spin"></span> Đang đọc lại từ Google Sheet (có thể mất 40–60 giây)...'
+    : '<span class="spin"></span> Đang tải dữ liệu...';
   setLoading(true);
 
   if(!force){
@@ -284,9 +309,10 @@ async function loadAll(force){
 
   // SỬA 03/08/2026 — xem ghi chú ở đầu hàm jsonp() về 4 vấn đề đã khắc phục.
   // Dùng allSettled thay Promise.all: một nguồn hỏng KHÔNG làm hỏng cả trang.
+  const qs = nocache ? "&nocache=1" : "";
   const [rCentral, rTksx] = await Promise.allSettled([
-    jsonp(CONFIG.CENTRAL_URL + "?action=chainAll", CONFIG.TIMEOUT_CHAIN),
-    jsonp(CONFIG.TKSX_URL + "?action=masterall",   CONFIG.TIMEOUT_MASTER)
+    jsonp(CONFIG.CENTRAL_URL + "?action=chainAll" + qs, CONFIG.TIMEOUT_CHAIN),
+    jsonp(CONFIG.TKSX_URL + "?action=masterall" + qs,   CONFIG.TIMEOUT_MASTER)
   ]);
 
   const central = rCentral.status === "fulfilled" ? rCentral.value : null;
@@ -297,13 +323,14 @@ async function loadAll(force){
     luuCache();
     st.style.display = "none";
     render();
+    if(nocache) showToast("Đã đọc lại dữ liệu mới nhất từ Google Sheet", 3000);
     // Thổi/In hỏng nhưng TP vẫn có → báo nhẹ, không chặn
     if(rTksx.status === "rejected"){
       showToast("Không tải được dữ liệu Thổi/In (" + moTaLoi(rTksx.reason) + ") — cột Thổi/In sẽ trống", 4000);
     }
   } else {
     // Nguồn chính hỏng
-    const ly = moTaLoi(rCentral.reason);
+    const ly = moTaLoi(rCentral.reason, rCentral.value);
     if(!data.length){
       st.className = "hint err";
       st.innerHTML = "Không tải được dữ liệu — <b>" + esc(ly) + "</b>.<br>" +
@@ -317,11 +344,29 @@ async function loadAll(force){
   setLoading(false);
 }
 
-/** Diễn giải lỗi thành câu người dùng hiểu được. */
-function moTaLoi(err){
+/**
+ * Diễn giải lỗi thành câu người dùng hiểu được.
+ *
+ * SỬA 04/08/2026: trước đây chỉ nhận `err` = `rCentral.reason`. Nhưng `reason`
+ * CHỈ tồn tại khi promise bị rejected. Trường hợp máy chủ trả lời BÌNH THƯỜNG
+ * nhưng nội dung là lỗi ({result:"error", error:"..."}), promise vẫn fulfilled
+ * nên reason rỗng → giao diện hiện "không rõ" và che mất nguyên nhân thật.
+ *
+ * Nay nhận thêm `payload` = `rCentral.value` để moi thông điệp lỗi của máy chủ.
+ *
+ * @param {*} err     Lý do promise bị từ chối (nếu có)
+ * @param {*} payload Dữ liệu máy chủ trả về (nếu promise thành công)
+ */
+function moTaLoi(err, payload){
+  // Máy chủ trả lời được nhưng báo lỗi — ưu tiên hiện thông điệp thật
+  if(payload && typeof payload === "object"){
+    if(payload.error)  return String(payload.error);
+    if(payload.result === "error") return "máy chủ báo lỗi không rõ nội dung";
+    if(!payload.orders) return "máy chủ trả về dữ liệu không đúng định dạng";
+  }
   const m = String((err && err.message) || err || "không rõ");
   if(m === "timeout") return "máy chủ không trả lời trong " + (CONFIG.TIMEOUT_CHAIN/1000) + " giây";
-  if(m === "network") return "không kết nối được máy chủ";
+  if(m === "network") return "máy chủ từ chối yêu cầu (thường do hết quota Google hoặc script lỗi)";
   return m;
 }
 
