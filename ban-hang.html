@@ -134,7 +134,13 @@ const CONFIG = {
 };
 
 /* ═══ UTILS ═══ */
-function toISO(d){ return d.toISOString().slice(0,10); }
+/* SỬA 05/08/2026 — bản cũ dùng toISOString() (giờ UTC) trong khi Việt Nam là
+   UTC+7, nên mọi thời điểm trước 7h sáng bị lùi 1 ngày. Lấy theo giờ máy. */
+function toISO(d){
+  return d.getFullYear() + "-" +
+         String(d.getMonth()+1).padStart(2,"0") + "-" +
+         String(d.getDate()).padStart(2,"0");
+}
 function fmtNum(n){ return (n||0).toLocaleString("vi-VN"); }
 function fmtKg(n){ return (n||0).toLocaleString("vi-VN",{maximumFractionDigits:1}); }
 function fmtDate(iso){ if(!iso) return ""; const p=iso.split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
