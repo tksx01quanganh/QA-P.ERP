@@ -159,7 +159,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="row2" style="margin-top:10px;">
       <button class="btn" onclick="doSearch()" style="padding:12px;font-size:16px;">🔍 Tìm kiếm</button>
       <button class="btn gray" onclick="xoaBoLoc()" style="padding:12px;font-size:16px;flex:0 0 30%;">Xoá lọc</button>
-      <button class="btn gray" onclick="taiLaiDanhMuc()" style="padding:12px;font-size:16px;flex:0 0 22%;" title="Tải lại danh mục công đoạn / mục đích">⟳</button>
+      <button class="btn gray" onclick="timLai()" style="padding:12px;font-size:16px;flex:0 0 22%;" title="Bỏ kết quả đã nhớ, lấy số mới nhất">⟳</button>
     </div>
   </div>
 
@@ -312,8 +312,12 @@ async function doLogin(){
 function enterMain(){
   showScreen("screenList");
   datNgayHomNay();
-  // KHÔNG await — màn hình dùng được ngay, danh mục nạp song song nếu cần
-  loadFilters();
+  loadFilters();          // không await — dùng cache, thường 0 lượt gọi
+
+  // ĐO 05/08/2026: mỗi lượt gọi tốn ~3,4 giây phí cố định của Apps Script.
+  // Người dùng mở màn này gần như luôn bấm Tìm kiếm ngay sau đó → chạy luôn
+  // cho họ. Không tốn thêm lượt gọi nào, chỉ là bắt đầu sớm hơn vài giây.
+  doSearch();
 }
 
 /* Danh mục dùng chung cache localStorage với chuyen-btp.html — mở màn hình
@@ -395,18 +399,15 @@ async function taiLaiDanhMuc(){
 function tenCongDoan(code){ return st.tenCD[code] || code || ""; }
 function tenMucDich(code){ return st.tenLoai[code] || code || ""; }
 
-/** Xoá lọc: về mặc định = hôm nay, bỏ hết các điều kiện khác */
+/** Xoá lọc: về mặc định = hôm nay, bỏ hết các điều kiện khác, rồi tìm luôn */
 function xoaBoLoc(){
   document.getElementById("fFrom").value = "";
   document.getElementById("fTo").value = "";
   document.getElementById("fType").value = "";
   document.getElementById("fLSX").value = "";
   datNgayHomNay();
-  st.rows = []; st.tongSL = 0; st.tongKL = 0; st.total = 0; st.cat = false;
-  document.getElementById("searchSummary").style.display = "none";
-  document.getElementById("listContent").innerHTML =
-    '<div class="empty">Đã xoá bộ lọc. Bấm <b>🔍 Tìm kiếm</b> để xem dữ liệu hôm nay.</div>';
   toast("Đã xoá bộ lọc, ngày về hôm nay");
+  doSearch();   // thường trúng bộ nhớ trong phiên → hiện ngay
 }
 
 function datNgayHomNay(){
@@ -423,9 +424,30 @@ function datNgayHomNay(){
 /* ══════════════════════════════════════════════════
    SEARCH
 ══════════════════════════════════════════════════ */
+/* Nhớ kết quả theo bộ lọc trong phiên làm việc — bấm lại cùng điều kiện thì
+   hiện ngay, khỏi trả 3,4 giây phí gọi Apps Script lần nữa. */
+const boNhoKQ = {};
+
 async function doSearch(){
   const listEl = document.getElementById("listContent");
-  listEl.innerHTML = '<div class="empty"><span class="spin spin-dark"></span> Đang tìm kiếm...</div>';
+  const khoa = layBoLoc();
+
+  // Trúng bộ nhớ trong phiên → hiện tức thì
+  if(boNhoKQ[khoa]){
+    apDungKetQua(boNhoKQ[khoa]);
+    toast("Kết quả đã có sẵn — bấm ⟳ nếu cần số mới nhất", null, 2000);
+    return;
+  }
+
+  const t0 = performance.now();
+  let giay = 0;
+  listEl.innerHTML = '<div class="empty"><span class="spin spin-dark"></span> Đang tìm kiếm... <b id="dongHo">0s</b>' +
+                     '<div style="font-size:12.5px;margin-top:6px">Google Apps Script cần vài giây cho mỗi lượt gọi</div></div>';
+  const nhip = setInterval(() => {
+    giay++;
+    const el = document.getElementById("dongHo");
+    if(el) el.textContent = giay + "s";
+  }, 1000);
   document.getElementById("searchSummary").style.display = "none";
 
   try {
@@ -458,17 +480,34 @@ async function doSearch(){
       return;
     }
 
-    st.rows   = r.rows || [];
-    st.tongSL = r.tongSL || 0;
-    st.tongKL = r.tongKL || 0;
-    st.cat    = !!r.cat;
-    st.total  = r.total || st.rows.length;
-    renderList();
+    boNhoKQ[khoa] = r;
+    apDungKetQua(r);
+    const giayXong = ((performance.now() - t0) / 1000).toFixed(1);
+    if(st.rows.length) toast("Xong sau " + giayXong + " giây", null, 2000);
 
   } catch(e){
-    listEl.innerHTML = '<div class="empty" style="color:var(--red)">' +
-      'Tải quá lâu hoặc mất kết nối.<br/>Thử thu hẹp khoảng ngày rồi tìm lại.</div>';
+    listEl.innerHTML = '<div class="empty" style="color:var(--red);text-align:left">' +
+      '<b>Không nhận được kết quả.</b><br/><br/>' +
+      'Kiểm tra mạng rồi bấm 🔍 Tìm kiếm lại. Nếu lặp lại nhiều lần, mở ' +
+      '<b>chuyen-btp-debug.html</b> để xem bước nào hỏng.</div>';
+  } finally {
+    clearInterval(nhip);
   }
+}
+
+function apDungKetQua(r){
+  st.rows   = r.rows || [];
+  st.tongSL = r.tongSL || 0;
+  st.tongKL = r.tongKL || 0;
+  st.cat    = !!r.cat;
+  st.total  = r.total || st.rows.length;
+  renderList();
+}
+
+/** Bỏ bộ nhớ trong phiên rồi tìm lại — dùng khi vừa có người ghi dữ liệu mới */
+function timLai(){
+  for(const k in boNhoKQ) delete boNhoKQ[k];
+  doSearch();
 }
 
 function datTomTat(dong1, dong2){
