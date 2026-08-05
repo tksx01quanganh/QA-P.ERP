@@ -83,6 +83,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .trx-note{font-size:13px;color:var(--muted);margin-top:3px;font-style:italic;}
 .trx-note.warn{color:var(--red);font-weight:600;font-style:normal;}
 
+/* ══ v2.0 — chế độ xem theo PHIÊN ══ */
+.mode-tabs{display:flex;gap:6px;margin-bottom:8px;}
+.mode-tab{flex:1;padding:9px 6px;border:2px solid var(--border);background:#fff;border-radius:10px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;}
+.mode-tab.active{border-color:var(--teal);background:#f0fdfa;color:var(--teal-d);}
+
+.batch-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s;}
+.batch-card:active{border-color:var(--teal);background:#f0fdfa;}
+.batch-card.le{border-style:dashed;}
+.bc-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;}
+.bc-id{font-weight:800;font-size:15px;color:var(--teal-d);word-break:break-all;}
+.bc-time{font-size:12.5px;color:var(--muted);white-space:nowrap;}
+.bc-route{font-size:14px;font-weight:600;margin-bottom:6px;}
+.bc-stats{display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:700;}
+.bc-stats span{background:#e2e8f0;color:#334155;padding:2px 9px;border-radius:999px;}
+.bc-stats span.g{background:#dcfce7;color:#15803d;}
+.bc-stats span.a{background:#fef3c7;color:#92400e;}
+
+.src-badge{font-size:12px;font-weight:700;padding:1px 7px;border-radius:999px;background:#e0f2fe;color:#0369a1;}
+.trx-qr{font-size:11.5px;color:var(--muted);margin-top:3px;word-break:break-all;font-family:ui-monospace,Menlo,Consolas,monospace;}
+.trx-kl{font-weight:700;color:var(--teal-d);}
+
 /* empty */
 .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:15px;}
 
@@ -123,6 +144,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 
   <div class="filter-bar">
+    <div class="mode-tabs">
+      <button id="tabPhien" class="mode-tab active" onclick="doiCheDo('phien')">📦 Theo phiên</button>
+      <button id="tabLsx" class="mode-tab" onclick="doiCheDo('lsx')">🏷️ Theo LSX</button>
+    </div>
     <div class="row2">
       <div class="field">
         <label>Công đoạn đi</label>
@@ -184,7 +209,7 @@ const CONFIG = {
   SESSION_TTL: 8 * 3600 * 1000
 };
 
-let st = { user: null, maNV: null, username: null, groups: [] };
+let st = { user: null, maNV: null, username: null, groups: [], batches: [], mode: "phien", daTim: false };
 
 /* ══════════════════════════════════════════════════
    HELPERS
@@ -351,39 +376,142 @@ async function doSearch(){
       return;
     }
 
-    st.groups = r.groups || [];
-
-    if(st.groups.length === 0){
-      listEl.innerHTML = '<div class="empty">Không tìm thấy dữ liệu chuyển BTP</div>';
-      return;
-    }
-
-    // Summary
-    let totalQty = 0, totalTrx = 0;
-    st.groups.forEach(g => { totalQty += g.tongChuyen; totalTrx += g.soLanChuyen; });
-    document.getElementById("sumText").textContent = st.groups.length + " LSX — " + totalTrx + " lần chuyển";
-    document.getElementById("sumQty").textContent = "Tổng: " + fmtNum(totalQty);
-    document.getElementById("searchSummary").style.display = "flex";
-
-    // Render list
-    listEl.innerHTML = st.groups.map((g, i) =>
-      '<div class="lsx-card" onclick="showDetail(' + i + ')">' +
-        '<div class="lsx-head">' +
-          '<span class="lsx-code">' + esc(g.lsx) + '</span>' +
-          '<span class="lsx-count">' + g.soLanChuyen + ' lần</span>' +
-        '</div>' +
-        '<div class="lsx-sub">' + esc(g.khachhang || "") + ' — ' + esc(g.masp || "") + '</div>' +
-        '<div class="lsx-stats">' +
-          '<span>YC: ' + fmtNum(g.slYeuCau) + '</span>' +
-          '<span class="green">Đã chuyển: ' + fmtNum(g.tongChuyen) + '</span>' +
-          (g.tongChuyen > g.slYeuCau ? '<span class="amber">⚠️ Vượt</span>' : '') +
-        '</div>' +
-      '</div>'
-    ).join("");
+    st.groups  = r.groups  || [];
+    st.batches = r.batches || [];
+    st.daTim = true;
+    renderList();
 
   } catch(e){
     listEl.innerHTML = '<div class="empty" style="color:var(--red)">Lỗi kết nối. Kiểm tra mạng và thử lại.</div>';
   }
+}
+
+/* ══════════════════════════════════════════════════
+   v2.0 — CHE DO XEM: theo PHIEN / theo LSX
+══════════════════════════════════════════════════ */
+function doiCheDo(mode){
+  st.mode = mode;
+  document.getElementById("tabPhien").classList.toggle("active", mode === "phien");
+  document.getElementById("tabLsx").classList.toggle("active", mode === "lsx");
+  if(st.daTim) renderList();
+}
+
+function renderList(){
+  const listEl = document.getElementById("listContent");
+  const sumEl  = document.getElementById("searchSummary");
+
+  if(st.mode === "phien"){
+    if(!st.batches.length){
+      sumEl.style.display = "none";
+      listEl.innerHTML = '<div class="empty">Không tìm thấy dữ liệu chuyển BTP</div>';
+      return;
+    }
+    let tongSL = 0, tongKL = 0, tongDong = 0;
+    st.batches.forEach(b => { tongSL += b.tongSL; tongKL += b.tongKL; tongDong += b.soDong; });
+    document.getElementById("sumText").textContent = st.batches.length + " phiên — " + tongDong + " dòng";
+    document.getElementById("sumQty").textContent = "Tổng: " + fmtNum(tongSL) + (tongKL ? " · " + fmtNum(tongKL) + " kg" : "");
+    sumEl.style.display = "flex";
+
+    listEl.innerHTML = st.batches.map((b, i) =>
+      '<div class="batch-card' + (b.laPhienLe ? ' le' : '') + '" onclick="showBatchDetail(' + i + ')">' +
+        '<div class="bc-head">' +
+          '<span class="bc-id">' + esc(b.batchId || "Giao dịch lẻ (bản cũ)") + '</span>' +
+          '<span class="bc-time">' + esc(b.timestamp) + '</span>' +
+        '</div>' +
+        '<div class="bc-route">' + esc(b.from) + ' → ' + esc(b.to) +
+          ' <span class="bc-time">· 👤 ' + esc(b.user) + '</span></div>' +
+        '<div class="bc-stats">' +
+          '<span>' + b.soDong + ' dòng</span>' +
+          '<span>' + b.soLsx + ' LSX</span>' +
+          '<span class="g">' + fmtNum(b.tongSL) + '</span>' +
+          (b.tongKL ? '<span class="g">' + fmtNum(b.tongKL) + ' kg</span>' : '') +
+          (b.soScan ? '<span>📷 ' + b.soScan + '</span>' : '') +
+          (b.soManual ? '<span>✏️ ' + b.soManual + '</span>' : '') +
+          (b.ghiChu && b.ghiChu.indexOf("[VƯỢT SL]") !== -1 ? '<span class="a">⚠️ Vượt SL</span>' : '') +
+        '</div>' +
+      '</div>'
+    ).join("");
+    return;
+  }
+
+  // ── Chế độ theo LSX (giữ nguyên như v1.x) ──
+  if(!st.groups.length){
+    sumEl.style.display = "none";
+    listEl.innerHTML = '<div class="empty">Không tìm thấy dữ liệu chuyển BTP</div>';
+    return;
+  }
+  let totalQty = 0, totalTrx = 0;
+  st.groups.forEach(g => { totalQty += g.tongChuyen; totalTrx += g.soLanChuyen; });
+  document.getElementById("sumText").textContent = st.groups.length + " LSX — " + totalTrx + " lần chuyển";
+  document.getElementById("sumQty").textContent = "Tổng: " + fmtNum(totalQty);
+  sumEl.style.display = "flex";
+
+  listEl.innerHTML = st.groups.map((g, i) =>
+    '<div class="lsx-card" onclick="showDetail(' + i + ')">' +
+      '<div class="lsx-head">' +
+        '<span class="lsx-code">' + esc(g.lsx) + '</span>' +
+        '<span class="lsx-count">' + g.soLanChuyen + ' lần</span>' +
+      '</div>' +
+      '<div class="lsx-sub">' + esc(g.khachhang || "") + ' — ' + esc(g.masp || "") + '</div>' +
+      '<div class="lsx-stats">' +
+        '<span>YC: ' + fmtNum(g.slYeuCau) + '</span>' +
+        '<span class="green">Đã chuyển: ' + fmtNum(g.tongChuyen) + '</span>' +
+        (g.tongChuyen > g.slYeuCau ? '<span class="amber">⚠️ Vượt</span>' : '') +
+      '</div>' +
+    '</div>'
+  ).join("");
+}
+
+/** Thẻ 1 dòng giao dịch — dùng chung cho cả 2 chế độ xem */
+function thePhieuGiaoDich(t, hienLSX){
+  const hasWarn = (t.ghiChu || "").indexOf("[VƯỢT SL]") !== -1;
+  const ico = t.nguon === "SCAN" ? "📷" : (t.nguon === "MANUAL" ? "✏️" : "");
+  return '<div class="trx-card">' +
+    '<div class="trx-top">' +
+      '<span class="trx-id">' + (ico ? ico + ' ' : '') +
+        (hienLSX ? esc(t.lsx) : esc(t.trxId)) + '</span>' +
+      '<span class="trx-date">' + esc(t.timestamp) + '</span>' +
+    '</div>' +
+    (hienLSX && (t.khachhang || t.mota)
+      ? '<div class="trx-machines">' + esc(t.khachhang || "") + (t.mota ? ' — ' + esc(t.mota) : '') + '</div>' : '') +
+    '<div class="trx-detail">' +
+      '<span class="user">👤 ' + esc(t.user) + '</span>' +
+      '<span>' + esc(t.from) + ' → ' + esc(t.to) + '</span>' +
+      '<span class="qty">' + fmtNum(t.slChuyen) + ' ' + esc(t.dvt || "") +
+        (t.kl ? ' <span class="trx-kl">· ' + fmtNum(t.kl) + ' kg</span>' : '') +
+      '</span>' +
+    '</div>' +
+    ((t.fromMachine || t.toMachine)
+      ? '<div class="trx-machines">Máy: <span>' + esc(t.fromMachine || "—") + '</span> → <span>' + esc(t.toMachine || "—") + '</span></div>' : '') +
+    (t.qr ? '<div class="trx-qr">QR: ' + esc(t.qr) + '</div>' : '') +
+    (t.ghiChu ? '<div class="trx-note' + (hasWarn ? ' warn' : '') + '">' + esc(t.ghiChu) + '</div>' : '') +
+  '</div>';
+}
+
+function showBatchDetail(idx){
+  const b = st.batches[idx];
+  if(!b) return;
+  document.getElementById("detailTitle").textContent = b.batchId || "Giao dịch lẻ";
+
+  let html = '<div class="detail-header">' +
+    '<div class="dh-row"><span class="dh-label">Mã phiên</span><span class="dh-value">' + esc(b.batchId || "— (bản cũ)") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Thời gian</span><span class="dh-value">' + esc(b.timestamp) + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Người thực hiện</span><span class="dh-value">' + esc(b.user) + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Tuyến chuyển</span><span class="dh-value">' + esc(b.from) + ' → ' + esc(b.to) + '</span></div>' +
+    ((b.fromMachine || b.toMachine)
+      ? '<div class="dh-row"><span class="dh-label">Máy</span><span class="dh-value">' + esc(b.fromMachine || "—") + ' → ' + esc(b.toMachine || "—") + '</span></div>' : '') +
+    '<div class="dh-row"><span class="dh-label">Loại chuyển</span><span class="dh-value">' + esc(b.transferType || "") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Số dòng</span><span class="dh-value">' + b.soDong + ' (📷 ' + b.soScan + ' · ✏️ ' + b.soManual + ')</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Số LSX</span><span class="dh-value">' + b.soLsx + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Tổng SL</span><span class="dh-value" style="color:var(--green)">' + fmtNum(b.tongSL) + '</span></div>' +
+    (b.tongKL ? '<div class="dh-row"><span class="dh-label">Tổng KL</span><span class="dh-value" style="color:var(--teal-d)">' + fmtNum(b.tongKL) + ' kg</span></div>' : '') +
+  '</div>';
+
+  html += '<div style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Các dòng trong phiên</div>';
+  html += b.rows.map(t => thePhieuGiaoDich(t, true)).join("");
+
+  document.getElementById("detailContent").innerHTML = html;
+  showScreen("screenDetail");
 }
 
 /* ══════════════════════════════════════════════════
@@ -410,22 +538,7 @@ function showDetail(idx){
 
   html += '<div style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Lịch sử giao dịch</div>';
 
-  g.transactions.forEach(t => {
-    const hasWarn = t.ghiChu.indexOf("[VƯỢT SL]") !== -1;
-    html += '<div class="trx-card">' +
-      '<div class="trx-top">' +
-        '<span class="trx-id">' + esc(t.trxId) + '</span>' +
-        '<span class="trx-date">' + esc(t.timestamp) + '</span>' +
-      '</div>' +
-      '<div class="trx-detail">' +
-        '<span class="user">👤 ' + esc(t.user) + '</span>' +
-        '<span>' + esc(t.from) + ' → ' + esc(t.to) + '</span>' +
-        '<span class="qty">' + fmtNum(t.slChuyen) + '</span>' +
-      '</div>' +
-      ((t.fromMachine || t.toMachine) ? '<div class="trx-machines">Máy: <span>' + esc(t.fromMachine || "—") + '</span> → <span>' + esc(t.toMachine || "—") + '</span></div>' : '') +
-      (t.ghiChu ? '<div class="trx-note' + (hasWarn ? ' warn' : '') + '">' + esc(t.ghiChu) + '</div>' : '') +
-    '</div>';
-  });
+  html += g.transactions.map(t => thePhieuGiaoDich(t, false)).join("");
 
   document.getElementById("detailContent").innerHTML = html;
   showScreen("screenDetail");
