@@ -83,26 +83,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .trx-note{font-size:13px;color:var(--muted);margin-top:3px;font-style:italic;}
 .trx-note.warn{color:var(--red);font-weight:600;font-style:normal;}
 
-/* ══ v2.0 — chế độ xem theo PHIÊN ══ */
-.mode-tabs{display:flex;gap:6px;margin-bottom:8px;}
-.mode-tab{flex:1;padding:9px 6px;border:2px solid var(--border);background:#fff;border-radius:10px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;}
-.mode-tab.active{border-color:var(--teal);background:#f0fdfa;color:var(--teal-d);}
-
-.batch-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s;}
-.batch-card:active{border-color:var(--teal);background:#f0fdfa;}
-.batch-card.le{border-style:dashed;}
-.bc-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;}
-.bc-id{font-weight:800;font-size:15px;color:var(--teal-d);word-break:break-all;}
-.bc-time{font-size:12.5px;color:var(--muted);white-space:nowrap;}
-.bc-route{font-size:14px;font-weight:600;margin-bottom:6px;}
-.bc-stats{display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:700;}
-.bc-stats span{background:#e2e8f0;color:#334155;padding:2px 9px;border-radius:999px;}
-.bc-stats span.g{background:#dcfce7;color:#15803d;}
-.bc-stats span.a{background:#fef3c7;color:#92400e;}
-
-.src-badge{font-size:12px;font-weight:700;padding:1px 7px;border-radius:999px;background:#e0f2fe;color:#0369a1;}
-.trx-qr{font-size:11.5px;color:var(--muted);margin-top:3px;word-break:break-all;font-family:ui-monospace,Menlo,Consolas,monospace;}
+/* ══ v2.2 — danh sách phẳng ══ */
 .trx-kl{font-weight:700;color:var(--teal-d);}
+.trx-card.vuot{border-color:var(--red);background:#fef2f2;}
 
 /* empty */
 .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:15px;}
@@ -144,13 +127,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 
   <div class="filter-bar">
-    <div class="mode-tabs">
-      <button id="tabPhien" class="mode-tab active" onclick="doiCheDo('phien')">📦 Phiên</button>
-      <button id="tabLsx" class="mode-tab" onclick="doiCheDo('lsx')">🏷️ LSX</button>
-      <button id="tabDong" class="mode-tab" onclick="doiCheDo('dong')">📄 Chi tiết</button>
-    </div>
-
-    <!-- 6 bộ lọc ĐỘC LẬP — để trống ô nào thì bỏ qua ô đó -->
+    <!-- 5 bộ lọc ĐỘC LẬP — để trống ô nào thì bỏ qua ô đó -->
     <div class="row2">
       <div class="field">
         <label>Công đoạn đi</label>
@@ -175,15 +152,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <label>Mục đích chuyển</label>
       <select id="fType"><option value="">-- Tất cả --</option></select>
     </div>
-    <div class="row2" style="margin-bottom:0;">
-      <div class="field" style="margin-bottom:0;">
-        <label>LSX</label>
-        <input id="fLSX" type="text" placeholder="Mã LSX"/>
-      </div>
-      <div class="field" style="margin-bottom:0;">
-        <label>Mã phiên</label>
-        <input id="fBatch" type="text" placeholder="VD: 0003"/>
-      </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>LSX <span style="text-transform:none;font-weight:500;">(gõ vài ký tự cũng được)</span></label>
+      <input id="fLSX" type="text" placeholder="VD: 2501 hoặc CT2501-001"/>
     </div>
     <div class="row2" style="margin-top:10px;">
       <button class="btn" onclick="doSearch()" style="padding:12px;font-size:16px;">🔍 Tìm kiếm</button>
@@ -202,16 +173,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 </section>
 
 <!-- ════════════════════════════════════════════
-     SCREEN 3: Chi tiết LSX
+     (v2.2 — bỏ màn chi tiết: danh sách phẳng đã hiện đủ thông tin)
 ════════════════════════════════════════════ -->
-<section id="screenDetail" class="screen">
-  <div class="topbar">
-    <button class="icon-btn" onclick="showScreen('screenList')" style="font-size:18px;padding:6px 10px">←</button>
-    <div class="ttl" id="detailTitle">Chi tiết LSX</div>
-    <button class="icon-btn" onclick="goHome()" title="Trang chủ">🏠</button>
-  </div>
-  <div class="content" id="detailContent"></div>
-</section>
 
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
@@ -226,11 +189,8 @@ const CONFIG = {
 };
 
 let st = { user: null, maNV: null, username: null,
-           groups: [], batches: [], rows: [],
-           tongSL: 0, tongKL: 0,
-           tenCD: {}, tenLoai: {},
-           mode: "phien", daTim: false, locCuoi: "",
-           daTai: { phien: false, lsx: false, dong: false } };
+           rows: [], tongSL: 0, tongKL: 0, total: 0, cat: false,
+           tenCD: {}, tenLoai: {} };
 
 /* ══════════════════════════════════════════════════
    HELPERS
@@ -346,16 +306,8 @@ async function doLogin(){
 ══════════════════════════════════════════════════ */
 async function enterMain(){
   showScreen("screenList");
+  datNgayHomNay();          // đặt ngày TRƯỚC, không chờ danh mục tải xong
   await loadFilters();
-  // Default: ngày hôm nay
-  // SỬA 05/08/2026: toISOString() trả giờ UTC, trước 7h sáng (VN = UTC+7) sẽ ra
-  // ngày hôm qua. Lấy theo giờ máy.
-  const _n = new Date();
-  const today = _n.getFullYear() + "-" +
-                String(_n.getMonth()+1).padStart(2,"0") + "-" +
-                String(_n.getDate()).padStart(2,"0");
-  document.getElementById("fDateFrom").value = today;
-  document.getElementById("fDateTo").value = today;
 }
 
 /* Danh mục dùng chung cache localStorage với chuyen-btp.html — mở màn hình
@@ -420,13 +372,29 @@ async function loadFilters(){
 function tenCongDoan(code){ return st.tenCD[code] || code || ""; }
 function tenMucDich(code){ return st.tenLoai[code] || code || ""; }
 
+/** Xoá lọc: về mặc định = hôm nay, bỏ hết các điều kiện khác */
 function xoaBoLoc(){
   document.getElementById("fFrom").value = "";
   document.getElementById("fTo").value = "";
   document.getElementById("fType").value = "";
   document.getElementById("fLSX").value = "";
-  document.getElementById("fBatch").value = "";
-  toast("Đã xoá bộ lọc (trừ khoảng ngày)");
+  datNgayHomNay();
+  st.rows = []; st.tongSL = 0; st.tongKL = 0; st.total = 0; st.cat = false;
+  document.getElementById("searchSummary").style.display = "none";
+  document.getElementById("listContent").innerHTML =
+    '<div class="empty">Đã xoá bộ lọc. Bấm <b>🔍 Tìm kiếm</b> để xem dữ liệu hôm nay.</div>';
+  toast("Đã xoá bộ lọc, ngày về hôm nay");
+}
+
+function datNgayHomNay(){
+  // Không dùng toISOString() — nó trả giờ UTC, trước 7h sáng (VN = UTC+7) sẽ ra
+  // ngày hôm qua. Lấy theo giờ máy.
+  const n = new Date();
+  const today = n.getFullYear() + "-" +
+                String(n.getMonth()+1).padStart(2,"0") + "-" +
+                String(n.getDate()).padStart(2,"0");
+  document.getElementById("fDateFrom").value = today;
+  document.getElementById("fDateTo").value = today;
 }
 
 /* ══════════════════════════════════════════════════
@@ -437,9 +405,6 @@ async function doSearch(){
   listEl.innerHTML = '<div class="empty"><span class="spin spin-dark"></span> Đang tìm kiếm...</div>';
   document.getElementById("searchSummary").style.display = "none";
 
-  // Bộ lọc có thể đã đổi → dữ liệu của các chế độ kia không còn dùng lại được
-  if(st.locCuoi !== layBoLoc()) st.daTai = { phien:false, lsx:false, dong:false };
-
   try {
     const r = await api("tksxTransferHistory", {
       from: document.getElementById("fFrom").value,
@@ -447,9 +412,7 @@ async function doSearch(){
       date: document.getElementById("fDateFrom").value,
       dateTo: document.getElementById("fDateTo").value,
       lsx: document.getElementById("fLSX").value.trim(),
-      batchId: document.getElementById("fBatch").value.trim(),
-      transferType: document.getElementById("fType").value,
-      mode: st.mode
+      transferType: document.getElementById("fType").value
     }, 60000);
 
     if(r.result !== "ok"){
@@ -457,52 +420,17 @@ async function doSearch(){
       return;
     }
 
-    // Server chỉ trả cấu trúc của chế độ đang xem → giữ lại cái cũ của chế độ kia
-    if(st.mode === "phien")      st.batches = r.batches || [];
-    else if(st.mode === "lsx")   st.groups  = r.groups  || [];
-    else                         st.rows    = r.rows    || [];
-    st.daTai[st.mode] = true;
+    st.rows   = r.rows || [];
     st.tongSL = r.tongSL || 0;
     st.tongKL = r.tongKL || 0;
-    st.daTim = true;
-    st.locCuoi = layBoLoc();
+    st.cat    = !!r.cat;
+    st.total  = r.total || st.rows.length;
     renderList();
 
   } catch(e){
     listEl.innerHTML = '<div class="empty" style="color:var(--red)">' +
       'Tải quá lâu hoặc mất kết nối.<br/>Thử thu hẹp khoảng ngày rồi tìm lại.</div>';
   }
-}
-
-/** Chuỗi đại diện bộ lọc hiện tại — để biết dữ liệu đã tải còn dùng được không */
-function layBoLoc(){
-  return [
-    document.getElementById("fFrom").value,
-    document.getElementById("fTo").value,
-    document.getElementById("fDateFrom").value,
-    document.getElementById("fDateTo").value,
-    document.getElementById("fLSX").value.trim(),
-    document.getElementById("fBatch").value.trim(),
-    document.getElementById("fType").value
-  ].join("|");
-}
-
-/* ══════════════════════════════════════════════════
-   v2.0 — CHE DO XEM: theo PHIEN / theo LSX
-══════════════════════════════════════════════════ */
-function doiCheDo(mode){
-  if(st.mode === mode) return;
-  st.mode = mode;
-  document.getElementById("tabPhien").classList.toggle("active", mode === "phien");
-  document.getElementById("tabLsx").classList.toggle("active", mode === "lsx");
-  document.getElementById("tabDong").classList.toggle("active", mode === "dong");
-  if(!st.daTim) return;
-
-  // Bộ lọc đổi thì dữ liệu cũ không dùng được nữa
-  if(st.locCuoi !== layBoLoc()) st.daTai = { phien:false, lsx:false, dong:false };
-
-  if(st.daTai[mode]) renderList();
-  else doSearch();   // server chỉ dựng 1 cấu trúc/lần gọi
 }
 
 function datTomTat(dong1, dong2){
@@ -521,169 +449,40 @@ function khongCoDL(){
 
 function renderList(){
   const listEl = document.getElementById("listContent");
+  if(!st.rows.length) return khongCoDL();
 
-  /* ── 📦 THEO PHIÊN ── */
-  if(st.mode === "phien"){
-    if(!st.batches.length) return khongCoDL();
-    let tongDong = 0;
-    st.batches.forEach(b => { tongDong += b.soDong; });
-    datTomTat(st.batches.length + " phiên — " + tongDong + " dòng", tomTatSoLuong());
-
-    listEl.innerHTML = st.batches.map((b, i) =>
-      '<div class="batch-card' + (b.laPhienLe ? ' le' : '') + '" onclick="showBatchDetail(' + i + ')">' +
-        '<div class="bc-head">' +
-          '<span class="bc-id">' + esc(b.batchId || "Giao dịch lẻ (bản cũ)") + '</span>' +
-          '<span class="bc-time">' + esc(b.timestamp) + '</span>' +
-        '</div>' +
-        '<div class="bc-route">' + esc(tenCongDoan(b.from)) + ' → ' + esc(tenCongDoan(b.to)) + '</div>' +
-        '<div class="lsx-sub">Mục đích: <b>' + esc(tenMucDich(b.transferType)) + '</b> · 👤 ' + esc(b.user) + '</div>' +
-        '<div class="bc-stats">' +
-          '<span>' + b.soDong + ' dòng</span>' +
-          '<span>' + b.soLsx + ' LSX</span>' +
-          '<span class="g">SL ' + fmtNum(b.tongSL) + '</span>' +
-          (b.tongKL ? '<span class="g">' + fmtNum(b.tongKL) + ' kg</span>' : '') +
-          (b.soScan ? '<span>📷 ' + b.soScan + '</span>' : '') +
-          (b.soManual ? '<span>✏️ ' + b.soManual + '</span>' : '') +
-          (b.ghiChu && b.ghiChu.indexOf("[VƯỢT SL]") !== -1 ? '<span class="a">⚠️ Vượt SL</span>' : '') +
-        '</div>' +
-      '</div>'
-    ).join("");
-    return;
-  }
-
-  /* ── 📄 CHI TIẾT TỪNG DÒNG ── */
-  if(st.mode === "dong"){
-    if(!st.rows.length) return khongCoDL();
-    datTomTat(st.rows.length + " dòng chuyển", tomTatSoLuong());
-    listEl.innerHTML = st.rows.map(t => thePhieuGiaoDich(t, true)).join("");
-    return;
-  }
-
-  /* ── 🏷️ THEO LSX ── */
-  if(!st.groups.length) return khongCoDL();
-  let totalTrx = 0;
-  st.groups.forEach(g => { totalTrx += g.soLanChuyen; });
-  datTomTat(st.groups.length + " LSX — " + totalTrx + " lần chuyển", tomTatSoLuong());
-
-  listEl.innerHTML = st.groups.map((g, i) => {
-    const vuot = g.slYeuCau > 0 && g.tongChuyen > g.slYeuCau;
-    const tuyen = (g.tuyen || []).map(x => {
-      const p = x.split(" → ");
-      return esc(tenCongDoan(p[0])) + ' → ' + esc(tenCongDoan(p[1]));
-    }).join(", ");
-    const mucDich = (g.mucDich || []).map(m => esc(tenMucDich(m))).join(", ");
-    return '<div class="lsx-card" onclick="showDetail(' + i + ')">' +
-      '<div class="lsx-head">' +
-        '<span class="lsx-code">' + esc(g.lsx) + '</span>' +
-        '<span class="lsx-count">' + g.soLanChuyen + ' lần</span>' +
-      '</div>' +
-      ((g.khachhang || g.masp)
-        ? '<div class="lsx-sub">' + esc(g.khachhang || "") + (g.masp ? ' — ' + esc(g.masp) : '') + '</div>' : '') +
-      (tuyen ? '<div class="lsx-sub">' + tuyen + '</div>' : '') +
-      (mucDich ? '<div class="lsx-sub">Mục đích: <b>' + mucDich + '</b></div>' : '') +
-      '<div class="lsx-stats">' +
-        (g.slYeuCau > 0 ? '<span>YC: ' + fmtNum(g.slYeuCau) + '</span>' : '') +
-        '<span class="green">Đã chuyển: ' + fmtNum(g.tongChuyen) + ' ' + esc(g.dvt || "") + '</span>' +
-        (g.tongKL ? '<span class="green">' + fmtNum(g.tongKL) + ' kg</span>' : '') +
-        (vuot ? '<span class="amber">⚠️ Vượt</span>' : '') +
-      '</div>' +
-    '</div>';
-  }).join("");
+  datTomTat(
+    st.total + " dòng chuyển" + (st.cat ? " (hiện " + st.rows.length + " dòng mới nhất)" : ""),
+    tomTatSoLuong()
+  );
+  listEl.innerHTML = st.rows.map(theDongChuyen).join("");
 }
 
 /**
- * Thẻ 1 dòng giao dịch — hiển thị ĐẦY ĐỦ: LSX, số lượng + ĐVT, khối lượng,
- * tuyến chuyển (từ đâu → sang đâu), mục đích chuyển, người, thời gian.
+ * Thẻ 1 dòng chuyển — hiện đủ: LSX, số lượng + ĐVT, khối lượng,
+ * từ đâu → sang đâu, mục đích chuyển, người thực hiện, thời gian.
+ *
+ * Tên trường viết TẮT (ts/sl/kl/f/t/lo/v) là cố ý: payload nhân với hàng nghìn
+ * dòng nên mỗi ký tự tên trường đều tính. Xem tksxTransferHistory_.
  */
-function thePhieuGiaoDich(t, hienLSX){
-  const hasWarn = (t.ghiChu || "").indexOf("[VƯỢT SL]") !== -1;
-  const ico = t.nguon === "SCAN" ? "📷" : (t.nguon === "MANUAL" ? "✏️" : "");
-  return '<div class="trx-card">' +
+function theDongChuyen(r){
+  return '<div class="trx-card' + (r.v ? ' vuot' : '') + '">' +
     '<div class="trx-top">' +
-      '<span class="trx-id">' + (ico ? ico + ' ' : '') +
-        (hienLSX ? esc(t.lsx) : esc(t.trxId)) + '</span>' +
-      '<span class="trx-date">' + esc(t.timestamp) + '</span>' +
+      '<span class="trx-id">' + esc(r.lsx) + '</span>' +
+      '<span class="trx-date">' + esc(r.ts) + '</span>' +
     '</div>' +
-    (hienLSX && (t.khachhang || t.mota)
-      ? '<div class="trx-machines">' + esc(t.khachhang || "") + (t.mota ? ' — ' + esc(t.mota) : '') + '</div>' : '') +
+    (r.kh ? '<div class="trx-machines">' + esc(r.kh) + '</div>' : '') +
     '<div class="trx-detail">' +
-      '<span>' + esc(tenCongDoan(t.from)) + ' → ' + esc(tenCongDoan(t.to)) + '</span>' +
-      '<span class="qty">' + fmtNum(t.slChuyen) + ' ' + esc(t.dvt || "") + '</span>' +
+      '<span>' + esc(tenCongDoan(r.f)) + ' → ' + esc(tenCongDoan(r.t)) + '</span>' +
+      '<span class="qty">' + fmtNum(r.sl) + ' ' + esc(r.dvt || "") + '</span>' +
     '</div>' +
     '<div class="trx-detail" style="margin-top:2px;">' +
-      '<span class="user">👤 ' + esc(t.user) + '</span>' +
-      '<span class="trx-kl">' + (t.kl ? fmtNum(t.kl) + ' kg' : '— kg') + '</span>' +
+      '<span class="user">👤 ' + esc(r.user) + '</span>' +
+      '<span class="trx-kl">' + (r.kl ? fmtNum(r.kl) + ' kg' : '— kg') + '</span>' +
     '</div>' +
-    '<div class="trx-machines">Mục đích: <span>' + esc(tenMucDich(t.transferType)) + '</span>' +
-      (t.batchId ? ' · Phiên: <span>' + esc(t.batchId) + '</span>' : '') + '</div>' +
-    ((t.fromMachine || t.toMachine)
-      ? '<div class="trx-machines">Máy: <span>' + esc(t.fromMachine || "—") + '</span> → <span>' + esc(t.toMachine || "—") + '</span></div>' : '') +
-    (t.qr ? '<div class="trx-qr">QR: ' + esc(t.qr) + '</div>' : '') +
-    (t.ghiChu ? '<div class="trx-note' + (hasWarn ? ' warn' : '') + '">' + esc(t.ghiChu) + '</div>' : '') +
+    '<div class="trx-machines">Mục đích: <span>' + esc(tenMucDich(r.lo)) + '</span>' +
+      (r.v ? ' · <b style="color:var(--red)">⚠️ VƯỢT SL</b>' : '') + '</div>' +
   '</div>';
-}
-
-function showBatchDetail(idx){
-  const b = st.batches[idx];
-  if(!b) return;
-  document.getElementById("detailTitle").textContent = b.batchId || "Giao dịch lẻ";
-
-  let html = '<div class="detail-header">' +
-    '<div class="dh-row"><span class="dh-label">Mã phiên</span><span class="dh-value">' + esc(b.batchId || "— (bản cũ)") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Thời gian</span><span class="dh-value">' + esc(b.timestamp) + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Người thực hiện</span><span class="dh-value">' + esc(b.user) + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Tuyến chuyển</span><span class="dh-value">' + esc(tenCongDoan(b.from)) + ' → ' + esc(tenCongDoan(b.to)) + '</span></div>' +
-    ((b.fromMachine || b.toMachine)
-      ? '<div class="dh-row"><span class="dh-label">Máy</span><span class="dh-value">' + esc(b.fromMachine || "—") + ' → ' + esc(b.toMachine || "—") + '</span></div>' : '') +
-    '<div class="dh-row"><span class="dh-label">Mục đích chuyển</span><span class="dh-value">' + esc(tenMucDich(b.transferType)) + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Số dòng</span><span class="dh-value">' + b.soDong + ' (📷 ' + b.soScan + ' · ✏️ ' + b.soManual + ')</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Số LSX</span><span class="dh-value">' + b.soLsx + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Tổng SL</span><span class="dh-value" style="color:var(--green)">' + fmtNum(b.tongSL) + '</span></div>' +
-    (b.tongKL ? '<div class="dh-row"><span class="dh-label">Tổng KL</span><span class="dh-value" style="color:var(--teal-d)">' + fmtNum(b.tongKL) + ' kg</span></div>' : '') +
-  '</div>';
-
-  html += '<div style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Các dòng trong phiên</div>';
-  html += b.rows.map(t => thePhieuGiaoDich(t, true)).join("");
-
-  document.getElementById("detailContent").innerHTML = html;
-  showScreen("screenDetail");
-}
-
-/* ══════════════════════════════════════════════════
-   DETAIL
-══════════════════════════════════════════════════ */
-function showDetail(idx){
-  const g = st.groups[idx];
-  if(!g) return;
-
-  document.getElementById("detailTitle").textContent = "Chi tiết: " + g.lsx;
-
-  const isOver = g.slYeuCau > 0 && g.tongChuyen > g.slYeuCau;
-  const tuyen = (g.tuyen || []).map(x => {
-    const p = x.split(" → ");
-    return esc(tenCongDoan(p[0])) + ' → ' + esc(tenCongDoan(p[1]));
-  }).join(", ");
-  const mucDich = (g.mucDich || []).map(m => esc(tenMucDich(m))).join(", ");
-
-  let html = '<div class="detail-header">' +
-    '<div class="dh-row"><span class="dh-label">LSX</span><span class="dh-value">' + esc(g.lsx) + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Mã SP</span><span class="dh-value">' + esc(g.masp || "—") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Khách hàng</span><span class="dh-value">' + esc(g.khachhang || "—") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Mô tả SP</span><span class="dh-value">' + esc(g.mota || "—") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Tuyến chuyển</span><span class="dh-value">' + (tuyen || "—") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Mục đích chuyển</span><span class="dh-value">' + (mucDich || "—") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">SL yêu cầu</span><span class="dh-value">' + (g.slYeuCau > 0 ? fmtNum(g.slYeuCau) : "—") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Tổng đã chuyển</span><span class="dh-value" style="color:' + (isOver ? 'var(--red)' : 'var(--green)') + '">' + fmtNum(g.tongChuyen) + ' ' + esc(g.dvt || "") + (isOver ? ' ⚠️' : '') + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Tổng khối lượng</span><span class="dh-value" style="color:var(--teal-d)">' + (g.tongKL ? fmtNum(g.tongKL) + ' kg' : "—") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Số lần chuyển</span><span class="dh-value">' + g.soLanChuyen + '</span></div>' +
-  '</div>';
-
-  html += '<div style="font-size:14px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Lịch sử giao dịch</div>';
-
-  html += g.transactions.map(t => thePhieuGiaoDich(t, false)).join("");
-
-  document.getElementById("detailContent").innerHTML = html;
-  showScreen("screenDetail");
 }
 
 /* ══════════════════════════════════════════════════
@@ -693,7 +492,6 @@ function onEnterKey(fn){ return function(e){ if(e.key === "Enter"){ e.preventDef
 document.getElementById("loginUser").addEventListener("keydown", onEnterKey(function(){ document.getElementById("loginPass").focus(); }));
 document.getElementById("loginPass").addEventListener("keydown", onEnterKey(doLogin));
 document.getElementById("fLSX").addEventListener("keydown", onEnterKey(doSearch));
-document.getElementById("fBatch").addEventListener("keydown", onEnterKey(doSearch));
 
 /* ══════════════════════════════════════════════════
    INIT
