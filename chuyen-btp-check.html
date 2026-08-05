@@ -358,30 +358,61 @@ async function enterMain(){
   document.getElementById("fDateTo").value = today;
 }
 
+/* Danh mục dùng chung cache localStorage với chuyen-btp.html — mở màn hình
+   là dropdown có ngay, không phải chờ 1 vòng JSONP. */
+const ROUTES_KEY = "cbtp_routes_v1";
+const ROUTES_TTL = 12 * 3600 * 1000;
+
+function docDanhMucCache(){
+  try{
+    const d = JSON.parse(localStorage.getItem(ROUTES_KEY) || "null");
+    if(d && d.ts && (Date.now() - d.ts) < ROUTES_TTL &&
+       d.data && d.data.congDoans && d.data.congDoans.length) return d.data;
+  }catch(e){}
+  return null;
+}
+
+function apDungDanhMuc(r){
+  const fromSel = document.getElementById("fFrom");
+  const toSel   = document.getElementById("fTo");
+  const tSel    = document.getElementById("fType");
+  const giuFrom = fromSel.value, giuTo = toSel.value, giuT = tSel.value;
+
+  const dau = '<option value="">-- Tất cả --</option>';
+  st.tenCD = {}; st.tenLoai = {};
+
+  let opts = dau;
+  (r.congDoans || []).forEach(cd => {
+    opts += '<option value="' + esc(cd.code) + '">' + esc(cd.name) + '</option>';
+    st.tenCD[cd.code] = cd.name;
+  });
+  fromSel.innerHTML = opts;
+  toSel.innerHTML = opts;
+  fromSel.value = giuFrom; toSel.value = giuTo;
+
+  let tOpts = dau;
+  (r.transferTypes || []).forEach(tt => {
+    tOpts += '<option value="' + esc(tt.code) + '">' + esc(tt.name) + '</option>';
+    st.tenLoai[tt.code] = tt.name;
+  });
+  tSel.innerHTML = tOpts;
+  tSel.value = giuT;
+}
+
 async function loadFilters(){
+  const cache = docDanhMucCache();
+  if(cache) apDungDanhMuc(cache);
+
   try {
     const r = await api("tksxTransferRoutes");
-    if(r.result === "ok"){
-      if(r.congDoans){
-        const fromSel = document.getElementById("fFrom");
-        const toSel = document.getElementById("fTo");
-        r.congDoans.forEach(cd => {
-          const o1 = '<option value="' + esc(cd.code) + '">' + esc(cd.name) + '</option>';
-          fromSel.innerHTML += o1;
-          toSel.innerHTML += o1;
-          st.tenCD[cd.code] = cd.name;
-        });
-      }
-      if(r.transferTypes){
-        const tSel = document.getElementById("fType");
-        r.transferTypes.forEach(tt => {
-          tSel.innerHTML += '<option value="' + esc(tt.code) + '">' + esc(tt.name) + '</option>';
-          st.tenLoai[tt.code] = tt.name;
-        });
-      }
+    if(r && r.result === "ok" && r.congDoans && r.congDoans.length){
+      try{ localStorage.setItem(ROUTES_KEY, JSON.stringify({ts: Date.now(), data: r})); }catch(e){}
+      apDungDanhMuc(r);
+    } else if(!cache){
+      toast("Chưa tải được danh mục công đoạn — vẫn tra cứu được, chỉ hiện mã thay vì tên");
     }
   } catch(e){
-    toast("Không tải được danh mục");
+    if(!cache) toast("Không tải được danh mục");
   }
 }
 
