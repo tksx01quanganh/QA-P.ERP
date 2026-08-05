@@ -611,43 +611,85 @@ async function enterMain(){
   khoiPhucDraft();
 }
 
-async function loadRoutes(){
-  try {
-    const r = await api("tksxTransferRoutes");
-    if(r.result === "ok"){
-      st.congDoans = r.congDoans || [];
-      st.transferTypes = r.transferTypes || [];
-      st.machines = r.machines || {};
-    }
-  } catch(e){
-    toast("Không tải được danh mục. Kiểm tra mạng.", "err");
-  }
+/* ── Danh mục công đoạn/máy/mục đích: cache localStorage cho hiện NGAY ──
+   Danh mục gần như không đổi. Trước đây mỗi lần mở màn hình đều phải chờ
+   1 vòng JSONP mới có dropdown → cảm giác rất chậm. Giờ vẽ ngay từ cache,
+   rồi tải nền để cập nhật. */
+const ROUTES_KEY = "cbtp_routes_v1";
+const ROUTES_TTL = 12 * 3600 * 1000;
+
+function docDanhMucCache(){
+  try{
+    const d = JSON.parse(localStorage.getItem(ROUTES_KEY) || "null");
+    if(d && d.ts && (Date.now() - d.ts) < ROUTES_TTL &&
+       d.data && d.data.congDoans && d.data.congDoans.length) return d.data;
+  }catch(e){}
+  return null;
+}
+function luuDanhMucCache(data){
+  try{ localStorage.setItem(ROUTES_KEY, JSON.stringify({ts: Date.now(), data: data})); }catch(e){}
+}
+
+function apDungDanhMuc(r){
+  st.congDoans     = r.congDoans || [];
+  st.transferTypes = r.transferTypes || [];
+  st.machines      = r.machines || {};
 
   const fromSel = document.getElementById("selFromCD");
-  const toSel = document.getElementById("selToCD");
-  if(st.congDoans.length > 0){
+  const toSel   = document.getElementById("selToCD");
+  const ttSel   = document.getElementById("selTransferType");
+  // Nhớ lựa chọn cũ — tải nền xong không được nhảy về mặc định
+  const giuFrom = fromSel.value, giuTo = toSel.value, giuTT = ttSel.value;
+
+  if(st.congDoans.length){
     const opts = st.congDoans.map(cd =>
-      '<option value="' + esc(cd.code) + '">' + esc(cd.name) + '</option>'
-    ).join("");
+      '<option value="' + esc(cd.code) + '">' + esc(cd.name) + '</option>').join("");
     fromSel.innerHTML = opts;
     toSel.innerHTML = opts;
-    if(st.congDoans.length > 1) toSel.selectedIndex = 1;
+    if(giuFrom) fromSel.value = giuFrom;
+    if(giuTo)   toSel.value = giuTo;
+    // Lần đầu: đặt CĐ đến khác CĐ đi cho khỏi vướng cảnh báo trùng
+    if(!giuTo && st.congDoans.length > 1) toSel.selectedIndex = 1;
   } else {
-    fromSel.innerHTML = '<option value="CAT">Cắt</option>';
-    toSel.innerHTML = '<option value="TCO">Thủ công</option>';
+    fromSel.innerHTML = '<option value="">-- Chưa có danh mục --</option>';
+    toSel.innerHTML   = '<option value="">-- Chưa có danh mục --</option>';
   }
 
-  const ttSel = document.getElementById("selTransferType");
-  if(st.transferTypes.length > 0){
+  if(st.transferTypes.length){
     ttSel.innerHTML = st.transferTypes.map(tt =>
-      '<option value="' + esc(tt.code) + '">' + esc(tt.name + (tt.desc ? " — " + tt.desc : "")) + '</option>'
-    ).join("");
+      '<option value="' + esc(tt.code) + '">' + esc(tt.name) + '</option>').join("");
+    if(giuTT) ttSel.value = giuTT;
   } else {
-    ttSel.innerHTML = '<option value="BTP">Bán thành phẩm</option>';
+    ttSel.innerHTML = '<option value="BTP">Chuyển BTP</option>';
   }
 
   updateMachineDropdowns();
   updateTitle();
+  kiemTraCongDoan();
+}
+
+async function loadRoutes(){
+  const cache = docDanhMucCache();
+  if(cache) apDungDanhMuc(cache);          // vẽ ngay, không chờ mạng
+
+  try {
+    const r = await api("tksxTransferRoutes");
+    if(r && r.result === "ok" && r.congDoans && r.congDoans.length){
+      luuDanhMucCache(r);
+      apDungDanhMuc(r);
+      return;
+    }
+    // Server trả rỗng → cấu hình Master Sheet có vấn đề
+    if(!cache){
+      apDungDanhMuc(r || {});
+      setStartHint("Chưa tải được danh mục công đoạn. Báo quản trị kiểm tra tab MA_PhongBan / MA_MAY.", "err");
+    }
+  } catch(e){
+    if(!cache){
+      apDungDanhMuc({});
+      setStartHint("Không kết nối được máy chủ để tải danh mục. Kiểm tra mạng rồi mở lại.", "err");
+    }
+  }
 }
 
 function updateMachineDropdowns(){
