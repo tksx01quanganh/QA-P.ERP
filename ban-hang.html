@@ -76,6 +76,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <div class="topbar">
   <button class="icon-btn" onclick="history.back()" style="font-size:20px;padding:8px;">←</button>
   <div class="ttl">📊 Dashboard Bán hàng</div>
+  <button class="icon-btn" id="btnLamMoi" onclick="lamMoi()" title="Làm mới — bỏ qua bộ nhớ đệm, đọc thẳng từ Sheet">⚡</button>
   <button class="icon-btn" onclick="location.href='index.html'">🏠</button>
 </div>
 
@@ -189,7 +190,7 @@ function quick2(p){
 /* ═══ localStorage stale-while-revalidate ═══ */
 const LS_PFX = "bh_";
 const LS_TTL = 30*60*1000; // 30 phút
-function lsGet(k){ try{ var r=localStorage.getItem(LS_PFX+k); if(!r) return null; var o=JSON.parse(r); if(Date.now()-o.ts>LS_TTL){localStorage.removeItem(LS_PFX+k);return null;} return o.d; }catch(e){return null;} }
+function lsGet(k){ if(NO_CACHE) return null; try{ var r=localStorage.getItem(LS_PFX+k); if(!r) return null; var o=JSON.parse(r); if(Date.now()-o.ts>LS_TTL){localStorage.removeItem(LS_PFX+k);return null;} return o.d; }catch(e){return null;} }
 function lsSet(k,d){ try{localStorage.setItem(LS_PFX+k,JSON.stringify({d:d,ts:Date.now()}));}catch(e){} }
 
 /* ═══ JSONP HELPER — nhanh hơn fetch (tránh redirect 302 của GAS) ═══ */
@@ -215,8 +216,34 @@ function jsonp(url, timeout){
  *
  * Đây là lý do trước đây "bấm tải lại thì được" — nay tự làm thay người dùng.
  */
+/* ═══ LÀM MỚI (THÊM 05/08/2026) ═══
+   Xoá đệm trình duyệt VÀ gửi nocache=1 để máy chủ bỏ qua mọi tầng cache. */
+let NO_CACHE = false;
+
+async function lamMoi(){
+  const nut = document.getElementById("btnLamMoi");
+  if(nut.disabled) return;
+  nut.disabled = true; nut.textContent = "⏳";
+
+  try{
+    Object.keys(localStorage)
+      .filter(k => k.indexOf(LS_PFX) === 0)
+      .forEach(k => localStorage.removeItem(k));
+  }catch(e){}
+
+  NO_CACHE = true;
+  try{
+    await loadTab1();
+    if(tab2Loaded) await loadTab2();
+  } finally {
+    NO_CACHE = false;
+    nut.disabled = false; nut.textContent = "⚡";
+  }
+}
+
 async function callAPI(action, params){
   let url = CONFIG.BAN_HANG_URL + "?action=" + action + "&t=" + Date.now();
+  if(NO_CACHE) url += "&nocache=1";
   for(const k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
 
   let json;
@@ -226,6 +253,9 @@ async function callAPI(action, params){
     if(String(e1.message).indexOf("Hết thời gian") === -1) throw e1;
     // Lần đầu hết giờ — máy chủ vẫn đang tính và sẽ ghi cache. Chờ 3 giây rồi thử lại.
     await new Promise(r => setTimeout(r, 3000));
+    // CỐ Ý không gửi nocache=1 ở lần thử lại: lần đầu (dù trình duyệt đã bỏ cuộc)
+    // vẫn chạy tiếp trên máy chủ và ghi kết quả mới vào cache. Lần hai chỉ cần
+    // nhặt kết quả đó. Gửi nocache=1 lần nữa là bắt máy chủ tính lại từ đầu.
     const url2 = CONFIG.BAN_HANG_URL + "?action=" + action + "&t=" + Date.now() +
                  Object.keys(params||{}).map(k => "&"+k+"="+encodeURIComponent(params[k])).join("");
     json = await jsonp(url2, CONFIG.TIMEOUT_MS);
