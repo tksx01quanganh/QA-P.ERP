@@ -418,7 +418,9 @@ async function loadBTP(){
   }
 
   try{
-    const json = await jsonp(CONFIG.CENTRAL_URL+"?action=tksxDaily&from="+from+"&to="+to+"&t="+Date.now()+thamSoNoCache(), 45000);
+    /* gon=1 (05/08/2026): màn hình này chỉ đọc sxd + phe, nên xin bản rút gọn.
+       Bản đầy đủ ~232 KB gửi kèm cả khối sx và phed mà ở đây không ai dùng. */
+    const json = await jsonp(CONFIG.CENTRAL_URL+"?action=tksxDaily&gon=1&from="+from+"&to="+to+"&t="+Date.now()+thamSoNoCache(), 45000);
     if(json.result!=="ok") throw new Error(json.error||"Lỗi");
     lsSet(ck, json);
     renderBTP(json);
