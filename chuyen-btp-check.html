@@ -209,7 +209,8 @@ const CONFIG = {
   SESSION_TTL: 8 * 3600 * 1000
 };
 
-let st = { user: null, maNV: null, username: null, groups: [], batches: [], mode: "phien", daTim: false };
+let st = { user: null, maNV: null, username: null, groups: [], batches: [],
+           mode: "phien", daTim: false, daTaiPhien: false, daTaiLsx: false, locCuoi: "" };
 
 /* ══════════════════════════════════════════════════
    HELPERS
@@ -362,38 +363,64 @@ async function doSearch(){
   listEl.innerHTML = '<div class="empty"><span class="spin spin-dark"></span> Đang tìm kiếm...</div>';
   document.getElementById("searchSummary").style.display = "none";
 
+  // Bộ lọc có thể đã đổi → dữ liệu của chế độ kia không còn dùng lại được
+  if(st.locCuoi !== layBoLoc()){ st.daTaiPhien = false; st.daTaiLsx = false; }
+
   try {
     const r = await api("tksxTransferHistory", {
       from: document.getElementById("fFrom").value,
       to: document.getElementById("fTo").value,
       date: document.getElementById("fDateFrom").value,
       dateTo: document.getElementById("fDateTo").value,
-      lsx: document.getElementById("fLSX").value.trim()
-    }, 45000);
+      lsx: document.getElementById("fLSX").value.trim(),
+      mode: st.mode
+    }, 60000);
 
     if(r.result !== "ok"){
       listEl.innerHTML = '<div class="empty" style="color:var(--red)">' + esc(r.error || "Lỗi") + '</div>';
       return;
     }
 
-    st.groups  = r.groups  || [];
-    st.batches = r.batches || [];
+    // Server chỉ trả cấu trúc của chế độ đang xem → giữ lại cái cũ của chế độ kia
+    if(st.mode === "phien"){ st.batches = r.batches || []; st.daTaiPhien = true; }
+    else { st.groups = r.groups || []; st.daTaiLsx = true; }
     st.daTim = true;
+    st.locCuoi = layBoLoc();
     renderList();
 
   } catch(e){
-    listEl.innerHTML = '<div class="empty" style="color:var(--red)">Lỗi kết nối. Kiểm tra mạng và thử lại.</div>';
+    listEl.innerHTML = '<div class="empty" style="color:var(--red)">' +
+      'Tải quá lâu hoặc mất kết nối.<br/>Thử thu hẹp khoảng ngày rồi tìm lại.</div>';
   }
+}
+
+/** Chuỗi đại diện bộ lọc hiện tại — để biết dữ liệu đã tải còn dùng được không */
+function layBoLoc(){
+  return [
+    document.getElementById("fFrom").value,
+    document.getElementById("fTo").value,
+    document.getElementById("fDateFrom").value,
+    document.getElementById("fDateTo").value,
+    document.getElementById("fLSX").value.trim()
+  ].join("|");
 }
 
 /* ══════════════════════════════════════════════════
    v2.0 — CHE DO XEM: theo PHIEN / theo LSX
 ══════════════════════════════════════════════════ */
 function doiCheDo(mode){
+  if(st.mode === mode) return;
   st.mode = mode;
   document.getElementById("tabPhien").classList.toggle("active", mode === "phien");
   document.getElementById("tabLsx").classList.toggle("active", mode === "lsx");
-  if(st.daTim) renderList();
+  if(!st.daTim) return;
+
+  // Bộ lọc đổi thì dữ liệu cũ không dùng được nữa
+  if(st.locCuoi !== layBoLoc()){ st.daTaiPhien = false; st.daTaiLsx = false; }
+
+  const daCo = (mode === "phien") ? st.daTaiPhien : st.daTaiLsx;
+  if(daCo) renderList();
+  else doSearch();   // server chỉ dựng 1 cấu trúc/lần gọi
 }
 
 function renderList(){
