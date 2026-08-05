@@ -158,7 +158,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
     <div class="row2" style="margin-top:10px;">
       <button class="btn" onclick="doSearch()" style="padding:12px;font-size:16px;">🔍 Tìm kiếm</button>
-      <button class="btn gray" onclick="xoaBoLoc()" style="padding:12px;font-size:16px;flex:0 0 40%;">Xoá lọc</button>
+      <button class="btn gray" onclick="xoaBoLoc()" style="padding:12px;font-size:16px;flex:0 0 30%;">Xoá lọc</button>
+      <button class="btn gray" onclick="taiLaiDanhMuc()" style="padding:12px;font-size:16px;flex:0 0 22%;" title="Tải lại danh mục công đoạn / mục đích">⟳</button>
     </div>
   </div>
 
@@ -187,6 +188,10 @@ const CONFIG = {
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
   SESSION_TTL: 8 * 3600 * 1000
 };
+
+// Phải khớp CBTP_VER trong Code_ThoiIn.gs.
+// Lệch = Apps Script chưa deploy lại → màn hình sẽ nói thẳng thay vì trắng trơn.
+const VER_MONG_DOI = "2.2";
 
 let st = { user: null, maNV: null, username: null,
            rows: [], tongSL: 0, tongKL: 0, total: 0, cat: false,
@@ -304,10 +309,11 @@ async function doLogin(){
 /* ══════════════════════════════════════════════════
    MAIN
 ══════════════════════════════════════════════════ */
-async function enterMain(){
+function enterMain(){
   showScreen("screenList");
-  datNgayHomNay();          // đặt ngày TRƯỚC, không chờ danh mục tải xong
-  await loadFilters();
+  datNgayHomNay();
+  // KHÔNG await — màn hình dùng được ngay, danh mục nạp song song nếu cần
+  loadFilters();
 }
 
 /* Danh mục dùng chung cache localStorage với chuyen-btp.html — mở màn hình
@@ -351,21 +357,38 @@ function apDungDanhMuc(r){
   tSel.value = giuT;
 }
 
+/**
+ * ĐO ĐƯỢC 05/08/2026: mỗi lần gọi Apps Script tốn ~2,6 GIÂY phí cố định
+ * (nạp lại 12 file .gs + mạng), bất kể xử lý gì. Nên nguyên tắc là
+ * GIẢM SỐ LƯỢT GỌI, không phải giảm khối lượng dữ liệu.
+ *
+ * Bản trước vẫn gọi nền để "làm mới" danh mục dù cache còn hạn → mở màn hình
+ * là mất luôn 2,6 giây vô ích. Danh mục công đoạn cả tháng không đổi.
+ * Nay: cache còn hạn thì KHÔNG gọi server lượt nào.
+ */
 async function loadFilters(){
   const cache = docDanhMucCache();
-  if(cache) apDungDanhMuc(cache);
+  if(cache){ apDungDanhMuc(cache); return; }   // 0 lượt gọi
 
   try {
     const r = await api("tksxTransferRoutes");
     if(r && r.result === "ok" && r.congDoans && r.congDoans.length){
       try{ localStorage.setItem(ROUTES_KEY, JSON.stringify({ts: Date.now(), data: r})); }catch(e){}
       apDungDanhMuc(r);
-    } else if(!cache){
-      toast("Chưa tải được danh mục công đoạn — vẫn tra cứu được, chỉ hiện mã thay vì tên");
+    } else {
+      toast("Chưa tải được danh mục — vẫn tra cứu được, chỉ hiện mã thay vì tên");
     }
   } catch(e){
-    if(!cache) toast("Không tải được danh mục");
+    toast("Không tải được danh mục");
   }
+}
+
+/** Buộc tải lại danh mục (khi thêm công đoạn/mục đích mới trong Master Sheet) */
+async function taiLaiDanhMuc(){
+  try{ localStorage.removeItem(ROUTES_KEY); }catch(e){}
+  toast("Đang tải lại danh mục...");
+  await loadFilters();
+  toast("Đã cập nhật danh mục");
 }
 
 /** Đổi mã sang tên đọc được; không có trong danh mục thì giữ nguyên mã */
@@ -420,6 +443,21 @@ async function doSearch(){
       return;
     }
 
+    // Backend cũ không có trường `ver` và trả `groups`/`batches` thay vì `rows`
+    // → màn hình sẽ trắng trơn mà không hiểu vì sao. Nói thẳng ra cho người dùng.
+    if(r.ver !== VER_MONG_DOI){
+      document.getElementById("searchSummary").style.display = "none";
+      listEl.innerHTML =
+        '<div class="empty" style="color:var(--red);text-align:left">' +
+        '<b>⚠️ Apps Script chưa được deploy lại</b><br/><br/>' +
+        'Máy chủ đang chạy phiên bản <b>' + esc(r.ver || "cũ (không rõ)") + '</b>, ' +
+        'giao diện cần <b>' + esc(VER_MONG_DOI) + '</b>.<br/><br/>' +
+        'Vào Apps Script → <b>Deploy → Manage deployments → ✏️ Edit → ' +
+        'Version: New version → Deploy</b>, rồi tải lại trang này.' +
+        '</div>';
+      return;
+    }
+
     st.rows   = r.rows || [];
     st.tongSL = r.tongSL || 0;
     st.tongKL = r.tongKL || 0;
@@ -441,10 +479,39 @@ function datTomTat(dong1, dong2){
 function tomTatSoLuong(){
   return "Tổng: " + fmtNum(st.tongSL) + (st.tongKL ? " · " + fmtNum(st.tongKL) + " kg" : "");
 }
+/**
+ * Rỗng thì phải nói RÕ đã tìm trong khoảng nào.
+ * Bẫy hay gặp: khoảng ngày mặc định là HÔM NAY, mà dữ liệu lại nhập hôm trước
+ * → màn hình trống trơn và người dùng tưởng hỏng.
+ */
 function khongCoDL(){
+  const tu = document.getElementById("fDateFrom").value;
+  const den = document.getElementById("fDateTo").value;
+  const dk = [];
+  if(document.getElementById("fFrom").value) dk.push("CĐ đi = " + tenCongDoan(document.getElementById("fFrom").value));
+  if(document.getElementById("fTo").value)   dk.push("CĐ đến = " + tenCongDoan(document.getElementById("fTo").value));
+  if(document.getElementById("fType").value) dk.push("mục đích = " + tenMucDich(document.getElementById("fType").value));
+  if(document.getElementById("fLSX").value.trim()) dk.push("LSX chứa \"" + esc(document.getElementById("fLSX").value.trim()) + "\"");
+
   document.getElementById("searchSummary").style.display = "none";
   document.getElementById("listContent").innerHTML =
-    '<div class="empty">Không tìm thấy dữ liệu khớp bộ lọc.<br/>Thử bấm <b>Xoá lọc</b> hoặc nới khoảng ngày.</div>';
+    '<div class="empty" style="text-align:left">' +
+      '<b>Không có dòng nào khớp.</b><br/><br/>' +
+      'Đã tìm từ <b>' + esc(tu || "—") + '</b> đến <b>' + esc(den || "—") + '</b>' +
+      (dk.length ? ', với: ' + dk.join(", ") : ', không lọc thêm điều kiện nào') + '.<br/><br/>' +
+      'Nếu dữ liệu nhập từ hôm trước thì phải <b>nới ô "Từ ngày"</b> — mặc định chỉ tìm trong hôm nay.' +
+      '<div style="margin-top:12px"><button class="btn" style="padding:10px;font-size:15px" onclick="tim7Ngay()">Tìm 7 ngày gần nhất</button></div>' +
+    '</div>';
+}
+
+/** Lối tắt hay dùng nhất khi không thấy dữ liệu */
+function tim7Ngay(){
+  const n = new Date();
+  const t = new Date(n.getTime() - 6 * 86400000);
+  const fmt = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  document.getElementById("fDateFrom").value = fmt(t);
+  document.getElementById("fDateTo").value = fmt(n);
+  doSearch();
 }
 
 function renderList(){
