@@ -145,9 +145,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
   <div class="filter-bar">
     <div class="mode-tabs">
-      <button id="tabPhien" class="mode-tab active" onclick="doiCheDo('phien')">📦 Theo phiên</button>
-      <button id="tabLsx" class="mode-tab" onclick="doiCheDo('lsx')">🏷️ Theo LSX</button>
+      <button id="tabPhien" class="mode-tab active" onclick="doiCheDo('phien')">📦 Phiên</button>
+      <button id="tabLsx" class="mode-tab" onclick="doiCheDo('lsx')">🏷️ LSX</button>
+      <button id="tabDong" class="mode-tab" onclick="doiCheDo('dong')">📄 Chi tiết</button>
     </div>
+
+    <!-- 6 bộ lọc ĐỘC LẬP — để trống ô nào thì bỏ qua ô đó -->
     <div class="row2">
       <div class="field">
         <label>Công đoạn đi</label>
@@ -168,11 +171,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <input id="fDateTo" type="date"/>
       </div>
     </div>
-    <div class="field" style="margin-bottom:0;">
-      <label>LSX</label>
-      <input id="fLSX" type="text" placeholder="Nhập mã LSX (không bắt buộc)"/>
+    <div class="field">
+      <label>Mục đích chuyển</label>
+      <select id="fType"><option value="">-- Tất cả --</option></select>
     </div>
-    <button class="btn" onclick="doSearch()" style="margin-top:10px;padding:12px;font-size:16px;">🔍 Tìm kiếm</button>
+    <div class="row2" style="margin-bottom:0;">
+      <div class="field" style="margin-bottom:0;">
+        <label>LSX</label>
+        <input id="fLSX" type="text" placeholder="Mã LSX"/>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Mã phiên</label>
+        <input id="fBatch" type="text" placeholder="VD: 0003"/>
+      </div>
+    </div>
+    <div class="row2" style="margin-top:10px;">
+      <button class="btn" onclick="doSearch()" style="padding:12px;font-size:16px;">🔍 Tìm kiếm</button>
+      <button class="btn gray" onclick="xoaBoLoc()" style="padding:12px;font-size:16px;flex:0 0 40%;">Xoá lọc</button>
+    </div>
   </div>
 
   <div id="searchSummary" class="summary" style="display:none;">
@@ -209,8 +225,12 @@ const CONFIG = {
   SESSION_TTL: 8 * 3600 * 1000
 };
 
-let st = { user: null, maNV: null, username: null, groups: [], batches: [],
-           mode: "phien", daTim: false, daTaiPhien: false, daTaiLsx: false, locCuoi: "" };
+let st = { user: null, maNV: null, username: null,
+           groups: [], batches: [], rows: [],
+           tongSL: 0, tongKL: 0,
+           tenCD: {}, tenLoai: {},
+           mode: "phien", daTim: false, locCuoi: "",
+           daTai: { phien: false, lsx: false, dong: false } };
 
 /* ══════════════════════════════════════════════════
    HELPERS
@@ -341,18 +361,41 @@ async function enterMain(){
 async function loadFilters(){
   try {
     const r = await api("tksxTransferRoutes");
-    if(r.result === "ok" && r.congDoans){
-      const fromSel = document.getElementById("fFrom");
-      const toSel = document.getElementById("fTo");
-      r.congDoans.forEach(cd => {
-        const o1 = '<option value="' + esc(cd.code) + '">' + esc(cd.name) + '</option>';
-        fromSel.innerHTML += o1;
-        toSel.innerHTML += o1;
-      });
+    if(r.result === "ok"){
+      if(r.congDoans){
+        const fromSel = document.getElementById("fFrom");
+        const toSel = document.getElementById("fTo");
+        r.congDoans.forEach(cd => {
+          const o1 = '<option value="' + esc(cd.code) + '">' + esc(cd.name) + '</option>';
+          fromSel.innerHTML += o1;
+          toSel.innerHTML += o1;
+          st.tenCD[cd.code] = cd.name;
+        });
+      }
+      if(r.transferTypes){
+        const tSel = document.getElementById("fType");
+        r.transferTypes.forEach(tt => {
+          tSel.innerHTML += '<option value="' + esc(tt.code) + '">' + esc(tt.name) + '</option>';
+          st.tenLoai[tt.code] = tt.name;
+        });
+      }
     }
   } catch(e){
     toast("Không tải được danh mục");
   }
+}
+
+/** Đổi mã sang tên đọc được; không có trong danh mục thì giữ nguyên mã */
+function tenCongDoan(code){ return st.tenCD[code] || code || ""; }
+function tenMucDich(code){ return st.tenLoai[code] || code || ""; }
+
+function xoaBoLoc(){
+  document.getElementById("fFrom").value = "";
+  document.getElementById("fTo").value = "";
+  document.getElementById("fType").value = "";
+  document.getElementById("fLSX").value = "";
+  document.getElementById("fBatch").value = "";
+  toast("Đã xoá bộ lọc (trừ khoảng ngày)");
 }
 
 /* ══════════════════════════════════════════════════
@@ -363,8 +406,8 @@ async function doSearch(){
   listEl.innerHTML = '<div class="empty"><span class="spin spin-dark"></span> Đang tìm kiếm...</div>';
   document.getElementById("searchSummary").style.display = "none";
 
-  // Bộ lọc có thể đã đổi → dữ liệu của chế độ kia không còn dùng lại được
-  if(st.locCuoi !== layBoLoc()){ st.daTaiPhien = false; st.daTaiLsx = false; }
+  // Bộ lọc có thể đã đổi → dữ liệu của các chế độ kia không còn dùng lại được
+  if(st.locCuoi !== layBoLoc()) st.daTai = { phien:false, lsx:false, dong:false };
 
   try {
     const r = await api("tksxTransferHistory", {
@@ -373,6 +416,8 @@ async function doSearch(){
       date: document.getElementById("fDateFrom").value,
       dateTo: document.getElementById("fDateTo").value,
       lsx: document.getElementById("fLSX").value.trim(),
+      batchId: document.getElementById("fBatch").value.trim(),
+      transferType: document.getElementById("fType").value,
       mode: st.mode
     }, 60000);
 
@@ -382,8 +427,12 @@ async function doSearch(){
     }
 
     // Server chỉ trả cấu trúc của chế độ đang xem → giữ lại cái cũ của chế độ kia
-    if(st.mode === "phien"){ st.batches = r.batches || []; st.daTaiPhien = true; }
-    else { st.groups = r.groups || []; st.daTaiLsx = true; }
+    if(st.mode === "phien")      st.batches = r.batches || [];
+    else if(st.mode === "lsx")   st.groups  = r.groups  || [];
+    else                         st.rows    = r.rows    || [];
+    st.daTai[st.mode] = true;
+    st.tongSL = r.tongSL || 0;
+    st.tongKL = r.tongKL || 0;
     st.daTim = true;
     st.locCuoi = layBoLoc();
     renderList();
@@ -401,7 +450,9 @@ function layBoLoc(){
     document.getElementById("fTo").value,
     document.getElementById("fDateFrom").value,
     document.getElementById("fDateTo").value,
-    document.getElementById("fLSX").value.trim()
+    document.getElementById("fLSX").value.trim(),
+    document.getElementById("fBatch").value.trim(),
+    document.getElementById("fType").value
   ].join("|");
 }
 
@@ -413,31 +464,39 @@ function doiCheDo(mode){
   st.mode = mode;
   document.getElementById("tabPhien").classList.toggle("active", mode === "phien");
   document.getElementById("tabLsx").classList.toggle("active", mode === "lsx");
+  document.getElementById("tabDong").classList.toggle("active", mode === "dong");
   if(!st.daTim) return;
 
   // Bộ lọc đổi thì dữ liệu cũ không dùng được nữa
-  if(st.locCuoi !== layBoLoc()){ st.daTaiPhien = false; st.daTaiLsx = false; }
+  if(st.locCuoi !== layBoLoc()) st.daTai = { phien:false, lsx:false, dong:false };
 
-  const daCo = (mode === "phien") ? st.daTaiPhien : st.daTaiLsx;
-  if(daCo) renderList();
+  if(st.daTai[mode]) renderList();
   else doSearch();   // server chỉ dựng 1 cấu trúc/lần gọi
+}
+
+function datTomTat(dong1, dong2){
+  document.getElementById("sumText").textContent = dong1;
+  document.getElementById("sumQty").textContent = dong2;
+  document.getElementById("searchSummary").style.display = "flex";
+}
+function tomTatSoLuong(){
+  return "Tổng: " + fmtNum(st.tongSL) + (st.tongKL ? " · " + fmtNum(st.tongKL) + " kg" : "");
+}
+function khongCoDL(){
+  document.getElementById("searchSummary").style.display = "none";
+  document.getElementById("listContent").innerHTML =
+    '<div class="empty">Không tìm thấy dữ liệu khớp bộ lọc.<br/>Thử bấm <b>Xoá lọc</b> hoặc nới khoảng ngày.</div>';
 }
 
 function renderList(){
   const listEl = document.getElementById("listContent");
-  const sumEl  = document.getElementById("searchSummary");
 
+  /* ── 📦 THEO PHIÊN ── */
   if(st.mode === "phien"){
-    if(!st.batches.length){
-      sumEl.style.display = "none";
-      listEl.innerHTML = '<div class="empty">Không tìm thấy dữ liệu chuyển BTP</div>';
-      return;
-    }
-    let tongSL = 0, tongKL = 0, tongDong = 0;
-    st.batches.forEach(b => { tongSL += b.tongSL; tongKL += b.tongKL; tongDong += b.soDong; });
-    document.getElementById("sumText").textContent = st.batches.length + " phiên — " + tongDong + " dòng";
-    document.getElementById("sumQty").textContent = "Tổng: " + fmtNum(tongSL) + (tongKL ? " · " + fmtNum(tongKL) + " kg" : "");
-    sumEl.style.display = "flex";
+    if(!st.batches.length) return khongCoDL();
+    let tongDong = 0;
+    st.batches.forEach(b => { tongDong += b.soDong; });
+    datTomTat(st.batches.length + " phiên — " + tongDong + " dòng", tomTatSoLuong());
 
     listEl.innerHTML = st.batches.map((b, i) =>
       '<div class="batch-card' + (b.laPhienLe ? ' le' : '') + '" onclick="showBatchDetail(' + i + ')">' +
@@ -445,12 +504,12 @@ function renderList(){
           '<span class="bc-id">' + esc(b.batchId || "Giao dịch lẻ (bản cũ)") + '</span>' +
           '<span class="bc-time">' + esc(b.timestamp) + '</span>' +
         '</div>' +
-        '<div class="bc-route">' + esc(b.from) + ' → ' + esc(b.to) +
-          ' <span class="bc-time">· 👤 ' + esc(b.user) + '</span></div>' +
+        '<div class="bc-route">' + esc(tenCongDoan(b.from)) + ' → ' + esc(tenCongDoan(b.to)) + '</div>' +
+        '<div class="lsx-sub">Mục đích: <b>' + esc(tenMucDich(b.transferType)) + '</b> · 👤 ' + esc(b.user) + '</div>' +
         '<div class="bc-stats">' +
           '<span>' + b.soDong + ' dòng</span>' +
           '<span>' + b.soLsx + ' LSX</span>' +
-          '<span class="g">' + fmtNum(b.tongSL) + '</span>' +
+          '<span class="g">SL ' + fmtNum(b.tongSL) + '</span>' +
           (b.tongKL ? '<span class="g">' + fmtNum(b.tongKL) + ' kg</span>' : '') +
           (b.soScan ? '<span>📷 ' + b.soScan + '</span>' : '') +
           (b.soManual ? '<span>✏️ ' + b.soManual + '</span>' : '') +
@@ -461,35 +520,50 @@ function renderList(){
     return;
   }
 
-  // ── Chế độ theo LSX (giữ nguyên như v1.x) ──
-  if(!st.groups.length){
-    sumEl.style.display = "none";
-    listEl.innerHTML = '<div class="empty">Không tìm thấy dữ liệu chuyển BTP</div>';
+  /* ── 📄 CHI TIẾT TỪNG DÒNG ── */
+  if(st.mode === "dong"){
+    if(!st.rows.length) return khongCoDL();
+    datTomTat(st.rows.length + " dòng chuyển", tomTatSoLuong());
+    listEl.innerHTML = st.rows.map(t => thePhieuGiaoDich(t, true)).join("");
     return;
   }
-  let totalQty = 0, totalTrx = 0;
-  st.groups.forEach(g => { totalQty += g.tongChuyen; totalTrx += g.soLanChuyen; });
-  document.getElementById("sumText").textContent = st.groups.length + " LSX — " + totalTrx + " lần chuyển";
-  document.getElementById("sumQty").textContent = "Tổng: " + fmtNum(totalQty);
-  sumEl.style.display = "flex";
 
-  listEl.innerHTML = st.groups.map((g, i) =>
-    '<div class="lsx-card" onclick="showDetail(' + i + ')">' +
+  /* ── 🏷️ THEO LSX ── */
+  if(!st.groups.length) return khongCoDL();
+  let totalTrx = 0;
+  st.groups.forEach(g => { totalTrx += g.soLanChuyen; });
+  datTomTat(st.groups.length + " LSX — " + totalTrx + " lần chuyển", tomTatSoLuong());
+
+  listEl.innerHTML = st.groups.map((g, i) => {
+    const vuot = g.slYeuCau > 0 && g.tongChuyen > g.slYeuCau;
+    const tuyen = (g.tuyen || []).map(x => {
+      const p = x.split(" → ");
+      return esc(tenCongDoan(p[0])) + ' → ' + esc(tenCongDoan(p[1]));
+    }).join(", ");
+    const mucDich = (g.mucDich || []).map(m => esc(tenMucDich(m))).join(", ");
+    return '<div class="lsx-card" onclick="showDetail(' + i + ')">' +
       '<div class="lsx-head">' +
         '<span class="lsx-code">' + esc(g.lsx) + '</span>' +
         '<span class="lsx-count">' + g.soLanChuyen + ' lần</span>' +
       '</div>' +
-      '<div class="lsx-sub">' + esc(g.khachhang || "") + ' — ' + esc(g.masp || "") + '</div>' +
+      ((g.khachhang || g.masp)
+        ? '<div class="lsx-sub">' + esc(g.khachhang || "") + (g.masp ? ' — ' + esc(g.masp) : '') + '</div>' : '') +
+      (tuyen ? '<div class="lsx-sub">' + tuyen + '</div>' : '') +
+      (mucDich ? '<div class="lsx-sub">Mục đích: <b>' + mucDich + '</b></div>' : '') +
       '<div class="lsx-stats">' +
-        '<span>YC: ' + fmtNum(g.slYeuCau) + '</span>' +
-        '<span class="green">Đã chuyển: ' + fmtNum(g.tongChuyen) + '</span>' +
-        (g.tongChuyen > g.slYeuCau ? '<span class="amber">⚠️ Vượt</span>' : '') +
+        (g.slYeuCau > 0 ? '<span>YC: ' + fmtNum(g.slYeuCau) + '</span>' : '') +
+        '<span class="green">Đã chuyển: ' + fmtNum(g.tongChuyen) + ' ' + esc(g.dvt || "") + '</span>' +
+        (g.tongKL ? '<span class="green">' + fmtNum(g.tongKL) + ' kg</span>' : '') +
+        (vuot ? '<span class="amber">⚠️ Vượt</span>' : '') +
       '</div>' +
-    '</div>'
-  ).join("");
+    '</div>';
+  }).join("");
 }
 
-/** Thẻ 1 dòng giao dịch — dùng chung cho cả 2 chế độ xem */
+/**
+ * Thẻ 1 dòng giao dịch — hiển thị ĐẦY ĐỦ: LSX, số lượng + ĐVT, khối lượng,
+ * tuyến chuyển (từ đâu → sang đâu), mục đích chuyển, người, thời gian.
+ */
 function thePhieuGiaoDich(t, hienLSX){
   const hasWarn = (t.ghiChu || "").indexOf("[VƯỢT SL]") !== -1;
   const ico = t.nguon === "SCAN" ? "📷" : (t.nguon === "MANUAL" ? "✏️" : "");
@@ -502,12 +576,15 @@ function thePhieuGiaoDich(t, hienLSX){
     (hienLSX && (t.khachhang || t.mota)
       ? '<div class="trx-machines">' + esc(t.khachhang || "") + (t.mota ? ' — ' + esc(t.mota) : '') + '</div>' : '') +
     '<div class="trx-detail">' +
-      '<span class="user">👤 ' + esc(t.user) + '</span>' +
-      '<span>' + esc(t.from) + ' → ' + esc(t.to) + '</span>' +
-      '<span class="qty">' + fmtNum(t.slChuyen) + ' ' + esc(t.dvt || "") +
-        (t.kl ? ' <span class="trx-kl">· ' + fmtNum(t.kl) + ' kg</span>' : '') +
-      '</span>' +
+      '<span>' + esc(tenCongDoan(t.from)) + ' → ' + esc(tenCongDoan(t.to)) + '</span>' +
+      '<span class="qty">' + fmtNum(t.slChuyen) + ' ' + esc(t.dvt || "") + '</span>' +
     '</div>' +
+    '<div class="trx-detail" style="margin-top:2px;">' +
+      '<span class="user">👤 ' + esc(t.user) + '</span>' +
+      '<span class="trx-kl">' + (t.kl ? fmtNum(t.kl) + ' kg' : '— kg') + '</span>' +
+    '</div>' +
+    '<div class="trx-machines">Mục đích: <span>' + esc(tenMucDich(t.transferType)) + '</span>' +
+      (t.batchId ? ' · Phiên: <span>' + esc(t.batchId) + '</span>' : '') + '</div>' +
     ((t.fromMachine || t.toMachine)
       ? '<div class="trx-machines">Máy: <span>' + esc(t.fromMachine || "—") + '</span> → <span>' + esc(t.toMachine || "—") + '</span></div>' : '') +
     (t.qr ? '<div class="trx-qr">QR: ' + esc(t.qr) + '</div>' : '') +
@@ -524,10 +601,10 @@ function showBatchDetail(idx){
     '<div class="dh-row"><span class="dh-label">Mã phiên</span><span class="dh-value">' + esc(b.batchId || "— (bản cũ)") + '</span></div>' +
     '<div class="dh-row"><span class="dh-label">Thời gian</span><span class="dh-value">' + esc(b.timestamp) + '</span></div>' +
     '<div class="dh-row"><span class="dh-label">Người thực hiện</span><span class="dh-value">' + esc(b.user) + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Tuyến chuyển</span><span class="dh-value">' + esc(b.from) + ' → ' + esc(b.to) + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Tuyến chuyển</span><span class="dh-value">' + esc(tenCongDoan(b.from)) + ' → ' + esc(tenCongDoan(b.to)) + '</span></div>' +
     ((b.fromMachine || b.toMachine)
       ? '<div class="dh-row"><span class="dh-label">Máy</span><span class="dh-value">' + esc(b.fromMachine || "—") + ' → ' + esc(b.toMachine || "—") + '</span></div>' : '') +
-    '<div class="dh-row"><span class="dh-label">Loại chuyển</span><span class="dh-value">' + esc(b.transferType || "") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Mục đích chuyển</span><span class="dh-value">' + esc(tenMucDich(b.transferType)) + '</span></div>' +
     '<div class="dh-row"><span class="dh-label">Số dòng</span><span class="dh-value">' + b.soDong + ' (📷 ' + b.soScan + ' · ✏️ ' + b.soManual + ')</span></div>' +
     '<div class="dh-row"><span class="dh-label">Số LSX</span><span class="dh-value">' + b.soLsx + '</span></div>' +
     '<div class="dh-row"><span class="dh-label">Tổng SL</span><span class="dh-value" style="color:var(--green)">' + fmtNum(b.tongSL) + '</span></div>' +
@@ -550,16 +627,23 @@ function showDetail(idx){
 
   document.getElementById("detailTitle").textContent = "Chi tiết: " + g.lsx;
 
-  const conLai = Math.max(0, g.slYeuCau - g.tongChuyen);
-  const isOver = g.tongChuyen > g.slYeuCau;
+  const isOver = g.slYeuCau > 0 && g.tongChuyen > g.slYeuCau;
+  const tuyen = (g.tuyen || []).map(x => {
+    const p = x.split(" → ");
+    return esc(tenCongDoan(p[0])) + ' → ' + esc(tenCongDoan(p[1]));
+  }).join(", ");
+  const mucDich = (g.mucDich || []).map(m => esc(tenMucDich(m))).join(", ");
 
   let html = '<div class="detail-header">' +
     '<div class="dh-row"><span class="dh-label">LSX</span><span class="dh-value">' + esc(g.lsx) + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Mã SP</span><span class="dh-value">' + esc(g.masp || "") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Khách hàng</span><span class="dh-value">' + esc(g.khachhang || "") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Mô tả SP</span><span class="dh-value">' + esc(g.mota || "") + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">SL yêu cầu</span><span class="dh-value">' + fmtNum(g.slYeuCau) + '</span></div>' +
-    '<div class="dh-row"><span class="dh-label">Tổng đã chuyển</span><span class="dh-value" style="color:' + (isOver ? 'var(--red)' : 'var(--green)') + '">' + fmtNum(g.tongChuyen) + (isOver ? ' ⚠️' : '') + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Mã SP</span><span class="dh-value">' + esc(g.masp || "—") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Khách hàng</span><span class="dh-value">' + esc(g.khachhang || "—") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Mô tả SP</span><span class="dh-value">' + esc(g.mota || "—") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Tuyến chuyển</span><span class="dh-value">' + (tuyen || "—") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Mục đích chuyển</span><span class="dh-value">' + (mucDich || "—") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">SL yêu cầu</span><span class="dh-value">' + (g.slYeuCau > 0 ? fmtNum(g.slYeuCau) : "—") + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Tổng đã chuyển</span><span class="dh-value" style="color:' + (isOver ? 'var(--red)' : 'var(--green)') + '">' + fmtNum(g.tongChuyen) + ' ' + esc(g.dvt || "") + (isOver ? ' ⚠️' : '') + '</span></div>' +
+    '<div class="dh-row"><span class="dh-label">Tổng khối lượng</span><span class="dh-value" style="color:var(--teal-d)">' + (g.tongKL ? fmtNum(g.tongKL) + ' kg' : "—") + '</span></div>' +
     '<div class="dh-row"><span class="dh-label">Số lần chuyển</span><span class="dh-value">' + g.soLanChuyen + '</span></div>' +
   '</div>';
 
@@ -578,6 +662,7 @@ function onEnterKey(fn){ return function(e){ if(e.key === "Enter"){ e.preventDef
 document.getElementById("loginUser").addEventListener("keydown", onEnterKey(function(){ document.getElementById("loginPass").focus(); }));
 document.getElementById("loginPass").addEventListener("keydown", onEnterKey(doLogin));
 document.getElementById("fLSX").addEventListener("keydown", onEnterKey(doSearch));
+document.getElementById("fBatch").addEventListener("keydown", onEnterKey(doSearch));
 
 /* ══════════════════════════════════════════════════
    INIT
