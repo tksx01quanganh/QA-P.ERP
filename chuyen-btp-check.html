@@ -302,7 +302,12 @@ async function enterMain(){
   showScreen("screenList");
   await loadFilters();
   // Default: ngày hôm nay
-  const today = new Date().toISOString().substring(0,10);
+  // SỬA 05/08/2026: toISOString() trả giờ UTC, trước 7h sáng (VN = UTC+7) sẽ ra
+  // ngày hôm qua. Lấy theo giờ máy.
+  const _n = new Date();
+  const today = _n.getFullYear() + "-" +
+                String(_n.getMonth()+1).padStart(2,"0") + "-" +
+                String(_n.getDate()).padStart(2,"0");
   document.getElementById("fDateFrom").value = today;
   document.getElementById("fDateTo").value = today;
 }
