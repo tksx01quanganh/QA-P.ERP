@@ -297,15 +297,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="ov-box">
     <div class="ov-title">✏️ Nhập thủ công</div>
 
-    <div class="field search-wrap">
-      <label>Mã LSX <span class="sub">(chọn từ danh sách, hoặc gõ thẳng mã không có trong đơn hàng)</span></label>
-      <input id="mLsxInput" type="text" placeholder="Nhập mã LSX..." oninput="onManualLsxInput()" autocomplete="off" autocapitalize="characters"/>
-      <div id="mSearchResults" class="search-results"></div>
+    <div class="field">
+      <label>Mã LSX *</label>
+      <input id="mLsxInput" type="text" placeholder="VD: CT2501-001" autocomplete="off" autocapitalize="characters"/>
     </div>
 
-    <div id="mInfoCard" class="info-card" style="display:none;"></div>
-
-    <div id="mFields" style="display:none;">
+    <div id="mFields">
       <div class="row2">
         <div class="field">
           <label>Số lượng *</label>
@@ -323,6 +320,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
 
     <div id="mErr" class="manual-err"></div>
+    <div class="hint info" style="margin-top:0;font-size:13px;">
+      Thông tin sản phẩm và SL yêu cầu do hệ thống tự lấy từ Đơn hàng khi ghi vào Google Sheet.
+    </div>
 
     <div class="ov-btns">
       <button class="btn green" onclick="themTuManual()">THÊM VÀO GIỎ</button>
@@ -406,12 +406,9 @@ let st = {
   congDoans: [], transferTypes: [], machines: {},
   sessionId: null,
   cfg: null,          // {from,to,fromName,toName,fromMachine,toMachine,type,ghiChu}
-  cart: [],           // [{id,lsx,sl,dvt,kl,nguon,qr,time,trangThai}]
-  lsxInfo: {},        // lsx -> {masp,khachhang,mota,dvt,soluong,daChuyen} | "NOTFOUND"
-  dangTra: {},        // lsx -> true (đang gọi API tra cứu)
+  cart: [],           // [{id,lsx,sl,dvt,kl,nguon,qr,time}]
   rowSeq: 0,
   editId: null,
-  manualSel: null,
   leaveTarget: null   // "config" | "home"
 };
 
@@ -512,7 +509,7 @@ function checkSession(){
 function logout(){
   st.user = null; st.maNV = null; st.username = null;
   st.congDoans = []; st.transferTypes = []; st.machines = {};
-  st.cart = []; st.cfg = null; st.sessionId = null; st.lsxInfo = {};
+  st.cart = []; st.cfg = null; st.sessionId = null;
   show("screenLogin");
   document.getElementById("loginPass").value = "";
   loginSetErr("");
@@ -873,7 +870,8 @@ function themDong(d){
   });
   luuDraft();
   renderCart();
-  traCuuLSX(d.lsx);
+  // v2.1: KHÔNG tra LSX ở đây nữa. Quét phải nhanh, không chờ mạng.
+  // Thông tin SP + SL yêu cầu do server tự lấy từ DATA COMBINE lúc ghi vào Sheet.
 }
 
 function xoaDong(id){
@@ -887,59 +885,18 @@ function xoaDong(id){
   toast("Đã xoá 1 dòng");
 }
 
-/**
- * Tra cứu thông tin LSX (bất đồng bộ — KHÔNG chặn thao tác quét).
- * Mỗi LSX chỉ gọi API 1 lần trong cả phiên; các cuộn sau dùng lại kết quả.
- */
-async function traCuuLSX(lsx){
-  if(st.lsxInfo[lsx] || st.dangTra[lsx]) return;
-  st.dangTra[lsx] = true;
-  renderCart();
-  try{
-    const r = await api("tksxTransferLookup", {lsx: lsx, from: st.cfg.from, to: st.cfg.to});
-    if(r && r.result === "ok" && r.found){
-      st.lsxInfo[lsx] = r.item;
-    } else {
-      // LSX ngoài danh sách VẪN ĐƯỢC GHI NHẬN — thông tin SP và SL yêu cầu để trống.
-      // Thực tế xưởng có lô chuyển không gắn với đơn hàng nào trong DATA COMBINE.
-      st.lsxInfo[lsx] = "NOTFOUND";
-      FB.warn();
-      toast("LSX " + lsx + " không có trong đơn hàng — vẫn ghi nhận", "warn", 4000);
-    }
-  }catch(e){
-    // Lỗi mạng → KHÔNG đánh dấu NOTFOUND, để lần sau thử lại
-    toast("Không tra được LSX " + lsx + " (lỗi mạng)", "warn");
-  }finally{
-    delete st.dangTra[lsx];
-    renderCart();
-  }
-}
-
-/** Gom giỏ theo LSX + tính trạng thái vượt SL */
+/** Gom giỏ theo LSX (chỉ cộng số — không tra thông tin SP nữa) */
 function gomTheoLSX(){
   const map = {}, thuTu = [];
   st.cart.forEach(r => {
-    if(!map[r.lsx]){ map[r.lsx] = {lsx: r.lsx, rows: [], tongSL: 0, tongKL: 0}; thuTu.push(r.lsx); }
+    if(!map[r.lsx]){ map[r.lsx] = {lsx: r.lsx, rows: [], tongSL: 0, tongKL: 0, dvt: ""}; thuTu.push(r.lsx); }
     const g = map[r.lsx];
     g.rows.push(r);
     g.tongSL += r.sl;
     if(r.kl) g.tongKL += r.kl;
+    if(!g.dvt && r.dvt) g.dvt = r.dvt;
   });
-  return thuTu.map(k => {
-    const g = map[k];
-    const info = st.lsxInfo[k];
-    g.dangTra = !!st.dangTra[k];
-    g.khongTonTai = (info === "NOTFOUND");
-    g.info = (info && info !== "NOTFOUND") ? info : null;
-    if(g.info && g.info.soluong > 0){
-      g.tongSauKhiGui = (g.info.daChuyen || 0) + g.tongSL;
-      g.vuot = g.tongSauKhiGui > g.info.soluong + 0.001;
-      g.soVuot = g.vuot ? g.tongSauKhiGui - g.info.soluong : 0;
-    } else {
-      g.tongSauKhiGui = g.tongSL; g.vuot = false; g.soVuot = 0;
-    }
-    return g;
-  });
+  return thuTu.map(k => map[k]);
 }
 
 function renderCart(){
@@ -964,26 +921,10 @@ function renderCart(){
   document.getElementById("btnSubmit").disabled = false;
 
   listEl.innerHTML = groups.map(g => {
-    let cls = "lsx-group";
-    if(g.vuot) cls += " over";
-    else if(g.khongTonTai) cls += " unknown";
-
-    let sub = "", stat = "";
-    if(g.dangTra){
-      sub = '<span class="spin sm"></span> đang tra thông tin...';
-    } else if(g.khongTonTai){
-      sub = 'ⓘ Không có trong đơn hàng — vẫn ghi nhận, thông tin SP để trống';
-      stat = '<span class="b-warn">Phiên này: ' + fmtNum(g.tongSL) + '</span>';
-    } else if(g.info){
-      sub = esc(g.info.khachhang || "") + (g.info.mota ? " — " + esc(g.info.mota) : "");
-      stat =
-        '<span>YC: ' + fmtNum(g.info.soluong) + '</span>' +
-        '<span>Đã chuyển: ' + fmtNum(g.info.daChuyen) + '</span>' +
-        '<span class="' + (g.vuot ? 'b-over' : 'b-ok') + '">Phiên này: ' + fmtNum(g.tongSL) + '</span>' +
-        (g.vuot ? '<span class="b-over">VƯỢT ' + fmtNum(g.soVuot) + '</span>' : '');
-    }
-    if(!stat && g.tongKL) stat = '<span>' + fmtNum(g.tongKL) + ' kg</span>';
-    else if(stat && g.tongKL) stat += '<span>' + fmtNum(g.tongKL) + ' kg</span>';
+    const stat =
+      '<span class="b-ok">' + fmtNum(g.tongSL) + ' ' + esc(g.dvt) + '</span>' +
+      (g.tongKL ? '<span class="b-ok">' + fmtNum(g.tongKL) + ' kg</span>' : '') +
+      '<span>' + g.rows.length + ' lần</span>';
 
     const rows = g.rows.map(r => {
       const trung = st.cart.filter(x => x.qr && x.qr === r.qr).length > 1;
@@ -1004,11 +945,10 @@ function renderCart(){
       '</div>';
     }).join("");
 
-    return '<div class="' + cls + '">' +
+    return '<div class="lsx-group">' +
       '<div class="lg-head">' +
         '<div class="lg-lsx">' + esc(g.lsx) + '</div>' +
-        (sub ? '<div class="lg-sub">' + sub + '</div>' : '') +
-        (stat ? '<div class="lg-stat">' + stat + '</div>' : '') +
+        '<div class="lg-stat">' + stat + '</div>' +
       '</div>' + rows +
     '</div>';
   }).join("");
@@ -1055,16 +995,11 @@ function luuSuaDong(){
 
 /* ══════════════════════════════════════════════════
    NHAP THU CONG
+   v2.1: bỏ hẳn bước tìm/chọn LSX. Chỉ gõ 4 thông tin giống hệt nội dung QR.
+   Thông tin SP + SL yêu cầu do server tự lấy từ DATA COMBINE khi ghi Sheet.
 ══════════════════════════════════════════════════ */
-let mSearchTimer = null;
-
 function moNhapThuCong(){
-  st.manualSel = null;
   document.getElementById("mLsxInput").value = "";
-  document.getElementById("mSearchResults").classList.remove("show");
-  document.getElementById("mInfoCard").style.display = "none";
-  // Hiện ô nhập ngay — cho phép gõ thẳng LSX không có trong đơn hàng
-  document.getElementById("mFields").style.display = "block";
   document.getElementById("mSoLuong").value = "";
   document.getElementById("mDvt").value = "";
   document.getElementById("mKl").value = "";
@@ -1074,84 +1009,12 @@ function moNhapThuCong(){
 }
 function dongNhapThuCong(){ ovHide("manualOv"); }
 
-function onManualLsxInput(){
-  const q = document.getElementById("mLsxInput").value.trim();
-  clearTimeout(mSearchTimer);
-  // Gõ lại thì bỏ LSX đã chọn trước đó — nếu không sẽ thêm nhầm mã cũ
-  st.manualSel = null;
-  document.getElementById("mInfoCard").style.display = "none";
-  const el = document.getElementById("mSearchResults");
-  if(q.length < 2){ el.classList.remove("show"); el.innerHTML = ""; return; }
-  mSearchTimer = setTimeout(() => timLSX(q), 400);
-}
-
-async function timLSX(query){
-  const el = document.getElementById("mSearchResults");
-  el.innerHTML = '<div class="sr-loading"><span class="spin sm"></span> Đang tìm...</div>';
-  el.classList.add("show");
-  try{
-    const r = await api("tksxSearchTransfer", {lsx: query, from: st.cfg.from, to: st.cfg.to});
-    if(r.result === "ok" && r.items && r.items.length){
-      el._data = r.items;
-      el.innerHTML = r.items.map((it, i) =>
-        '<div class="sr-item" onclick="chonLSXManual(' + i + ')">' +
-          '<div class="sr-lsx">' + esc(it.lsxct) + '</div>' +
-          '<div class="sr-sub">' + esc(it.khachhang || "") + ' — ' + esc(it.masp || "") + '</div>' +
-        '</div>').join("");
-    } else if(r.result === "ok"){
-      el._data = [];
-      el.innerHTML = '<div class="sr-empty">Không có trong đơn hàng.<br/>' +
-        'Vẫn thêm được — nhập số lượng rồi bấm <b>THÊM VÀO GIỎ</b>.</div>';
-    } else {
-      el._data = [];
-      el.innerHTML = '<div class="sr-empty" style="color:var(--red)">' + esc(r.error || "Lỗi tìm kiếm") + '</div>';
-    }
-  }catch(e){
-    el._data = [];
-    el.innerHTML = '<div class="sr-empty" style="color:var(--red)">Lỗi kết nối</div>';
-  }
-}
-
-function chonLSXManual(idx){
-  const el = document.getElementById("mSearchResults");
-  const d = el._data;
-  if(!d || !d[idx]) return;
-  const it = d[idx];
-  st.manualSel = it;
-  const key = String(it.lsxct || it.lsx).toUpperCase();
-  // Lưu vào cache để giỏ hiển thị ngay, khỏi gọi lại API
-  st.lsxInfo[key] = {
-    lsxct: it.lsxct, masp: it.masp, khachhang: it.khachhang, mota: it.mota,
-    dvt: it.dvt, soluong: it.soluong, daChuyen: it.daChuyen || 0,
-    conLai: it.conLai != null ? it.conLai : Math.max(0, (it.soluong||0) - (it.daChuyen||0))
-  };
-
-  document.getElementById("mLsxInput").value = it.lsxct;
-  el.classList.remove("show");
-
-  const conLai = it.conLai != null ? it.conLai : 0;
-  document.getElementById("mInfoCard").innerHTML =
-    '<div class="ic-row"><span class="ic-label">Khách hàng</span><span class="ic-value">' + esc(it.khachhang || "") + '</span></div>' +
-    '<div class="ic-row"><span class="ic-label">Mô tả SP</span><span class="ic-value">' + esc(it.mota || "") + '</span></div>' +
-    '<div class="ic-row"><span class="ic-label">SL yêu cầu</span><span class="ic-value">' + fmtNum(it.soluong) + '</span></div>' +
-    '<div class="ic-row"><span class="ic-label">Đã chuyển</span><span class="ic-value">' + fmtNum(it.daChuyen) + '</span></div>' +
-    '<div class="ic-row"><span class="ic-label">Còn lại</span><span class="ic-value ' + (conLai <= 0 ? 'red' : 'green') + '">' + fmtNum(conLai) + '</span></div>';
-  document.getElementById("mInfoCard").style.display = "block";
-  document.getElementById("mInfoCard").classList.add("filled");
-  document.getElementById("mFields").style.display = "block";
-  document.getElementById("mDvt").value = it.dvt || "";
-  document.getElementById("mSoLuong").focus();
-}
-
 function themTuManual(){
   const errEl = document.getElementById("mErr");
   errEl.style.display = "none";
 
-  // LSX lấy từ danh sách nếu đã chọn; nếu KHÔNG thì dùng đúng chuỗi công nhân gõ.
-  // Cho phép LSX ngoài đơn hàng — thông tin SP + SL yêu cầu sẽ để trống.
-  const goTay = document.getElementById("mLsxInput").value.trim().toUpperCase();
-  const lsx = st.manualSel ? String(st.manualSel.lsxct || st.manualSel.lsx).toUpperCase() : goTay;
-  if(!lsx){ errEl.textContent = "Vui lòng nhập hoặc chọn mã LSX"; errEl.style.display = "block"; return; }
+  const lsx = document.getElementById("mLsxInput").value.trim().toUpperCase();
+  if(!lsx){ errEl.textContent = "Vui lòng nhập mã LSX"; errEl.style.display = "block"; return; }
 
   const sl = soVN(document.getElementById("mSoLuong").value);
   if(isNaN(sl) || sl <= 0){ errEl.textContent = "Số lượng phải > 0"; errEl.style.display = "block"; return; }
@@ -1172,7 +1035,7 @@ function themTuManual(){
   FB.ok();
   toast("Đã thêm vào giỏ");
 
-  // Cho nhập tiếp LSX khác — giữ modal mở, chỉ reset ô số
+  // Cho nhập tiếp — giữ modal mở, giữ LSX và ĐVT (thường nhập nhiều bao cùng lô)
   document.getElementById("mSoLuong").value = "";
   document.getElementById("mKl").value = "";
   document.getElementById("mSoLuong").focus();
@@ -1185,7 +1048,7 @@ function luuDraft(){
   try{
     localStorage.setItem(CONFIG.DRAFT_KEY, JSON.stringify({
       cfg: st.cfg, cart: st.cart, sessionId: st.sessionId,
-      rowSeq: st.rowSeq, lsxInfo: st.lsxInfo, ts: Date.now()
+      rowSeq: st.rowSeq, ts: Date.now()
     }));
   }catch(e){}
 }
@@ -1208,7 +1071,6 @@ function khoiPhucDraft(){
   st.cart = d.cart;
   st.sessionId = d.sessionId || uuid();
   st.rowSeq = d.rowSeq || d.cart.reduce((a,r) => Math.max(a, r.id||0), 0);
-  st.lsxInfo = d.lsxInfo || {};
   vaoManThuThap();
   toast("Đã khôi phục " + d.cart.length + " dòng");
 }
@@ -1232,7 +1094,7 @@ async function roiMan(luu){
   ovHide("leaveOv");
   if(luu) luuDraft(); else xoaDraft();
   await dungScan();
-  if(!luu){ st.cart = []; st.lsxInfo = {}; st.sessionId = null; }
+  if(!luu){ st.cart = []; st.sessionId = null; }
   if(target === "home") window.location.href = "index.html";
   else quayVeCauHinh();
 }
@@ -1256,16 +1118,12 @@ function dungPayload(confirmOverQty){
     transferType: st.cfg.type,
     ghiChu: st.cfg.ghiChu || "",
     confirmOverQty: !!confirmOverQty,
-    rows: st.cart.map(r => {
-      const info = st.lsxInfo[r.lsx];
-      const i2 = (info && info !== "NOTFOUND") ? info : {};
-      return {
-        lsx: r.lsx, sl: r.sl, dvt: r.dvt, kl: r.kl,
-        nguon: r.nguon, qr: r.qr,
-        masp: i2.masp || "", khachhang: i2.khachhang || "", mota: i2.mota || "",
-        soluong: i2.soluong || 0
-      };
-    })
+    // Chỉ gửi đúng 4 thông tin từ tem + nguồn/QR gốc.
+    // MaSP, KhachHang, MoTaSP, SLYeuCau do server tra DATA COMBINE lúc ghi.
+    rows: st.cart.map(r => ({
+      lsx: r.lsx, sl: r.sl, dvt: r.dvt, kl: r.kl,
+      nguon: r.nguon, qr: r.qr
+    }))
   };
 }
 
@@ -1273,36 +1131,8 @@ async function guiTatCa(confirmOverQty){
   if(_dangGui) return;
   if(!st.cart.length){ toast("Giỏ đang trống", "warn"); return; }
 
-  // Còn đang tra cứu → đợi
-  if(Object.keys(st.dangTra).length){
-    toast("Đang tra thông tin LSX, đợi 1 giây rồi bấm lại", "warn");
-    return;
-  }
-
-  // Tra nốt các LSX chưa có thông tin (lần trước lỗi mạng) — cố gắng 1 lần,
-  // nhưng KHÔNG chặn gửi nếu vẫn thất bại: LSX ngoài danh sách vẫn hợp lệ.
-  const thieuInfo = [];
-  st.cart.forEach(r => {
-    if(!st.lsxInfo[r.lsx] && thieuInfo.indexOf(r.lsx) === -1) thieuInfo.push(r.lsx);
-  });
-  if(thieuInfo.length){
-    toast("Đang tra " + thieuInfo.length + " LSX...", null, 2000);
-    await Promise.all(thieuInfo.map(l => traCuuLSX(l)));
-  }
-
-  // LSX ngoài đơn hàng: chỉ NHẮC, không chặn
-  const laLsx = [];
-  st.cart.forEach(r => {
-    if(st.lsxInfo[r.lsx] === "NOTFOUND" && laLsx.indexOf(r.lsx) === -1) laLsx.push(r.lsx);
-  });
-
   if(!confirmOverQty){
-    let msg = "Gửi " + st.cart.length + " dòng lên Google Sheet?";
-    if(laLsx.length){
-      msg += "\n\nⓘ " + laLsx.length + " LSX không có trong đơn hàng:\n" + laLsx.join("\n") +
-             "\n\nCác dòng này vẫn được ghi, phần thông tin sản phẩm và SL yêu cầu để trống.";
-    }
-    if(!confirm(msg)) return;
+    if(!confirm("Gửi " + st.cart.length + " dòng lên Google Sheet?")) return;
   }
 
   await dungScan();
@@ -1334,9 +1164,11 @@ async function guiTatCa(confirmOverQty){
     if(res.result === "ok"){
       const tongKL = res.tongKL ? "\nTổng KL: " + fmtNum(res.tongKL) + " kg" : "";
       const vuot = (res.overItems && res.overItems.length) ? "\n\n⚠️ CÓ DÒNG VƯỢT SL YÊU CẦU" : "";
+      const thieu = res.thieuThongTin
+        ? "\n\nⓘ Chưa lấy được thông tin sản phẩm (dữ liệu đơn hàng đang tải lại).\nSố liệu chuyển vẫn ĐÚNG và ĐỦ." : "";
       alert("Gửi thành công!\n\nMã phiên: " + res.batchId +
             "\nSố dòng: " + res.soDong +
-            "\nTổng SL: " + fmtNum(res.tongSL) + tongKL + vuot);
+            "\nTổng SL: " + fmtNum(res.tongSL) + tongKL + vuot + thieu);
       toast("Đã gửi " + res.soDong + " dòng", null, 3000);
       ketThucPhien();
       return;
@@ -1356,8 +1188,6 @@ async function guiTatCa(confirmOverQty){
 function ketThucPhien(){
   _dangGui = false;
   st.cart = [];
-  st.lsxInfo = {};
-  st.dangTra = {};
   st.sessionId = null;
   st.rowSeq = 0;
   xoaDraft();
@@ -1408,13 +1238,9 @@ window.addEventListener("beforeunload", function(e){
   }
 });
 
-// Đóng dropdown tìm kiếm khi bấm ra ngoài
-document.addEventListener("click", function(e){
-  const wrap = document.querySelector("#manualOv .search-wrap");
-  if(wrap && !wrap.contains(e.target)){
-    document.getElementById("mSearchResults").classList.remove("show");
-  }
-});
+document.getElementById("mLsxInput").addEventListener("keydown", onEnterKey(function(){
+  document.getElementById("mSoLuong").focus();
+}));
 
 /* ══════════════════════════════════════════════════
    KHOI DONG
