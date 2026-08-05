@@ -82,6 +82,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .tc-field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px;}
 .tc-field select{width:100%;padding:9px 10px;font-size:15px;font-weight:600;border:2px solid var(--border);border-radius:10px;background:#fff;font-family:inherit;}
 .tc-field select:focus{border-color:var(--teal);outline:none;}
+.tc-field select.sel-err{border-color:var(--red);background:#fef2f2;color:var(--red);animation:shake .5s ease-in-out;}
 
 /* ══ MÀN THU THẬP ══ */
 #screenCollect{height:100dvh;}
@@ -279,6 +280,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div id="scanBox">
     <div id="reader"></div>
     <div id="scanHint">Đưa mã QR vào khung</div>
+    <button id="btnNext" class="btn green" style="display:none;margin-top:10px;">▶️ QUÉT TIẾP</button>
   </div>
 
   <div class="cart-sum empty" id="cartSum">Giỏ đang trống</div>
@@ -296,8 +298,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="ov-title">✏️ Nhập thủ công</div>
 
     <div class="field search-wrap">
-      <label>Tìm LSX</label>
-      <input id="mLsxInput" type="text" placeholder="Nhập mã LSX..." oninput="onManualLsxInput()" autocomplete="off"/>
+      <label>Mã LSX <span class="sub">(chọn từ danh sách, hoặc gõ thẳng mã không có trong đơn hàng)</span></label>
+      <input id="mLsxInput" type="text" placeholder="Nhập mã LSX..." oninput="onManualLsxInput()" autocomplete="off" autocapitalize="characters"/>
       <div id="mSearchResults" class="search-results"></div>
     </div>
 
@@ -668,7 +670,34 @@ function selText(id){
   const sel = document.getElementById(id);
   return sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : sel.value;
 }
-function onConfigChange(){ updateMachineDropdowns(); updateTitle(); }
+function onConfigChange(){
+  updateMachineDropdowns();
+  updateTitle();
+  kiemTraCongDoan();
+}
+
+/**
+ * Cảnh báo NGAY khi chọn CĐ đi trùng CĐ đến — rung + kêu + viền đỏ ô select,
+ * không đợi tới lúc bấm "Bắt đầu phiên" mới báo.
+ */
+function kiemTraCongDoan(){
+  const from = getSelectedFrom(), to = getSelectedTo();
+  const trung = from && to && from === to;
+  const s1 = document.getElementById("selFromCD");
+  const s2 = document.getElementById("selToCD");
+  s1.classList.toggle("sel-err", !!trung);
+  s2.classList.toggle("sel-err", !!trung);
+  document.getElementById("btnStart").disabled = !!trung;
+
+  if(trung){
+    FB.errStrong();
+    setStartHint("⚠️ Công đoạn đi và công đoạn đến đang GIỐNG NHAU — hãy chọn lại", "err");
+  } else {
+    setStartHint("");
+  }
+  return !trung;
+}
+
 function updateTitle(){
   document.getElementById("topTitle").textContent = "Chuyển BTP: " + selText("selFromCD") + " → " + selText("selToCD");
 }
@@ -680,8 +709,8 @@ function setStartHint(msg, type){
 
 function batDauPhien(){
   const from = getSelectedFrom(), to = getSelectedTo();
-  if(!from || !to){ setStartHint("Vui lòng chọn công đoạn đi và đến"); return; }
-  if(from === to){ setStartHint("Công đoạn đi và đến không được giống nhau"); return; }
+  if(!from || !to){ FB.errStrong(); setStartHint("Vui lòng chọn công đoạn đi và đến"); return; }
+  if(!kiemTraCongDoan()) return;
   setStartHint("");
 
   st.cfg = {
@@ -712,7 +741,7 @@ function vaoManThuThap(){
 /* ══════════════════════════════════════════════════
    QUET QR
 ══════════════════════════════════════════════════ */
-let qr = null, scanning = false, lastText = "", scanLocked = false;
+let qr = null, scanning = false, scanLocked = false;
 
 async function toggleScan(){
   if(scanning){ await dungScan(); return; }
@@ -732,7 +761,7 @@ async function batDauScan(){
       () => {}
     );
     scanning = true;
-    lastText = ""; scanLocked = false;
+    moKhoaQuet();
     document.getElementById("btnScan").textContent = "⏹ DỪNG QUÉT";
     setScanHint("", "Đưa mã QR vào khung");
   }catch(e){
@@ -744,19 +773,42 @@ async function batDauScan(){
 async function dungScan(){
   try{ if(qr && scanning) await qr.stop(); }catch(e){}
   scanning = false;
+  scanLocked = false;
   document.getElementById("scanBox").classList.remove("show");
+  document.getElementById("btnNext").style.display = "none";
   document.getElementById("btnScan").textContent = "📷 QUÉT QR";
+}
+
+/**
+ * Sau MỖI lần quét (kể cả quét lỗi) thì KHOÁ lại, phải bấm "QUÉT TIẾP" mới quét
+ * tem sau. Camera vẫn bật nên bấm là quét được ngay.
+ *
+ * Vì sao không tự mở khoá theo thời gian: công nhân đưa tem qua nhanh, cơ chế
+ * hẹn giờ vẫn để lọt 2-3 tem liên tiếp mà người quét không kịp nhìn màn hình
+ * xác nhận — dễ ghi thừa mà không biết.
+ */
+function khoaQuet(){
+  scanLocked = true;
+  const b = document.getElementById("btnNext");
+  b.style.display = "block";
+  b.textContent = "▶️ QUÉT TIẾP";
+}
+function moKhoaQuet(){
+  scanLocked = false;
+  document.getElementById("btnNext").style.display = "none";
+}
+function quetTiep(){
+  if(!scanning) return;
+  moKhoaQuet();
+  setScanHint("", "Đưa mã QR vào khung");
 }
 
 function onScan(text){
   if(scanLocked) return;
   text = (text || "").trim();
-  if(!text || text === lastText) return;
-  lastText = text;
-  scanLocked = true;
+  if(!text) return;
+  khoaQuet();
   xuLyQR(text);
-  // Mở khoá sau 900ms để tránh camera bắn liên tục cùng 1 tem
-  setTimeout(() => { scanLocked = false; lastText = ""; }, 900);
 }
 
 /**
@@ -782,7 +834,7 @@ function xuLyQR(text){
   if(!p){
     // BR-01 — QR sai định dạng
     FB.errStrong(); flashReader();
-    setScanHint("err", "QR không hợp lệ (cần LSX/SL/ĐVT/KL)");
+    setScanHint("err", "QR không hợp lệ (cần LSX/SL/ĐVT/KL) — bấm QUÉT TIẾP");
     return;
   }
 
@@ -796,11 +848,12 @@ function xuLyQR(text){
 
   if(soLanTrung > 0){
     FB.warn();
-    setScanHint("warn", "⚠ Tem này đã quét " + soLanTrung + " lần — vẫn ghi nhận");
+    setScanHint("warn", "⚠ Tem đã quét " + soLanTrung + " lần — vẫn ghi nhận. Bấm QUÉT TIẾP");
     toast("Tem trùng (lần thứ " + (soLanTrung + 1) + ") — đã thêm vào giỏ", "warn");
   } else {
     FB.ok();
-    setScanHint("ok", "✓ " + p.lsx + " +" + fmtNum(p.sl) + (p.kl ? " · " + fmtNum(p.kl) + " kg" : ""));
+    setScanHint("ok", "✓ " + p.lsx + " +" + fmtNum(p.sl) +
+      (p.kl ? " · " + fmtNum(p.kl) + " kg" : "") + " — bấm QUÉT TIẾP");
   }
 }
 
@@ -847,9 +900,11 @@ async function traCuuLSX(lsx){
     if(r && r.result === "ok" && r.found){
       st.lsxInfo[lsx] = r.item;
     } else {
+      // LSX ngoài danh sách VẪN ĐƯỢC GHI NHẬN — thông tin SP và SL yêu cầu để trống.
+      // Thực tế xưởng có lô chuyển không gắn với đơn hàng nào trong DATA COMBINE.
       st.lsxInfo[lsx] = "NOTFOUND";
-      FB.errStrong();
-      toast("LSX " + lsx + " không có trong danh sách đơn hàng!", "err", 5000);
+      FB.warn();
+      toast("LSX " + lsx + " không có trong đơn hàng — vẫn ghi nhận", "warn", 4000);
     }
   }catch(e){
     // Lỗi mạng → KHÔNG đánh dấu NOTFOUND, để lần sau thử lại
@@ -917,7 +972,8 @@ function renderCart(){
     if(g.dangTra){
       sub = '<span class="spin sm"></span> đang tra thông tin...';
     } else if(g.khongTonTai){
-      sub = '⚠ LSX không có trong danh sách đơn hàng';
+      sub = 'ⓘ Không có trong đơn hàng — vẫn ghi nhận, thông tin SP để trống';
+      stat = '<span class="b-warn">Phiên này: ' + fmtNum(g.tongSL) + '</span>';
     } else if(g.info){
       sub = esc(g.info.khachhang || "") + (g.info.mota ? " — " + esc(g.info.mota) : "");
       stat =
@@ -1007,7 +1063,8 @@ function moNhapThuCong(){
   document.getElementById("mLsxInput").value = "";
   document.getElementById("mSearchResults").classList.remove("show");
   document.getElementById("mInfoCard").style.display = "none";
-  document.getElementById("mFields").style.display = "none";
+  // Hiện ô nhập ngay — cho phép gõ thẳng LSX không có trong đơn hàng
+  document.getElementById("mFields").style.display = "block";
   document.getElementById("mSoLuong").value = "";
   document.getElementById("mDvt").value = "";
   document.getElementById("mKl").value = "";
@@ -1020,6 +1077,9 @@ function dongNhapThuCong(){ ovHide("manualOv"); }
 function onManualLsxInput(){
   const q = document.getElementById("mLsxInput").value.trim();
   clearTimeout(mSearchTimer);
+  // Gõ lại thì bỏ LSX đã chọn trước đó — nếu không sẽ thêm nhầm mã cũ
+  st.manualSel = null;
+  document.getElementById("mInfoCard").style.display = "none";
   const el = document.getElementById("mSearchResults");
   if(q.length < 2){ el.classList.remove("show"); el.innerHTML = ""; return; }
   mSearchTimer = setTimeout(() => timLSX(q), 400);
@@ -1040,7 +1100,8 @@ async function timLSX(query){
         '</div>').join("");
     } else if(r.result === "ok"){
       el._data = [];
-      el.innerHTML = '<div class="sr-empty">Không tìm thấy LSX phù hợp</div>';
+      el.innerHTML = '<div class="sr-empty">Không có trong đơn hàng.<br/>' +
+        'Vẫn thêm được — nhập số lượng rồi bấm <b>THÊM VÀO GIỎ</b>.</div>';
     } else {
       el._data = [];
       el.innerHTML = '<div class="sr-empty" style="color:var(--red)">' + esc(r.error || "Lỗi tìm kiếm") + '</div>';
@@ -1085,7 +1146,12 @@ function chonLSXManual(idx){
 function themTuManual(){
   const errEl = document.getElementById("mErr");
   errEl.style.display = "none";
-  if(!st.manualSel){ errEl.textContent = "Vui lòng chọn LSX từ danh sách"; errEl.style.display = "block"; return; }
+
+  // LSX lấy từ danh sách nếu đã chọn; nếu KHÔNG thì dùng đúng chuỗi công nhân gõ.
+  // Cho phép LSX ngoài đơn hàng — thông tin SP + SL yêu cầu sẽ để trống.
+  const goTay = document.getElementById("mLsxInput").value.trim().toUpperCase();
+  const lsx = st.manualSel ? String(st.manualSel.lsxct || st.manualSel.lsx).toUpperCase() : goTay;
+  if(!lsx){ errEl.textContent = "Vui lòng nhập hoặc chọn mã LSX"; errEl.style.display = "block"; return; }
 
   const sl = soVN(document.getElementById("mSoLuong").value);
   if(isNaN(sl) || sl <= 0){ errEl.textContent = "Số lượng phải > 0"; errEl.style.display = "block"; return; }
@@ -1097,7 +1163,7 @@ function themTuManual(){
   }
 
   themDong({
-    lsx: String(st.manualSel.lsxct || st.manualSel.lsx).toUpperCase(),
+    lsx: lsx,
     sl: sl,
     dvt: document.getElementById("mDvt").value.trim(),
     kl: (kl == null || kl <= 0) ? null : kl,
@@ -1213,38 +1279,30 @@ async function guiTatCa(confirmOverQty){
     return;
   }
 
-  // Tra lại các LSX chưa có thông tin (lần trước lỗi mạng).
-  // KHÔNG được gửi với soluong=0 — backend sẽ bỏ qua kiểm tra vượt SL cho LSX đó.
+  // Tra nốt các LSX chưa có thông tin (lần trước lỗi mạng) — cố gắng 1 lần,
+  // nhưng KHÔNG chặn gửi nếu vẫn thất bại: LSX ngoài danh sách vẫn hợp lệ.
   const thieuInfo = [];
   st.cart.forEach(r => {
     if(!st.lsxInfo[r.lsx] && thieuInfo.indexOf(r.lsx) === -1) thieuInfo.push(r.lsx);
   });
   if(thieuInfo.length){
-    toast("Đang tra " + thieuInfo.length + " LSX chưa có thông tin...", null, 2000);
+    toast("Đang tra " + thieuInfo.length + " LSX...", null, 2000);
     await Promise.all(thieuInfo.map(l => traCuuLSX(l)));
-    const conThieu = thieuInfo.filter(l => !st.lsxInfo[l]);
-    if(conThieu.length){
-      alert("Chưa tra được thông tin các LSX sau (lỗi mạng):\n" + conThieu.join("\n") +
-            "\n\nKiểm tra mạng rồi bấm GỬI lại. Giỏ hàng vẫn được giữ nguyên.");
-      return;
-    }
   }
 
-  // Chặn gửi khi còn LSX không tồn tại trong danh sách đơn hàng
-  const loi = [];
+  // LSX ngoài đơn hàng: chỉ NHẮC, không chặn
+  const laLsx = [];
   st.cart.forEach(r => {
-    if(st.lsxInfo[r.lsx] === "NOTFOUND" && loi.indexOf(r.lsx) === -1) loi.push(r.lsx);
+    if(st.lsxInfo[r.lsx] === "NOTFOUND" && laLsx.indexOf(r.lsx) === -1) laLsx.push(r.lsx);
   });
-  if(loi.length){
-    FB.errStrong();
-    alert("Không gửi được.\n\nCác LSX sau không có trong danh sách đơn hàng:\n" + loi.join("\n") +
-          "\n\nHãy xoá các dòng này hoặc kiểm tra lại tem QR.");
-    return;
-  }
 
   if(!confirmOverQty){
-    const n = st.cart.length;
-    if(!confirm("Gửi " + n + " dòng lên Google Sheet?")) return;
+    let msg = "Gửi " + st.cart.length + " dòng lên Google Sheet?";
+    if(laLsx.length){
+      msg += "\n\nⓘ " + laLsx.length + " LSX không có trong đơn hàng:\n" + laLsx.join("\n") +
+             "\n\nCác dòng này vẫn được ghi, phần thông tin sản phẩm và SL yêu cầu để trống.";
+    }
+    if(!confirm(msg)) return;
   }
 
   await dungScan();
@@ -1339,6 +1397,7 @@ document.getElementById("loginUser").addEventListener("keydown", onEnterKey(func
 document.getElementById("loginPass").addEventListener("keydown", onEnterKey(doLogin));
 document.getElementById("mKl").addEventListener("keydown", onEnterKey(themTuManual));
 document.getElementById("eKl").addEventListener("keydown", onEnterKey(luuSuaDong));
+document.getElementById("btnNext").addEventListener("click", quetTiep);
 
 window.addEventListener("beforeunload", function(e){
   if(st.cart.length){
