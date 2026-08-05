@@ -79,6 +79,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <div class="topbar">
   <button class="icon-btn" onclick="history.back()" style="font-size:20px;padding:8px;">←</button>
   <div class="ttl">📊 Dashboard Sản xuất</div>
+  <button class="icon-btn" id="btnLamMoi" onclick="lamMoi()" title="Làm mới — bỏ qua bộ nhớ đệm, đọc thẳng từ Sheet">⚡</button>
   <button class="icon-btn" onclick="location.href='index.html'">🏠</button>
 </div>
 
@@ -146,7 +147,17 @@ const WS_NAMES = {
   KHAC: "Khác"
 };
 
-function toISO(d){ return d.toISOString().slice(0,10); }
+/* SỬA 05/08/2026 — LỖI LỆCH NGÀY.
+   Bản cũ dùng d.toISOString() — hàm này đổi sang giờ UTC, mà Việt Nam là UTC+7.
+   Hậu quả: trước 7h sáng, sxToday() đã lùi 1 ngày cho ca đêm, rồi toISOString
+   lùi thêm 1 ngày nữa → sai 2 NGÀY. Mở dashboard lúc 6h30 sáng 05/08 thì
+   "Tuần này" hoá thành 03/08→03/08, nên tab Thành phẩm không có dòng hôm nay.
+   Nay lấy trực tiếp năm/tháng/ngày theo GIỜ MÁY, không qua UTC. */
+function toISO(d){
+  return d.getFullYear() + "-" +
+         String(d.getMonth()+1).padStart(2,"0") + "-" +
+         String(d.getDate()).padStart(2,"0");
+}
 function fmtNum(n){ return n.toLocaleString("vi-VN"); }
 function fmtKg(n){ return n.toLocaleString("vi-VN",{maximumFractionDigits:1}); }
 function fmtDate(iso){ const p=iso.split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
@@ -169,21 +180,36 @@ function sxToday(){
   return toISO(now);
 }
 
+/* SỬA 05/08/2026 — LỆCH PHA GIỮA HAI TAB.
+   Tab Thành phẩm (teamDaily) lọc bản ghi theo NGÀY LỊCH ở cột A.
+   Tab BTP (tksxDaily) lọc theo NGÀY SX (có quy tắc ca 19h-7h).
+   Bộ lọc nhanh lại dùng chung sxToday() có áp quy tắc ca, nên trước 7h sáng
+   khoảng ngày KẾT THÚC Ở HÔM QUA → các bản ghi ca đêm mang dấu thời gian rạng
+   sáng hôm nay bị loại khỏi tab Thành phẩm.
+
+   Nguyên tắc chọn: THÀ HIỆN THỪA MỘT DÒNG CÒN HƠN THIẾU SỐ. Người dùng thấy
+   thiếu số thì mất niềm tin vào cả hệ thống; thấy thừa dòng ca đêm thì hiểu được.
+   Vì vậy điểm CUỐI khoảng luôn lấy theo NGÀY LỊCH hôm nay, còn điểm ĐẦU vẫn theo
+   ngày SX để không cắt mất ca đêm hôm trước. */
+function ngayLich(){ return toISO(new Date()); }
+
 function getRange(period){
-  const today = sxToday();
+  const today = sxToday();               // ngày SX (có quy tắc ca)
+  const lich  = ngayLich();              // ngày lịch thật
   const td = new Date(today+"T12:00:00"); // parse an toàn (giữa ngày)
   let from, to;
   switch(period){
+    // Hôm qua thường chỉ xem khi ngày đã khép → giữ đúng một ngày cho gọn
     case "yesterday": { const y=new Date(td); y.setDate(y.getDate()-1); from=to=toISO(y); break; }
-    case "today": from=to=today; break;
+    case "today": from=today; to=lich; break;
     case "week": {
       const d=td.getDay()||7;
       const m=new Date(td); m.setDate(td.getDate()-d+1);
-      from=toISO(m); to=today; break;
+      from=toISO(m); to=lich; break;
     }
     case "month":
       from=today.slice(0,8)+"01";
-      to=today; break;
+      to=lich; break;
   }
   return {from, to};
 }
@@ -207,9 +233,50 @@ function quickBTP(p){
 
 /* ═══ localStorage stale-while-revalidate ═══ */
 const LS_PFX = "dsx_";
-const LS_TTL = 30*60*1000; // 30 phút
-function lsGet(k){ try{ var r=localStorage.getItem(LS_PFX+k); if(!r) return null; var o=JSON.parse(r); if(Date.now()-o.ts>LS_TTL){localStorage.removeItem(LS_PFX+k);return null;} return o.d; }catch(e){return null;} }
+const LS_TTL      = 30*60*1000; // 30 phút — khoảng ngày ĐÃ KHÉP, số không đổi nữa
+const LS_TTL_SONG =  2*60*1000; // 2 phút  — khoảng ngày ĐANG DIỄN RA
+
+/* SỬA 05/08/2026: trước đây mọi khoảng đều giữ 30 phút trong trình duyệt, kể cả
+   khoảng chứa ngày hôm nay. Người vừa ghi nhận xong mở dashboard vẫn thấy số cũ
+   dù máy chủ đã có số mới. Khoá có dạng "tp_2026-08-03_2026-08-05" nên chỉ cần
+   dò xem chuỗi ngày hôm nay/hôm qua có nằm trong khoá không. */
+function laKhoangSong(k){
+  const h = new Date(), q = new Date(Date.now() - 86400000);
+  return k.indexOf(toISO(h)) !== -1 || k.indexOf(toISO(q)) !== -1;
+}
+function lsGet(k){ if(NO_CACHE) return null; try{ var r=localStorage.getItem(LS_PFX+k); if(!r) return null; var o=JSON.parse(r); var ttl = laKhoangSong(k) ? LS_TTL_SONG : LS_TTL; if(Date.now()-o.ts>ttl){localStorage.removeItem(LS_PFX+k);return null;} return o.d; }catch(e){return null;} }
 function lsSet(k,d){ try{localStorage.setItem(LS_PFX+k,JSON.stringify({d:d,ts:Date.now()}));}catch(e){} }
+
+/* ═══ LÀM MỚI (THÊM 05/08/2026) ═══
+   Trước đây màn hình này KHÔNG có đường nào ép nạp lại: dữ liệu bị che bởi ba
+   lớp đệm chồng nhau (localStorage 30 phút → CacheService phía máy chủ → TTL).
+   Người ghi nhận xong không thấy số của mình mà không biết bấm vào đâu.
+   Nút ⚡ xoá lớp đệm trình duyệt VÀ gửi nocache=1 để máy chủ đọc thẳng từ Sheet. */
+let NO_CACHE = false;
+function thamSoNoCache(){ return NO_CACHE ? "&nocache=1" : ""; }
+
+async function lamMoi(){
+  const nut = document.getElementById("btnLamMoi");
+  if(nut.disabled) return;
+  nut.disabled = true; nut.textContent = "⏳";
+
+  // Xoá toàn bộ đệm trình duyệt của màn hình này
+  try{
+    Object.keys(localStorage)
+      .filter(k => k.indexOf(LS_PFX) === 0)
+      .forEach(k => localStorage.removeItem(k));
+  }catch(e){}
+
+  NO_CACHE = true;
+  try{
+    await loadTP();
+    if(btpLoaded) await loadBTP();
+  } finally {
+    // Trả về chế độ thường: các lần lọc sau lại được dùng đệm cho nhanh
+    NO_CACHE = false;
+    nut.disabled = false; nut.textContent = "⚡";
+  }
+}
 
 /* ═══ JSONP helper ═══ */
 function jsonp(url, timeout){
@@ -244,7 +311,7 @@ async function loadTP(){
   }
 
   try{
-    const url=CONFIG.CENTRAL_URL+"?action=teamDaily&from="+from+"&to="+to+"&t="+Date.now();
+    const url=CONFIG.CENTRAL_URL+"?action=teamDaily&from="+from+"&to="+to+"&t="+Date.now()+thamSoNoCache();
     const json=await jsonp(url, 45000);
     if(json.result!=="ok") throw new Error(json.error||"Lỗi");
     lsSet(ck, json);
@@ -351,7 +418,7 @@ async function loadBTP(){
   }
 
   try{
-    const json = await jsonp(CONFIG.CENTRAL_URL+"?action=tksxDaily&from="+from+"&to="+to+"&t="+Date.now(), 45000);
+    const json = await jsonp(CONFIG.CENTRAL_URL+"?action=tksxDaily&from="+from+"&to="+to+"&t="+Date.now()+thamSoNoCache(), 45000);
     if(json.result!=="ok") throw new Error(json.error||"Lỗi");
     lsSet(ck, json);
     renderBTP(json);
