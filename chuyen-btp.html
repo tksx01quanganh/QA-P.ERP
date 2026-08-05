@@ -247,7 +247,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <label>Ghi chú chung cho cả phiên <span class="sub">(không bắt buộc)</span></label>
       <textarea id="ghiChu" placeholder="VD: chuyển ca 1, xe đẩy số 3..."></textarea>
     </div>
-    <button id="btnStart" class="btn lg green" onclick="batDauPhien()">BẮT ĐẦU PHIÊN CHUYỂN</button>
+    <div style="display:flex;gap:8px;">
+      <button id="btnStart" class="btn lg green" onclick="batDauPhien()">BẮT ĐẦU PHIÊN CHUYỂN</button>
+      <button class="btn lg gray" onclick="taiLaiDanhMuc()" style="flex:0 0 64px;" title="Tải lại danh mục">⟳</button>
+    </div>
     <div id="startHint" class="hint" style="display:none;"></div>
     <div class="hint info" style="margin-top:14px;">
       Chọn xong công đoạn đi/đến rồi bấm <b>Bắt đầu phiên</b>.<br/>
@@ -668,9 +671,18 @@ function apDungDanhMuc(r){
   kiemTraCongDoan();
 }
 
+/**
+ * ĐO ĐƯỢC 05/08/2026: mỗi lượt gọi Apps Script tốn ~2,6 GIÂY phí cố định
+ * (Google nạp lại 12 file .gs ≈ 377 KB + mạng), bất kể xử lý nặng nhẹ.
+ * Nguyên tắc vì thế là GIẢM SỐ LƯỢT GỌI.
+ *
+ * Bản trước vẫn gọi nền "làm mới" dù cache còn hạn → mở màn hình mất 2,6 giây
+ * vô ích. Danh mục công đoạn cả tháng không đổi. Nay cache còn hạn = 0 lượt gọi.
+ * Cần cập nhật ngay thì bấm nút ⟳ bên cạnh "Bắt đầu phiên".
+ */
 async function loadRoutes(){
   const cache = docDanhMucCache();
-  if(cache) apDungDanhMuc(cache);          // vẽ ngay, không chờ mạng
+  if(cache){ apDungDanhMuc(cache); return; }   // 0 lượt gọi
 
   try {
     const r = await api("tksxTransferRoutes");
@@ -680,16 +692,20 @@ async function loadRoutes(){
       return;
     }
     // Server trả rỗng → cấu hình Master Sheet có vấn đề
-    if(!cache){
-      apDungDanhMuc(r || {});
-      setStartHint("Chưa tải được danh mục công đoạn. Báo quản trị kiểm tra tab MA_PhongBan / MA_MAY.", "err");
-    }
+    apDungDanhMuc(r || {});
+    setStartHint("Chưa tải được danh mục công đoạn. Báo quản trị kiểm tra tab MA_PhongBan / MA_MAY.", "err");
   } catch(e){
-    if(!cache){
-      apDungDanhMuc({});
-      setStartHint("Không kết nối được máy chủ để tải danh mục. Kiểm tra mạng rồi mở lại.", "err");
-    }
+    apDungDanhMuc({});
+    setStartHint("Không kết nối được máy chủ để tải danh mục. Kiểm tra mạng rồi mở lại.", "err");
   }
+}
+
+/** Buộc tải lại danh mục — dùng khi vừa thêm công đoạn/mục đích trong Master Sheet */
+async function taiLaiDanhMuc(){
+  try{ localStorage.removeItem(ROUTES_KEY); }catch(e){}
+  toast("Đang tải lại danh mục...");
+  await loadRoutes();
+  toast("Đã cập nhật danh mục");
 }
 
 function updateMachineDropdowns(){
