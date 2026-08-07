@@ -218,13 +218,23 @@ details.may-block .lsx-table tr.cn-row > td{padding-left:22px;}
 .lsx-table td{padding:5px 6px;}
 details.may-block .lsx-table td:first-child,
 details.may-block .lsx-table th:first-child{padding-left:14px;}
-.mota-cell{color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* v5.2: KH và Mô tả TRÀN XUỐNG DÒNG, không cắt cụt.
+   Trước dùng white-space:nowrap + ellipsis nên tên khách dài bị mất chữ, phải
+   giữ chuột mới đọc được — trên điện thoại thì chịu. Nay cho xuống dòng tự do;
+   ô LSX và các ô số căn theo mép trên để bảng không bị lệch. */
+.mota-cell{color:var(--muted);font-size:11px;white-space:normal;
+  overflow-wrap:anywhere;word-break:break-word;line-height:1.35;}
+.mota-kh{display:block;color:var(--teal-d);font-weight:600;font-size:10.5px;
+  white-space:normal;overflow-wrap:anywhere;line-height:1.3;margin-bottom:1px;}
+.lsx-table td{vertical-align:top;}
+.lsx-table tr.cn-row > td{vertical-align:baseline;}
+
 /* v5.1: ô đang chờ nạp mô tả — vệt xám mờ để biết là đang tải, không phải trống */
 .mota-cho::after{content:"";display:block;height:8px;width:70%;border-radius:3px;
   background:var(--border);opacity:.5;animation:motaNhay 1.2s ease-in-out infinite;}
 @keyframes motaNhay{0%,100%{opacity:.25}50%{opacity:.6}}
-.mota-kh{display:block;color:var(--teal-d);font-weight:600;font-size:10.5px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* v5.2: nạp mô tả lỗi — hiện rõ để biết mà thử lại, không im lặng như trước */
+.mota-loi{color:#b45309;font-size:10.5px;cursor:pointer;text-decoration:underline dotted;}
 .lsx-table td.dash{color:var(--border);}
 .lsx-table td.num,.lsx-table th.num{font-size:11.5px;}
 
@@ -518,13 +528,27 @@ async function apiFetch(action, params){
   // Hủy request trước nếu đang chạy
   if(abortCtrl) try{ abortCtrl.abort(); }catch(e){}
   abortCtrl = new AbortController();
+  return apiFetchRieng(action, params, abortCtrl.signal);
+}
 
+/**
+ * v5.2 — gọi máy chủ KHÔNG đụng tới abortCtrl dùng chung.
+ *
+ * VÌ SAO PHẢI TÁCH: apiFetch huỷ request trước đó mỗi lần được gọi. Với các
+ * request chạy nền (nạp mô tả) thì bất kỳ thao tác nào của người dùng — đổi
+ * chip, đổi tổ, bấm Xem — cũng huỷ luôn nó giữa chừng. Ngày 07/08/2026 mô tả
+ * không bao giờ hiện ra vì lý do này, mà lại còn thất bại im lặng nên rất khó
+ * lần ra. Nay việc nền có đường đi riêng, không ai huỷ được của ai.
+ */
+async function apiFetchRieng(action, params, signal){
   const sep = CONFIG.APPS_SCRIPT_URL.includes("?") ? "&" : "?";
   let url = CONFIG.APPS_SCRIPT_URL + sep + "action=" + action + "&t=" + Date.now();
   if(params){
     Object.keys(params).forEach(k=>{ url += "&" + k + "=" + encodeURIComponent(params[k]||""); });
   }
-  const res = await fetch(url, {method:"GET", redirect:"follow", signal:abortCtrl.signal});
+  const opt = { method:"GET", redirect:"follow" };
+  if(signal) opt.signal = signal;
+  const res = await fetch(url, opt);
   return res.json();
 }
 
@@ -907,7 +931,7 @@ function motaCell(l){
     // Chưa tra → ô rỗng có dấu nhận dạng để nạp xong điền vào đúng chỗ.
     // Đã tra mà vẫn rỗng (LSX ngoài Order List) → dấu gạch, khỏi hỏi lại.
     return c ? '<td class="dash"'+dl+'>—</td>'
-             : '<td class="mota-cell mota-cho"'+dl+'></td>';
+             : '<td class="mota-cell mota-cho"'+dl+' title="Đang tải khách hàng và mô tả..."></td>';
   }
   return '<td class="mota-cell"'+dl+' title="'+esc(kh+(kh&&mota?" · ":"")+mota)+'">'+
     (kh ? '<span class="mota-kh">'+esc(kh)+'</span>' : '')+esc(mota)+'</td>';
@@ -918,7 +942,10 @@ function motaCell(l){
  * Gọi SAU khi đã vẽ xong bảng. Lỗi thì im lặng bỏ qua — thiếu mô tả không
  * được phép làm hỏng báo cáo, vốn là phần quan trọng hơn.
  */
+let dangNapMoTa = false;
+
 async function napMoTaDangHien(){
+  if(dangNapMoTa) return;                       // đang chạy rồi thì thôi
   const oCho = Array.from(document.querySelectorAll("#tdResultList td.mota-cho"));
   if(!oCho.length) return;
 
@@ -927,19 +954,38 @@ async function napMoTaDangHien(){
     const ma = o.dataset.motaLsx;
     if(ma && !motaCache[ma] && canHoi.indexOf(ma) === -1) canHoi.push(ma);
   }
-  if(!canHoi.length) return;
+  if(!canHoi.length){ dienMoTaVaoBang(); return; }
 
-  // Máy chủ chặn ở 400 mã/lượt; chia lô cho khớp, tránh URL quá dài.
-  for(let i = 0; i < canHoi.length; i += 200){
-    const lo = canHoi.slice(i, i + 200);
-    try{
-      const data = await apiFetch("lsxInfo", { lsx: lo.join(",") });
-      if(!data || data.result !== "ok" || !data.info) continue;
+  dangNapMoTa = true;
+  try{
+    // Máy chủ chặn ở 400 mã/lượt; chia lô cho khớp, tránh URL quá dài.
+    for(let i = 0; i < canHoi.length; i += 200){
+      const lo = canHoi.slice(i, i + 200);
+      // KHÔNG dùng apiFetch: nó huỷ request nền mỗi khi người dùng thao tác.
+      const data = await apiFetchRieng("lsxInfo", { lsx: lo.join(",") });
+      if(!data || data.result !== "ok" || !data.info){
+        throw new Error(data && data.error ? data.error : "máy chủ không trả dữ liệu");
+      }
       // Ghi nhớ CẢ mã không tìm thấy (giá trị rỗng) để lần sau khỏi hỏi lại.
       for(const ma of lo) motaCache[ma] = data.info[ma] || { kh:"", mota:"" };
-    }catch(e){ return; }
+      dienMoTaVaoBang();                        // điền dần từng lô, không đợi hết
+    }
+  }catch(e){
+    // KHÔNG im lặng. Lần trước lỗi này bị nuốt nên mô tả biến mất mà không ai
+    // biết vì sao. Nay hiện dấu ⚠ ngay trong ô, bấm vào để thử lại.
+    for(const o of document.querySelectorAll("#tdResultList td.mota-cho")){
+      o.classList.remove("mota-cho");
+      o.classList.add("mota-loi");
+      o.title = "Chưa lấy được mô tả: " + (e.message || e) + " — bấm để thử lại";
+      o.textContent = "⚠ chưa tải được";
+      o.onclick = function(){
+        this.classList.remove("mota-loi"); this.classList.add("mota-cho");
+        this.textContent = ""; this.onclick = null; napMoTaDangHien();
+      };
+    }
+  }finally{
+    dangNapMoTa = false;
   }
-  dienMoTaVaoBang();
 }
 
 /** Điền nội dung đã có trong motaCache vào các ô đang chờ trên màn hình. */
