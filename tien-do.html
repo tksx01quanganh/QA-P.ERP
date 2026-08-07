@@ -219,6 +219,10 @@ details.may-block .lsx-table tr.cn-row > td{padding-left:22px;}
 details.may-block .lsx-table td:first-child,
 details.may-block .lsx-table th:first-child{padding-left:14px;}
 .mota-cell{color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* v5.1: ô đang chờ nạp mô tả — vệt xám mờ để biết là đang tải, không phải trống */
+.mota-cho::after{content:"";display:block;height:8px;width:70%;border-radius:3px;
+  background:var(--border);opacity:.5;animation:motaNhay 1.2s ease-in-out infinite;}
+@keyframes motaNhay{0%,100%{opacity:.25}50%{opacity:.6}}
 .mota-kh{display:block;color:var(--teal-d);font-weight:600;font-size:10.5px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lsx-table td.dash{color:var(--border);}
@@ -835,6 +839,9 @@ function reRenderTeam(){
   const g = groupBy();
   if(g === "TO") renderTeamDays(days);
   else           renderPivot(days, g);
+  // v5.1: bảng đã hiện xong, giờ mới đi lấy mô tả. Không await — đổi chip
+  // hay đổi tổ vẫn phản hồi tức thì, mô tả tự điền vào khi về tới.
+  napMoTaDangHien();
 }
 
 /** Lọc theo NHIỀU tổ; chọn đủ 4 tổ = xem tất cả. Tính lại tổng ngày theo các tổ được chọn */
@@ -877,12 +884,76 @@ function renderCnRows(cn){
 
 const r3 = x => Math.round((Number(x)||0)*1000)/1000;
 
-/** Ô "Khách hàng / Mô tả". LSX không có trong Order List → hiện dấu gạch. */
+/* ══════════════════════════════════════════════
+   v5.1 — MÔ TẢ NẠP SAU, KHÔNG CHẶN BẢNG
+
+   Bản v4.9 lấy Khách hàng + Mô tả ngay trong teamDaily. Nhưng nguồn của chúng
+   là Order List (~24.000 dòng, JSON 5 MB) nên báo cáo từ vài giây thành hơn
+   2 phút. Nay: máy chủ trả bảng NGAY (không có mô tả), giao diện vẽ liền, rồi
+   mới hỏi riêng endpoint "lsxInfo" và điền mô tả vào các ô đang trống.
+
+   Người dùng thấy số liệu ngay lập tức; mô tả hiện thêm sau 1-2 giây.
+══════════════════════════════════════════════ */
+
+const motaCache = {};   // { "<LSX>": {kh, mota} } — dùng lại trong cả phiên
+
+/** Ô "Khách hàng / Mô tả". Chưa có dữ liệu → để trống, chờ nạp sau điền vào. */
 function motaCell(l){
-  const kh = (l.kh||"").trim(), mota = (l.mota||"").trim();
-  if(!kh && !mota) return '<td class="dash">—</td>';
-  return '<td class="mota-cell" title="'+esc(kh+(kh&&mota?" · ":"")+mota)+'">'+
+  const c = motaCache[l.lsx];
+  const kh = (c ? c.kh : (l.kh||"")).trim();
+  const mota = (c ? c.mota : (l.mota||"")).trim();
+  const dl = ' data-mota-lsx="'+esc(l.lsx)+'"';
+  if(!kh && !mota){
+    // Chưa tra → ô rỗng có dấu nhận dạng để nạp xong điền vào đúng chỗ.
+    // Đã tra mà vẫn rỗng (LSX ngoài Order List) → dấu gạch, khỏi hỏi lại.
+    return c ? '<td class="dash"'+dl+'>—</td>'
+             : '<td class="mota-cell mota-cho"'+dl+'></td>';
+  }
+  return '<td class="mota-cell"'+dl+' title="'+esc(kh+(kh&&mota?" · ":"")+mota)+'">'+
     (kh ? '<span class="mota-kh">'+esc(kh)+'</span>' : '')+esc(mota)+'</td>';
+}
+
+/**
+ * Hỏi mô tả cho các LSX đang hiển thị mà chưa có, rồi điền tại chỗ.
+ * Gọi SAU khi đã vẽ xong bảng. Lỗi thì im lặng bỏ qua — thiếu mô tả không
+ * được phép làm hỏng báo cáo, vốn là phần quan trọng hơn.
+ */
+async function napMoTaDangHien(){
+  const oCho = Array.from(document.querySelectorAll("#tdResultList td.mota-cho"));
+  if(!oCho.length) return;
+
+  const canHoi = [];
+  for(const o of oCho){
+    const ma = o.dataset.motaLsx;
+    if(ma && !motaCache[ma] && canHoi.indexOf(ma) === -1) canHoi.push(ma);
+  }
+  if(!canHoi.length) return;
+
+  // Máy chủ chặn ở 400 mã/lượt; chia lô cho khớp, tránh URL quá dài.
+  for(let i = 0; i < canHoi.length; i += 200){
+    const lo = canHoi.slice(i, i + 200);
+    try{
+      const data = await apiFetch("lsxInfo", { lsx: lo.join(",") });
+      if(!data || data.result !== "ok" || !data.info) continue;
+      // Ghi nhớ CẢ mã không tìm thấy (giá trị rỗng) để lần sau khỏi hỏi lại.
+      for(const ma of lo) motaCache[ma] = data.info[ma] || { kh:"", mota:"" };
+    }catch(e){ return; }
+  }
+  dienMoTaVaoBang();
+}
+
+/** Điền nội dung đã có trong motaCache vào các ô đang chờ trên màn hình. */
+function dienMoTaVaoBang(){
+  for(const o of document.querySelectorAll("#tdResultList td[data-mota-lsx]")){
+    const c = motaCache[o.dataset.motaLsx];
+    if(!c) continue;
+    const kh = (c.kh||"").trim(), mota = (c.mota||"").trim();
+    o.classList.remove("mota-cho");
+    if(!kh && !mota){ o.className = "dash"; o.textContent = "—"; continue; }
+    o.className = "mota-cell";
+    o.title = kh + (kh && mota ? " · " : "") + mota;
+    o.innerHTML = (kh ? '<span class="mota-kh">'+esc(kh)+'</span>' : '') + esc(mota);
+  }
 }
 
 /**
