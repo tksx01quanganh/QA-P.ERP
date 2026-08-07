@@ -189,6 +189,36 @@ details.may-block .lsx-table tr.cn-row > td:first-child{padding-left:38px;}
 .cn-name{font-weight:600;color:var(--txt);}
 .cn-ma{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--muted);margin-left:5px;}
 
+/* ── v4.9: chip "Nhóm theo" — cùng kiểu chip Tổ nhưng chỉ chọn 1 ── */
+.gchip{border:1.5px solid var(--border);background:#fff;color:var(--muted);border-radius:999px;
+  padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.gchip.active{background:var(--teal);border-color:var(--teal);color:#fff;}
+
+/* ── v4.9: cột Mô tả + Khách hàng trong bảng LSX ──
+   table-layout:fixed để cột Mô tả dài không đẩy vỡ các cột số. */
+.lsx-table{table-layout:fixed;}
+.lsx-table col.c-mota{width:34%;}
+.lsx-table col.c-num{width:66px;}
+.lsx-table col.c-rows{width:48px;}
+.mota-cell{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mota-kh{display:block;color:var(--teal-d);font-weight:600;font-size:11px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lsx-table td.dash{color:var(--border);}
+
+/* ── v4.9: khối cấp 1 khi nhóm theo Máy / Công nhân (gộp cả kỳ) ── */
+details.top-block{border-top:1px solid var(--border);background:#fff;}
+details.top-block summary{list-style:none;display:flex;justify-content:space-between;align-items:center;
+  gap:8px;padding:9px 12px;cursor:pointer;}
+details.top-block summary::-webkit-details-marker{display:none;}
+details.top-block[open] > summary .caret{transform:rotate(90deg);}
+.top-name{font-size:13px;font-weight:800;display:flex;align-items:center;min-width:0;}
+.top-name .tn-sub{font-weight:400;color:var(--muted);margin-left:6px;font-size:11.5px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.day-sub{font-size:11px;font-weight:700;color:var(--teal-d);background:#f8fafc;
+  padding:5px 12px 4px 22px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.day-sub .ds-num{font-weight:600;color:var(--muted);}
+
 @media (max-width:500px){
   .searchBar{flex-direction:column;}
   .searchBar .field{width:100%;}
@@ -319,6 +349,16 @@ details.may-block .lsx-table tr.cn-row > td:first-child{padding-left:38px;}
           </div>
           <button class="btn-sm" onclick="runTeamSearch()">Xem</button>
         </div>
+        <!-- Hàng 3 (v4.9): cách nhóm cây báo cáo. Xoay ngay trên máy từ dữ liệu
+             đã tải, KHÔNG gọi lại máy chủ nên đổi là hiện liền. -->
+        <div class="inlineRow">
+          <label class="il">Nhóm theo</label>
+          <div class="wsChips" id="groupChips">
+            <button type="button" class="gchip active" data-g="TO"  onclick="setGroupBy(this)">Tổ</button>
+            <button type="button" class="gchip"        data-g="MAY" onclick="setGroupBy(this)">Máy</button>
+            <button type="button" class="gchip"        data-g="CN"  onclick="setGroupBy(this)">Công nhân</button>
+          </div>
+        </div>
       </div>
       <div class="presetRow">
         <button class="chip" onclick="setPreset(0)">Hôm nay</button>
@@ -331,7 +371,7 @@ details.may-block .lsx-table tr.cn-row > td:first-child{padding-left:38px;}
     <div class="resultArea" id="tdResultArea">
       <div id="tdStatusBox" class="status">Chọn khoảng ngày rồi bấm "Xem"</div>
       <div id="tdResultList"></div>
-      <div class="footer-note">Tổ suy từ Mã máy (MA_MAY cột D: CAT / TCO / GTB). SL = cột Số lượng, KL = KL (QR). Dữ liệu cache 5 phút.</div>
+      <div class="footer-note">Tổ suy từ Mã máy (MA_MAY cột D: CAT / TCO / GTB). SL = cột Số lượng, KL = KL (QR). Khách hàng và Mô tả lấy từ Order List theo LSX. Đổi "Nhóm theo" không cần tải lại.</div>
     </div>
   </div>
 </section>
@@ -740,6 +780,18 @@ function selectedWs(){
   return Array.from(document.querySelectorAll("#wsChips .wchip.active")).map(b => b.dataset.ws);
 }
 
+/** v4.9 — chọn cách nhóm (chỉ 1 chip sáng), vẽ lại ngay từ dữ liệu đã tải */
+function setGroupBy(btn){
+  document.querySelectorAll("#groupChips .gchip").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  reRenderTeam();
+}
+
+function groupBy(){
+  const b = document.querySelector("#groupChips .gchip.active");
+  return b ? b.dataset.g : "TO";
+}
+
 function reRenderTeam(){
   if(lastTeamDays === null) return; // chưa tải lần nào
   const sel = selectedWs();
@@ -748,7 +800,10 @@ function reRenderTeam(){
     document.getElementById("tdSummary").textContent = "";
     return;
   }
-  renderTeamDays(filterDaysByWs(lastTeamDays, sel));
+  const days = filterDaysByWs(lastTeamDays, sel);
+  const g = groupBy();
+  if(g === "TO") renderTeamDays(days);
+  else           renderPivot(days, g);
 }
 
 /** Lọc theo NHIỀU tổ; chọn đủ 4 tổ = xem tất cả. Tính lại tổng ngày theo các tổ được chọn */
@@ -776,11 +831,178 @@ function renderCnRows(cn){
     '<tr class="cn-row'+(i===0?' cn-first':'')+(i===cn.length-1?' cn-last':'')+'">'+
       '<td>↳ <span class="cn-name">'+esc(c.ten)+'</span>'+
         (c.ma && c.ma !== c.ten ? '<span class="cn-ma">'+esc(c.ma)+'</span>' : '')+'</td>'+
+      '<td></td>'+
       '<td class="num">'+fmtN(c.sl)+'</td>'+
       '<td class="num">'+fmtN(c.kg)+'</td>'+
       '<td class="num">'+(c.rows||0)+'</td>'+
     '</tr>'
   ).join("");
+}
+
+/* ══════════════════════════════════════════════
+   v4.9 — BẢNG LSX DÙNG CHUNG + XOAY THEO MÁY / CÔNG NHÂN
+
+   Cả 3 cách nhóm đều vẽ cùng một loại bảng, chỉ khác thứ tự các tầng.
+   Gom vào một hàm để sửa cột Mô tả một chỗ là cả 3 chỗ cùng đổi.
+══════════════════════════════════════════════ */
+
+const r3 = x => Math.round((Number(x)||0)*1000)/1000;
+
+/** Ô "Khách hàng / Mô tả". LSX không có trong Order List → hiện dấu gạch. */
+function motaCell(l){
+  const kh = (l.kh||"").trim(), mota = (l.mota||"").trim();
+  if(!kh && !mota) return '<td class="dash">—</td>';
+  return '<td class="mota-cell" title="'+esc(kh+(kh&&mota?" · ":"")+mota)+'">'+
+    (kh ? '<span class="mota-kh">'+esc(kh)+'</span>' : '')+esc(mota)+'</td>';
+}
+
+/**
+ * Bảng LSX. opts.showCn = xổ dòng công nhân dưới mỗi LSX.
+ * opts.showMay = gắn mã máy cạnh LSX (dùng khi đã nhóm theo công nhân,
+ * lúc đó máy không còn là một tầng riêng nên phải nhét vào dòng).
+ */
+function lsxTableHtml(list, opts){
+  opts = opts || {};
+  return '<table class="lsx-table">'+
+    '<colgroup><col><col class="c-mota"><col class="c-num"><col class="c-num"><col class="c-rows"></colgroup>'+
+    '<tr><th>LSX'+(opts.showCn?' / Công nhân':'')+'</th><th>Khách hàng / Mô tả</th>'+
+      '<th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
+    (list||[]).map(l =>
+      '<tr><td class="lsx-code">'+esc(l.lsx)+
+        (opts.showMay && l.may ? '<span class="cn-ma">'+esc(l.may)+'</span>' : '')+'</td>'+
+      motaCell(l)+
+      '<td class="num">'+fmtN(l.sl)+'</td>'+
+      '<td class="num">'+fmtN(l.kg)+'</td>'+
+      '<td class="num">'+(l.rows||0)+'</td></tr>'+
+      (opts.showCn ? renderCnRows(l.cn) : "")
+    ).join("")+
+  '</table>';
+}
+
+/**
+ * Trải cây Ngày→Tổ→Máy→LSX→CN thành bảng phẳng, mỗi dòng là một tổ hợp đầy đủ.
+ * Có bảng phẳng rồi thì xoay theo chiều nào cũng chỉ là gom lại, không phải
+ * viết riêng một hàm duyệt cây cho mỗi cách nhóm.
+ *
+ * LSX thiếu mảng `cn` (bản ghi cache cũ) vẫn phải ra một dòng, nếu không
+ * tổng của các cách nhóm sẽ hụt so với cách nhóm theo Tổ.
+ */
+function flattenLeaves(days){
+  const out = [];
+  for(const d of (days||[]))
+    for(const t of (d.to||[]))
+      for(const m of (t.may||[]))
+        for(const l of (m.lsx||[])){
+          const cns = (l.cn && l.cn.length) ? l.cn
+            : [{ma:"", ten:"(không ghi CN)", sl:l.sl, kg:l.kg, rows:l.rows}];
+          for(const c of cns) out.push({
+            ngay:d.ngay, ws:t.ws, may:m.may, mayTen:m.ten||"",
+            lsx:l.lsx, kh:l.kh||"", mota:l.mota||"",
+            cnMa:c.ma||"", cnTen:c.ten||"(không ghi CN)",
+            sl:Number(c.sl)||0, kg:Number(c.kg)||0, rows:Number(c.rows)||0
+          });
+        }
+  return out;
+}
+
+/** Gom bảng phẳng theo Máy hoặc Công nhân → [{key,ten,sub,sl,kg,rows,days[]}] */
+function pivotBy(leaves, dim){
+  const isMay = dim === "MAY";
+  const top = new Map();
+
+  for(const r of leaves){
+    // Gộp theo MÃ viết hoa. Tên chỉ để hiển thị — gộp theo tên sẽ tách nhầm
+    // một người thành nhiều dòng khi tên gõ lệch dấu.
+    const k = isMay ? String(r.may||"").toUpperCase()
+                    : (String(r.cnMa||"").toUpperCase() || "#"+r.cnTen.toUpperCase());
+    if(!top.has(k)) top.set(k, {
+      key:k, ten: isMay ? (r.may||"") : r.cnTen,
+      sub: isMay ? (r.mayTen||"") : (r.cnMa||""),
+      sl:0, kg:0, rows:0, days:new Map()
+    });
+    const T = top.get(k);
+    T.sl+=r.sl; T.kg+=r.kg; T.rows+=r.rows;
+    if(!isMay && (!T.ten || T.ten === "(không ghi CN)") && r.cnTen) T.ten = r.cnTen;
+    if(isMay && !T.sub && r.mayTen) T.sub = r.mayTen;
+
+    if(!T.days.has(r.ngay)) T.days.set(r.ngay, {ngay:r.ngay, sl:0, kg:0, rows:0, lsx:new Map()});
+    const D = T.days.get(r.ngay);
+    D.sl+=r.sl; D.kg+=r.kg; D.rows+=r.rows;
+
+    // Nhóm theo Máy: LSX là khoá, công nhân xổ bên dưới.
+    // Nhóm theo CN: cùng LSX nhưng chạy 2 máy phải là 2 dòng, nên khoá kèm máy.
+    const lk = isMay ? r.lsx : (r.lsx+"|"+r.may);
+    if(!D.lsx.has(lk)) D.lsx.set(lk, {
+      lsx:r.lsx, may:r.may, kh:r.kh, mota:r.mota, sl:0, kg:0, rows:0, cn:new Map()
+    });
+    const L = D.lsx.get(lk);
+    L.sl+=r.sl; L.kg+=r.kg; L.rows+=r.rows;
+    if(!L.kh   && r.kh)   L.kh   = r.kh;
+    if(!L.mota && r.mota) L.mota = r.mota;
+
+    if(isMay){
+      const ck = String(r.cnMa||"").toUpperCase() || "#"+r.cnTen.toUpperCase();
+      if(!L.cn.has(ck)) L.cn.set(ck, {ma:r.cnMa, ten:r.cnTen, sl:0, kg:0, rows:0});
+      const C = L.cn.get(ck);
+      C.sl+=r.sl; C.kg+=r.kg; C.rows+=r.rows;
+      if((!C.ten || C.ten === "(không ghi CN)") && r.cnTen) C.ten = r.cnTen;
+    }
+  }
+
+  return Array.from(top.values()).map(T => ({
+    key:T.key, ten:T.ten, sub:T.sub,
+    sl:r3(T.sl), kg:r3(T.kg), rows:T.rows,
+    days: Array.from(T.days.values()).map(D => ({
+      ngay:D.ngay, sl:r3(D.sl), kg:r3(D.kg), rows:D.rows,
+      lsx: Array.from(D.lsx.values()).map(L => ({
+        lsx:L.lsx, may:L.may, kh:L.kh, mota:L.mota,
+        sl:r3(L.sl), kg:r3(L.kg), rows:L.rows,
+        cn: Array.from(L.cn.values())
+              .map(c => ({ma:c.ma, ten:c.ten, sl:r3(c.sl), kg:r3(c.kg), rows:c.rows}))
+              .sort((a,b) => (b.sl-a.sl) || a.ten.localeCompare(b.ten,"vi"))
+      })).sort((a,b) => a.lsx.localeCompare(b.lsx,"vi"))
+    })).sort((a,b) => b.ngay.localeCompare(a.ngay))   // ngày mới nhất trước
+  })).sort((a,b) => (b.sl-a.sl) || a.ten.localeCompare(b.ten,"vi")); // làm nhiều đứng trước
+}
+
+function renderPivot(days, dim){
+  const rows = pivotBy(flattenLeaves(days), dim);
+  if(!rows.length){
+    tdStatus("", '<div class="empty">Không có dữ liệu sản xuất trong khoảng ngày này.</div>');
+    document.getElementById("tdSummary").textContent = "";
+    return;
+  }
+  document.getElementById("tdStatusBox").style.display = "none";
+
+  const isMay = dim === "MAY";
+  let totSl = 0, totKg = 0;
+  rows.forEach(t => { totSl += t.sl; totKg += t.kg; });
+  document.getElementById("tdSummary").textContent =
+    rows.length+(isMay?" máy":" công nhân")+" · Tổng SL: "+fmtN(totSl)+
+    " · Tổng KL: "+fmtN(r3(totKg))+" kg";
+
+  const parts = [];
+  for(const t of rows){
+    parts.push(
+      '<details class="top-block" open>'+
+        '<summary>'+
+          '<div class="top-name"><span class="caret">▶</span>'+(isMay?'🔩 ':'👤 ')+esc(t.ten)+
+            (t.sub ? '<span class="tn-sub">'+esc(t.sub)+'</span>' : '')+'</div>'+
+          '<div class="team-num">SL <b>'+fmtN(t.sl)+'</b> · KL <b>'+fmtN(t.kg)+' kg</b> · '+
+            t.days.length+' ngày · '+t.rows+' lượt</div>'+
+        '</summary>'
+    );
+    for(const d of t.days){
+      parts.push(
+        '<div class="day-sub"><span>📅 '+fmtDateVN(d.ngay)+'</span>'+
+          '<span class="ds-num">SL '+fmtN(d.sl)+' · KL '+fmtN(d.kg)+' kg · '+d.rows+' lượt</span></div>'+
+        lsxTableHtml(d.lsx, { showCn:isMay, showMay:!isMay })
+      );
+    }
+    parts.push('</details>');
+  }
+  document.getElementById("tdResultList").innerHTML = parts.join("");
+  document.getElementById("tdResultArea").scrollTop = 0;
 }
 
 function renderTeamDays(days){
@@ -824,16 +1046,7 @@ function renderTeamDays(days){
               '<div class="may-name"><span class="caret">▶</span>🔩 '+esc(m.may)+(m.ten?'<span class="mn-ten">'+esc(m.ten)+'</span>':'')+'</div>'+
               '<div class="team-num">SL <b>'+fmtN(m.sl)+'</b> · KL <b>'+fmtN(m.kg)+' kg</b> · '+(m.rows||0)+' lượt</div>'+
             '</summary>'+
-            '<table class="lsx-table">'+
-              '<tr><th>LSX / Công nhân</th><th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
-              (m.lsx||[]).map(l =>
-                '<tr><td class="lsx-code">'+esc(l.lsx)+'</td>'+
-                '<td class="num">'+fmtN(l.sl)+'</td>'+
-                '<td class="num">'+fmtN(l.kg)+'</td>'+
-                '<td class="num">'+(l.rows||0)+'</td></tr>'+
-                renderCnRows(l.cn)
-              ).join("")+
-            '</table>'+
+            lsxTableHtml(m.lsx, { showCn:true })+
           '</details>'
         );
       }
