@@ -181,29 +181,60 @@ details.may-block .lsx-table td:first-child,details.may-block .lsx-table th:firs
    Thụt lề sâu hơn + nền nhạt + chữ nhỏ để mắt phân biệt ngay đâu là dòng
    tổng của LSX, đâu là dòng chi tiết theo người. Không kẻ viền trên để
    nhóm CN dính liền vào LSX của nó. */
-.lsx-table tr.cn-row > td{border-top:none;padding-top:2px;padding-bottom:2px;
-  background:#f9fbfd;font-size:11.5px;color:var(--muted);}
-.lsx-table tr.cn-row.cn-first > td{padding-top:4px;}
-.lsx-table tr.cn-row.cn-last > td{padding-bottom:6px;}
-details.may-block .lsx-table tr.cn-row > td:first-child{padding-left:38px;}
+/* v4.9.1: dòng công nhân gộp thành MỘT dòng liệt kê tên, trải hết bề ngang
+   (colspan). Bỏ SL/KL/lượt của từng người vì số tổng đã có ở dòng LSX ngay
+   trên và ở tiêu đề máy/ngày — trên điện thoại chúng chỉ ăn mất chỗ.
+   Tên xuống dòng tự nhiên khi dài, không cắt cụt. */
+.lsx-table tr.cn-row > td{border-top:none;padding:2px 6px 6px 14px;
+  background:#f9fbfd;font-size:11.5px;color:var(--muted);line-height:1.5;}
+details.may-block .lsx-table tr.cn-row > td{padding-left:22px;}
 .cn-name{font-weight:600;color:var(--txt);}
+.cn-sep{color:var(--border);margin:0 3px;}
 .cn-ma{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--muted);margin-left:5px;}
+@media (max-width:420px){
+  .lsx-table tr.cn-row > td{padding-left:10px;}
+  details.may-block .lsx-table tr.cn-row > td{padding-left:16px;}
+}
 
 /* ── v4.9: chip "Nhóm theo" — cùng kiểu chip Tổ nhưng chỉ chọn 1 ── */
 .gchip{border:1.5px solid var(--border);background:#fff;color:var(--muted);border-radius:999px;
   padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .gchip.active{background:var(--teal);border-color:var(--teal);color:#fff;}
 
-/* ── v4.9: cột Mô tả + Khách hàng trong bảng LSX ──
-   table-layout:fixed để cột Mô tả dài không đẩy vỡ các cột số. */
+/* ── v4.9.1: BỀ RỘNG CỘT — ưu tiên đọc được mã LSX trên điện thoại ──
+   Bản v4.9 để cột Mô tả 34% và các cột số 66px, nên trên máy ~360px cột LSX
+   chỉ còn ~24px nội dung = 3 ký tự/hàng, mã LSX vỡ vụn không đọc nổi.
+   Nay đổi ngược lại: LSX được cấp đủ chỗ TRƯỚC (tối thiểu 6 ký tự/hàng),
+   các cột số co lại, cột Mô tả nhận phần còn thừa.
+
+   Cách tính bề rộng cột LSX: chữ monospace 12px ≈ 6,6px/ký tự → 6 ký tự ≈ 40px.
+   Cộng padding trái 14px + phải 6px = 60px. Đặt 78px để dư 2-3 ký tự.
+   ĐỔI padding của .lsx-table thì phải tính lại con số này. */
 .lsx-table{table-layout:fixed;}
-.lsx-table col.c-mota{width:34%;}
-.lsx-table col.c-num{width:66px;}
-.lsx-table col.c-rows{width:48px;}
-.mota-cell{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.mota-kh{display:block;color:var(--teal-d);font-weight:600;font-size:11px;
+.lsx-table col.c-lsx{width:78px;}
+.lsx-table col.c-num{width:54px;}
+.lsx-table col.c-rows{width:38px;}
+.lsx-table th{padding:4px 6px;}
+.lsx-table td{padding:5px 6px;}
+details.may-block .lsx-table td:first-child,
+details.may-block .lsx-table th:first-child{padding-left:14px;}
+.mota-cell{color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mota-kh{display:block;color:var(--teal-d);font-weight:600;font-size:10.5px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lsx-table td.dash{color:var(--border);}
+.lsx-table td.num,.lsx-table th.num{font-size:11.5px;}
+
+/* Điện thoại: siết thêm các cột số, nhường tối đa cho LSX và Mô tả */
+@media (max-width:420px){
+  .lsx-table col.c-lsx{width:74px;}
+  .lsx-table col.c-num{width:46px;}
+  .lsx-table col.c-rows{width:32px;}
+  .lsx-table th{padding:4px 4px;}
+  .lsx-table td{padding:5px 4px;}
+  details.may-block .lsx-table td:first-child,
+  details.may-block .lsx-table th:first-child{padding-left:10px;}
+  .lsx-table td.num{font-size:11px;}
+}
 
 /* ── v4.9: khối cấp 1 khi nhóm theo Máy / Công nhân (gộp cả kỳ) ── */
 details.top-block{border-top:1px solid var(--border);background:#fff;}
@@ -827,16 +858,14 @@ function filterDaysByWs(days, wsArr){
    người dùng chưa nạp bản backend mới; giao diện vẫn chạy như trước. */
 function renderCnRows(cn){
   if(!cn || !cn.length) return "";
-  return cn.map((c,i) =>
-    '<tr class="cn-row'+(i===0?' cn-first':'')+(i===cn.length-1?' cn-last':'')+'">'+
-      '<td>↳ <span class="cn-name">'+esc(c.ten)+'</span>'+
-        (c.ma && c.ma !== c.ten ? '<span class="cn-ma">'+esc(c.ma)+'</span>' : '')+'</td>'+
-      '<td></td>'+
-      '<td class="num">'+fmtN(c.sl)+'</td>'+
-      '<td class="num">'+fmtN(c.kg)+'</td>'+
-      '<td class="num">'+(c.rows||0)+'</td>'+
-    '</tr>'
-  ).join("");
+  // Máy chủ đã sắp theo SL giảm dần → người làm nhiều nhất đứng đầu danh sách.
+  // Giữ nguyên thứ tự đó: tuy không hiện số, vị trí vẫn nói lên ai làm chính.
+  // Số liệu từng người vẫn nằm trong dữ liệu, chỉ là không vẽ ra.
+  const ten = cn.map(c =>
+    '<span class="cn-name" title="'+esc((c.ma?c.ma+" · ":"")+"SL "+fmtN(c.sl)+" · KL "+fmtN(c.kg)+" kg · "+(c.rows||0)+" lượt")+'">'+
+      esc(c.ten)+'</span>'
+  ).join('<span class="cn-sep">·</span>');
+  return '<tr class="cn-row"><td colspan="5">↳ '+ten+'</td></tr>';
 }
 
 /* ══════════════════════════════════════════════
@@ -863,10 +892,11 @@ function motaCell(l){
  */
 function lsxTableHtml(list, opts){
   opts = opts || {};
+  // Thứ tự col PHẢI khớp thứ tự th, và colspan của dòng công nhân phải bằng 5.
   return '<table class="lsx-table">'+
-    '<colgroup><col><col class="c-mota"><col class="c-num"><col class="c-num"><col class="c-rows"></colgroup>'+
-    '<tr><th>LSX'+(opts.showCn?' / Công nhân':'')+'</th><th>Khách hàng / Mô tả</th>'+
-      '<th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
+    '<colgroup><col class="c-lsx"><col><col class="c-num"><col class="c-num"><col class="c-rows"></colgroup>'+
+    '<tr><th>LSX'+(opts.showCn?' / CN':'')+'</th><th>KH / Mô tả</th>'+
+      '<th class="num">SL</th><th class="num">KL</th><th class="num">Lượt</th></tr>'+
     (list||[]).map(l =>
       '<tr><td class="lsx-code">'+esc(l.lsx)+
         (opts.showMay && l.may ? '<span class="cn-ma">'+esc(l.may)+'</span>' : '')+'</td>'+
