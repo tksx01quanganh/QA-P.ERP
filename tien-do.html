@@ -177,6 +177,18 @@ details.may-block[open] > summary .caret{transform:rotate(90deg);}
 .may-name .mn-ten{font-weight:400;color:var(--muted);margin-left:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 details.may-block .lsx-table td:first-child,details.may-block .lsx-table th:first-child{padding-left:22px;}
 
+/* ── v4.8: dòng công nhân nằm dưới mỗi LSX ──
+   Thụt lề sâu hơn + nền nhạt + chữ nhỏ để mắt phân biệt ngay đâu là dòng
+   tổng của LSX, đâu là dòng chi tiết theo người. Không kẻ viền trên để
+   nhóm CN dính liền vào LSX của nó. */
+.lsx-table tr.cn-row > td{border-top:none;padding-top:2px;padding-bottom:2px;
+  background:#f9fbfd;font-size:11.5px;color:var(--muted);}
+.lsx-table tr.cn-row.cn-first > td{padding-top:4px;}
+.lsx-table tr.cn-row.cn-last > td{padding-bottom:6px;}
+details.may-block .lsx-table tr.cn-row > td:first-child{padding-left:38px;}
+.cn-name{font-weight:600;color:var(--txt);}
+.cn-ma{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;color:var(--muted);margin-left:5px;}
+
 @media (max-width:500px){
   .searchBar{flex-direction:column;}
   .searchBar .field{width:100%;}
@@ -754,6 +766,23 @@ function filterDaysByWs(days, wsArr){
   return out;
 }
 
+/* v4.8 — dòng chi tiết công nhân dưới mỗi LSX.
+   Máy chủ đã sắp sẵn theo SL giảm dần nên ở đây chỉ vẽ, không sắp lại.
+   Trả chuỗi rỗng nếu thiếu `cn` — xảy ra với bản ghi cache cũ hoặc khi
+   người dùng chưa nạp bản backend mới; giao diện vẫn chạy như trước. */
+function renderCnRows(cn){
+  if(!cn || !cn.length) return "";
+  return cn.map((c,i) =>
+    '<tr class="cn-row'+(i===0?' cn-first':'')+(i===cn.length-1?' cn-last':'')+'">'+
+      '<td>↳ <span class="cn-name">'+esc(c.ten)+'</span>'+
+        (c.ma && c.ma !== c.ten ? '<span class="cn-ma">'+esc(c.ma)+'</span>' : '')+'</td>'+
+      '<td class="num">'+fmtN(c.sl)+'</td>'+
+      '<td class="num">'+fmtN(c.kg)+'</td>'+
+      '<td class="num">'+(c.rows||0)+'</td>'+
+    '</tr>'
+  ).join("");
+}
+
 function renderTeamDays(days){
   if(!days.length){
     tdStatus("", '<div class="empty">Không có dữ liệu sản xuất trong khoảng ngày này.</div>');
@@ -796,12 +825,13 @@ function renderTeamDays(days){
               '<div class="team-num">SL <b>'+fmtN(m.sl)+'</b> · KL <b>'+fmtN(m.kg)+' kg</b> · '+(m.rows||0)+' lượt</div>'+
             '</summary>'+
             '<table class="lsx-table">'+
-              '<tr><th>LSX</th><th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
+              '<tr><th>LSX / Công nhân</th><th class="num">SL</th><th class="num">KL (kg)</th><th class="num">Lượt</th></tr>'+
               (m.lsx||[]).map(l =>
                 '<tr><td class="lsx-code">'+esc(l.lsx)+'</td>'+
                 '<td class="num">'+fmtN(l.sl)+'</td>'+
                 '<td class="num">'+fmtN(l.kg)+'</td>'+
-                '<td class="num">'+(l.rows||0)+'</td></tr>'
+                '<td class="num">'+(l.rows||0)+'</td></tr>'+
+                renderCnRows(l.cn)
               ).join("")+
             '</table>'+
           '</details>'
