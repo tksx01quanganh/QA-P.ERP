@@ -98,6 +98,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .modal-overlay.show{display:flex;}
 .modal{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;max-height:90vh;overflow-y:auto;}
 .modal h3{text-align:center;margin-bottom:16px;font-size:18px;}
+/* Modal xác nhận sau scan */
+.cf-box{background:#f0fdfa;border:2px solid var(--teal);border-radius:12px;padding:12px;text-align:center;margin-bottom:14px;}
+.cf-lsx{font-size:20px;font-weight:800;color:var(--teal);word-break:break-all;}
+.cf-sub{font-size:13px;color:#475569;margin-top:4px;}
+.cf-diff{font-size:13px;font-weight:700;margin-top:6px;min-height:18px;text-align:center;}
+.cf-diff.up{color:var(--red);}
+.cf-diff.down{color:#2563eb;}
+.cf-diff.same{color:#64748b;}
 /* Dashboard */
 .db-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
 .db-card{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;}
@@ -118,7 +126,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#9664;</button>
     <span class="ttl">Kiểm kê</span>
-    <span class="ver">v1.0</span>
+    <span class="ver">v1.1</span>
   </div>
   <div class="wrap">
     <div style="text-align:center;margin-bottom:8px;font-size:13px;color:var(--muted);">
@@ -138,7 +146,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="backToMenu()">&#9664;</button>
     <span class="ttl">Chọn vị trí kho</span>
-    <span class="ver">v1.0</span>
+    <span class="ver">v1.1</span>
   </div>
   <div class="wrap">
     <div class="loc-section">
@@ -161,7 +169,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="backFromScan()">&#9664;</button>
     <span class="ttl">&#128205; <span id="scanLocLabel">---</span></span>
-    <span class="ver">v1.0</span>
+    <span class="ver">v1.1</span>
   </div>
   <div class="wrap">
     <div id="reader"></div>
@@ -188,7 +196,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="backToMenu()">&#9664;</button>
     <span class="ttl">Báo cáo kiểm kê</span>
-    <span class="ver">v1.0</span>
+    <span class="ver">v1.1</span>
   </div>
   <div class="wrap">
     <div class="filter-box">
@@ -215,7 +223,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="backToMenu()">&#9664;</button>
     <span class="ttl">Báo cáo kiểm kê</span>
-    <span class="ver">v1.0</span>
+    <span class="ver">v1.1</span>
   </div>
   <div class="wrap">
     <div class="filter-box">
@@ -273,6 +281,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   </div>
 </div>
 
+<!-- ══════ MODAL: XÁC NHẬN SAU KHI SCAN ══════ -->
+<div id="modalConfirm" class="modal-overlay">
+  <div class="modal">
+    <h3>&#9989; Xác nhận thành phẩm</h3>
+    <div class="cf-box">
+      <div class="cf-lsx" id="cfLsx">---</div>
+      <div class="cf-sub"><span id="cfPcs">0</span> <span id="cfDvt"></span> &nbsp;|&nbsp; KL trên QR: <b id="cfKgQr">0</b> kg</div>
+    </div>
+    <div class="field">
+      <label class="label">Khối lượng thực tế (KG)</label>
+      <input id="cfKgReal" class="input" type="number" inputmode="decimal" step="0.01" placeholder="Để trống = dùng KL trên QR" oninput="cfUpdateDiff()"/>
+      <div id="cfDiff" class="cf-diff"></div>
+    </div>
+    <button class="btn green" onclick="confirmScanAndNext()">&#128247; Lưu &amp; Scan tiếp</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn outline" onclick="confirmScanAndStop()" style="flex:1;">Lưu &amp; Dừng</button>
+      <button class="btn gray" onclick="cancelConfirm()" style="flex:1;">Bỏ qua</button>
+    </div>
+  </div>
+</div>
 
 <div id="toast" class="toast"></div>
 
@@ -469,6 +497,7 @@ function stopLocCamera(){
    SCAN THÀNH PHẨM
    ══════════════════════════════════════════════════════════════ */
 function backFromScan(){
+  closeConfirmModal();
   if(state.scanList.length>0){
     if(confirm("Có "+state.scanList.length+" mục chưa gửi.\nLưu tạm vào máy để lần sau tiếp tục?")){
       saveDraft();
@@ -486,13 +515,16 @@ function backFromScan(){
 }
 
 function changeLocation(){
+  closeConfirmModal();
   stopCamera();
   goToLocation();
 }
 
 /* QR Camera */
 async function startOrNext(){
-  if(scanning){scanLocked=false;lastText="";document.getElementById("btnScan").textContent="Đang quét...";setHint("info","Đưa QR vào khung để quét");return;}
+  // Đang mở modal xác nhận → không cho quét tiếp
+  if(pendingScan){showToast("Vui lòng xác nhận mã vừa quét","err");return;}
+  if(scanning){resumeCamera();return;}
   await startCamera();
 }
 async function startCamera(){
@@ -538,16 +570,101 @@ function processQR(text){
     document.getElementById("btnScan").textContent="Quét tiếp";
     return;
   }
-  addScanRow(parsed.lsx, parsed.pcs, parsed.dvt, parsed.kg);
   FB.ok();
-  showToast("✓ "+parsed.lsx+" — "+parsed.pcs+" "+parsed.dvt,"ok",2000);
-  setHint("ok","Đã thêm "+parsed.lsx);
-  // Tiếp tục scan tự động
-  setTimeout(function(){scanLocked=false;lastText="";document.getElementById("btnScan").textContent="Đang quét...";setHint("info","Đưa QR tiếp theo vào khung");},800);
+  openConfirmModal(parsed);
 }
 
-function addScanRow(lsx, pcs, dvt, kg){
-  state.scanList.push({lsx:lsx, pcs:pcs, dvt:dvt, kg:kg, ts:Date.now(), viTri:state.viTri});
+/* ══════════════════════════════════════════════════════════════
+   MODAL XÁC NHẬN SAU KHI SCAN (nhập KL thực tế)
+   ══════════════════════════════════════════════════════════════ */
+var pendingScan=null;
+
+function openConfirmModal(p){
+  pendingScan=p;
+  // Tạm dừng camera để không quét chồng mã
+  pauseCamera();
+  document.getElementById("cfLsx").textContent=p.lsx;
+  document.getElementById("cfPcs").textContent=p.pcs;
+  document.getElementById("cfDvt").textContent=p.dvt||"";
+  document.getElementById("cfKgQr").textContent=p.kg;
+  var inp=document.getElementById("cfKgReal");
+  inp.value="";
+  document.getElementById("cfDiff").textContent="";
+  document.getElementById("cfDiff").className="cf-diff";
+  document.getElementById("modalConfirm").classList.add("show");
+  setHint("ok","Đã quét "+p.lsx+" — xác nhận để scan tiếp");
+  document.getElementById("btnScan").textContent="Đang chờ xác nhận...";
+  setTimeout(function(){try{inp.focus();}catch(e){}},150);
+}
+
+function cfUpdateDiff(){
+  var el=document.getElementById("cfDiff");
+  if(!pendingScan){el.textContent="";return;}
+  var v=document.getElementById("cfKgReal").value;
+  if(v===""||v===null){el.textContent="";el.className="cf-diff";return;}
+  var real=parseFloat(String(v).replace(",","."));
+  if(isNaN(real)){el.textContent="";el.className="cf-diff";return;}
+  var d=Math.round((real-pendingScan.kg)*100)/100;
+  if(d>0){el.textContent="▲ Nhiều hơn QR "+d+" kg";el.className="cf-diff up";}
+  else if(d<0){el.textContent="▼ Ít hơn QR "+Math.abs(d)+" kg";el.className="cf-diff down";}
+  else {el.textContent="= Bằng KL trên QR";el.className="cf-diff same";}
+}
+
+function cfReadKg(){
+  var v=document.getElementById("cfKgReal").value;
+  if(v===""||v===null) return {kg:pendingScan.kg, real:false};
+  var real=parseFloat(String(v).replace(",","."));
+  if(isNaN(real)||real<0) return null;
+  return {kg:real, real:true};
+}
+
+function saveConfirm(){
+  if(!pendingScan) return false;
+  var r=cfReadKg();
+  if(!r){showToast("Khối lượng thực tế không hợp lệ","err");return false;}
+  addScanRow(pendingScan.lsx, pendingScan.pcs, pendingScan.dvt, r.kg, r.real);
+  showToast("✓ "+pendingScan.lsx+" — "+pendingScan.pcs+" "+pendingScan.dvt+" | "+r.kg+" kg"+(r.real?" (thực tế)":""),"ok",2000);
+  closeConfirmModal();
+  return true;
+}
+
+function confirmScanAndNext(){
+  if(!saveConfirm()) return;
+  resumeCamera();
+}
+
+function confirmScanAndStop(){
+  if(!saveConfirm()) return;
+  stopCamera();
+  setHint("ok","Đã lưu. Nhấn \"Bắt đầu Scan\" khi cần quét tiếp.");
+}
+
+function cancelConfirm(){
+  closeConfirmModal();
+  showToast("Đã bỏ qua mã vừa quét","err",1500);
+  resumeCamera();
+}
+
+function closeConfirmModal(){
+  pendingScan=null;
+  document.getElementById("modalConfirm").classList.remove("show");
+}
+
+function pauseCamera(){
+  scanLocked=true;
+  try{ if(qr&&scanning&&qr.pause) qr.pause(true); }catch(e){}
+}
+
+function resumeCamera(){
+  if(!scanning){ startCamera(); return; }
+  try{ if(qr&&qr.resume) qr.resume(); }catch(e){}
+  scanLocked=false; lastText="";
+  document.getElementById("btnScan").textContent="Đang quét...";
+  setHint("info","Đưa QR tiếp theo vào khung");
+}
+
+function addScanRow(lsx, pcs, dvt, kg, isReal){
+  state.scanList.push({lsx:lsx, pcs:pcs, dvt:dvt, kg:kg, klThucTe:!!isReal, ts:Date.now(), viTri:state.viTri});
   renderScanList();
   saveDraft();
 }
@@ -583,7 +700,7 @@ function renderScanList(){
       html+='<div class="scan-row">'
         +'<div class="sr-info">'
         +'<div class="sr-lsx">'+esc(r.lsx)+'</div>'
-        +'<div class="sr-detail">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg</div>'
+        +'<div class="sr-detail">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg'+(r.klThucTe?' <span style="color:#16a34a;font-weight:700;">(thực tế)</span>':'')+'</div>'
         +'</div>'
         +'<button class="sr-del" onclick="deleteScanRow('+idx+')">&#128465;</button>'
         +'</div>';
@@ -623,7 +740,7 @@ function addManual(){
   var kg=parseFloat(document.getElementById("manKg").value)||0;
   if(!lsx){showToast("Vui lòng nhập LSX","err");return;}
   if(pcs<=0){showToast("Số lượng phải > 0","err");return;}
-  addScanRow(lsx, pcs, dvt, kg);
+  addScanRow(lsx, pcs, dvt, kg, kg>0);
   FB.ok();
   showToast("✓ Đã thêm "+lsx,"ok",2000);
   closeManualModal();
@@ -881,59 +998,70 @@ function renderDashboard(data){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   DRILL-DOWN (bấm vào dòng báo cáo → xem chi tiết)
+   DRILL-DOWN CHI TIẾT (từ Dashboard)
    ══════════════════════════════════════════════════════════════ */
-function showDrillDown(type,value){
-  var dateFrom=document.getElementById("dbFrom").value;
-  var dateTo=document.getElementById("dbTo").value;
-
-  var title="";
-  var params="action=stkReport&dateFrom="+encodeURIComponent(dateFrom)+"&dateTo="+encodeURIComponent(dateTo);
-  if(type==="nguoi"){params+="&nguoi="+encodeURIComponent(value);title="&#128100; "+value;}
-  if(type==="viTri"){params+="&viTri="+encodeURIComponent(value);title="&#128205; "+value;}
-  if(type==="lsx"){params+="&lsx="+encodeURIComponent(value);title="&#128203; "+value;}
-
-  document.getElementById("detailTitle").innerHTML=title;
+async function showDrillDown(type, key){
+  var titleMap={viTri:"📍 Vị trí", nguoi:"👤 Người kiểm kê", lsx:"📋 LSX"};
+  document.getElementById("detailTitle").textContent=(titleMap[type]||"Chi tiết")+": "+key;
   document.getElementById("detailContent").innerHTML='<div class="loading-text"><span class="spin"></span> Đang tải...</div>';
   document.getElementById("modalDetail").classList.add("show");
 
-  fetch(CONFIG.XUAT_HANG_URL+"?"+params+"&t="+Date.now())
-    .then(function(r){return r.json();})
-    .then(function(out){
-      if(out.result==="ok"){renderDrillDown(out);}
-      else{document.getElementById("detailContent").innerHTML='<div class="loading-text" style="color:var(--red)">'+esc(out.error||"Lỗi")+'</div>';}
-    })
-    .catch(function(){
-      document.getElementById("detailContent").innerHTML='<div class="loading-text" style="color:var(--red)">Không kết nối được</div>';
-    });
+  var dateFrom=document.getElementById("dbFrom").value;
+  var dateTo=document.getElementById("dbTo").value;
+  if(!dateFrom) dateFrom=dateTo;
+  if(!dateTo) dateTo=dateFrom;
+
+  var f={nguoi:"", viTri:"", lsx:""};
+  if(type==="viTri") f.viTri=key;
+  else if(type==="nguoi") f.nguoi=key;
+  else if(type==="lsx") f.lsx=key;
+
+  try{
+    var url=CONFIG.XUAT_HANG_URL+"?action=stkReport"
+      +"&dateFrom="+encodeURIComponent(dateFrom||"")
+      +"&dateTo="+encodeURIComponent(dateTo||"")
+      +"&nguoi="+encodeURIComponent(f.nguoi)
+      +"&viTri="+encodeURIComponent(f.viTri)
+      +"&lsx="+encodeURIComponent(f.lsx)
+      +"&t="+Date.now();
+    var res=await fetch(url);
+    var out=await res.json();
+    if(out.result!=="ok"){
+      document.getElementById("detailContent").innerHTML='<div class="loading-text" style="color:var(--red)">'+esc(out.error||"Lỗi")+'</div>';
+      return;
+    }
+    renderDrillDown(out);
+  }catch(e){
+    document.getElementById("detailContent").innerHTML='<div class="loading-text" style="color:var(--red)">Không kết nối được server</div>';
+  }
 }
 
 function renderDrillDown(data){
   var el=document.getElementById("detailContent");
-  var s=data.summary;
-  var html='<div class="rpt-summary" style="margin-bottom:10px;">'
-    +'<div class="rs-item"><div class="rs-val">'+s.sessions+'</div><div class="rs-label">Phiên</div></div>'
+  var s=data.summary||{sessions:0,lsx:0,pcs:0,kg:0};
+  var html='<div class="rpt-summary">'
     +'<div class="rs-item"><div class="rs-val">'+s.lsx+'</div><div class="rs-label">LSX</div></div>'
     +'<div class="rs-item"><div class="rs-val">'+s.pcs+'</div><div class="rs-label">PCS</div></div>'
     +'<div class="rs-item"><div class="rs-val">'+s.kg+'</div><div class="rs-label">KG</div></div>'
     +'</div>';
 
-  if(data.byLocation){
-    for(var i=0;i<data.byLocation.length;i++){
-      var loc=data.byLocation[i];
-      html+='<div style="margin:8px 0 4px;font-size:13px;font-weight:700;color:var(--teal);">&#128205; '+esc(loc.viTri)+' ('+loc.rows.length+')</div>';
-      for(var j=0;j<loc.rows.length;j++){
-        var r=loc.rows[j];
-        html+='<div class="rpt-row">'
-          +'<div class="rr-head"><span class="rr-lsx">'+esc(r.lsx)+'</span><span class="rr-qty">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg</span></div>'
-          +'<div class="rr-meta">'+esc(r.nguoiScan)+' | '+esc(r.ngay)+' '+esc(r.gio)+'</div>'
-          +'</div>';
-      }
-    }
+  var locs=data.byLocation||[];
+  if(locs.length===0){
+    el.innerHTML=html+'<div class="loading-text">Không có dữ liệu</div>';
+    return;
   }
-
-  if(!data.byLocation||data.byLocation.length===0){
-    html+='<div class="loading-text">Không có dữ liệu</div>';
+  for(var i=0;i<locs.length;i++){
+    var loc=locs[i];
+    html+='<div style="margin:12px 0 4px;font-size:13px;font-weight:700;color:var(--teal);">&#128205; '+esc(loc.viTri)
+      +' <span style="font-weight:400;color:var(--muted);">('+loc.totalPcs+' PCS | '+loc.totalKg+' kg)</span></div>';
+    for(var j=0;j<loc.rows.length;j++){
+      var r=loc.rows[j];
+      html+='<div class="rpt-row">'
+        +'<div class="rr-head"><span class="rr-lsx">'+esc(r.lsx)+'</span><span class="rr-qty">'+r.pcs+' '+esc(r.dvt)+' | '+r.kg+' kg</span></div>'
+        +'<div class="rr-meta">'+esc(r.khachHang||"")+(r.moTa?" — "+esc(r.moTa):"")+'</div>'
+        +'<div class="rr-meta">'+esc(r.ngay||"")+" | "+esc(r.gio||"")+" | "+esc(r.nguoiScan||"")+'</div>'
+        +'</div>';
+    }
   }
   el.innerHTML=html;
 }
@@ -941,46 +1069,6 @@ function renderDrillDown(data){
 function closeDetailModal(){
   document.getElementById("modalDetail").classList.remove("show");
 }
-
-/* ══════════════════════════════════════════════════════════════
-   FILTER HINTS (auto-suggest cho báo cáo)
-   ══════════════════════════════════════════════════════════════ */
-async function loadFilterHints(){
-  try{
-    var res=await fetch(CONFIG.XUAT_HANG_URL+"?action=stkFilterHints&t="+Date.now());
-    var out=await res.json();
-    if(out.result==="ok"){
-      fillDatalist("dlNguoi",out.nguoi);
-      fillDatalist("dlViTri",out.viTri);
-      fillDatalist("dlLsx",out.lsx);
-      fillDatalist("dlDbNguoi",out.nguoi);
-      fillDatalist("dlDbViTri",out.viTri);
-      fillDatalist("dlDbLsx",out.lsx);
-    }
-  }catch(e){}
-}
-function fillDatalist(id,arr){
-  var dl=document.getElementById(id);
-  if(!dl) return;
-  dl.innerHTML="";
-  for(var i=0;i<arr.length;i++){
-    var opt=document.createElement("option");
-    opt.value=arr[i];
-    dl.appendChild(opt);
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   INIT
-   ══════════════════════════════════════════════════════════════ */
-(function init(){
-  if(checkSession()){
-    enterMenu();
-  } else {
-    // Chưa đăng nhập → quay về app chính
-    window.location.href = "index.html";
-  }
-})();
 </script>
 </body>
 </html>
