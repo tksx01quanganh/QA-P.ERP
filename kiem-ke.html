@@ -379,7 +379,7 @@ function checkSession(){
   try{
     var s=JSON.parse(saved);
     if(s.username && s.ts && (Date.now()-s.ts < 8*3600*1000)){
-      state.user=s.user; state.maNV=s.maNV; return true;
+      state.user=s.user||s.username; state.maNV=s.maNV||""; return true;
     }
   }catch(e){}
   return false;
@@ -1069,6 +1069,58 @@ function renderDrillDown(data){
 function closeDetailModal(){
   document.getElementById("modalDetail").classList.remove("show");
 }
+
+/* ══════════════════════════════════════════════════════════════
+   GỢI Ý BỘ LỌC (datalist) — lấy từ dữ liệu 90 ngày gần nhất
+   ══════════════════════════════════════════════════════════════ */
+var hintCache=null, hintCacheTs=0;
+
+function fillDatalist(id, arr){
+  var el=document.getElementById(id);
+  if(!el) return;
+  var h="";
+  for(var i=0;i<arr.length;i++){ if(arr[i]) h+='<option value="'+esc(arr[i])+'"></option>'; }
+  el.innerHTML=h;
+}
+
+function applyHints(d){
+  fillDatalist("dlNguoi",   d.nguoi); fillDatalist("dlDbNguoi", d.nguoi);
+  fillDatalist("dlViTri",   d.viTri); fillDatalist("dlDbViTri", d.viTri);
+  fillDatalist("dlLsx",     d.lsx);   fillDatalist("dlDbLsx",   d.lsx);
+}
+
+async function loadFilterHints(){
+  // Cache 10 phút trong RAM
+  if(hintCache && (Date.now()-hintCacheTs < 10*60*1000)){ applyHints(hintCache); return; }
+  try{
+    var to=new Date();
+    var from=new Date(to.getTime()-90*86400000);
+    var f=function(d){ return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); };
+    var url=CONFIG.XUAT_HANG_URL+"?action=stkDashboard"
+      +"&dateFrom="+f(from)+"&dateTo="+f(to)+"&t="+Date.now();
+    var res=await fetch(url);
+    var out=await res.json();
+    if(out.result!=="ok") return;
+    var d={nguoi:[], viTri:[], lsx:[]};
+    (out.byNguoi||[]).forEach(function(x){ d.nguoi.push(x.nguoi); });
+    (out.byViTri||[]).forEach(function(x){ d.viTri.push(x.viTri); });
+    (out.byLsx  ||[]).forEach(function(x){ d.lsx.push(x.lsx); });
+    hintCache=d; hintCacheTs=Date.now();
+    applyHints(d);
+  }catch(e){ /* gợi ý lọc không có cũng không sao */ }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT — chạy khi tải trang
+   ══════════════════════════════════════════════════════════════ */
+window.addEventListener("DOMContentLoaded", function(){
+  if(!checkSession()){
+    alert("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+    window.location.href="index.html";
+    return;
+  }
+  enterMenu();
+});
 </script>
 </body>
 </html>
