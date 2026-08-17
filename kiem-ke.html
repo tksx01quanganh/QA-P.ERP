@@ -126,7 +126,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#9664;</button>
     <span class="ttl">Kiểm kê</span>
-    <span class="ver">v1.1</span>
+    <span class="ver">v1.2</span>
   </div>
   <div class="wrap">
     <div style="text-align:center;margin-bottom:8px;font-size:13px;color:var(--muted);">
@@ -146,7 +146,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="backToMenu()">&#9664;</button>
     <span class="ttl">Chọn vị trí kho</span>
-    <span class="ver">v1.1</span>
+    <span class="ver">v1.2</span>
   </div>
   <div class="wrap">
     <div class="loc-section">
@@ -169,7 +169,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="backFromScan()">&#9664;</button>
     <span class="ttl">&#128205; <span id="scanLocLabel">---</span></span>
-    <span class="ver">v1.1</span>
+    <span class="ver">v1.2</span>
   </div>
   <div class="wrap">
     <div id="reader"></div>
@@ -196,7 +196,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="backToMenu()">&#9664;</button>
     <span class="ttl">Báo cáo kiểm kê</span>
-    <span class="ver">v1.1</span>
+    <span class="ver">v1.2</span>
   </div>
   <div class="wrap">
     <div class="filter-box">
@@ -223,7 +223,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="backToMenu()">&#9664;</button>
     <span class="ttl">Báo cáo kiểm kê</span>
-    <span class="ver">v1.1</span>
+    <span class="ver">v1.2</span>
   </div>
   <div class="wrap">
     <div class="filter-box">
@@ -846,6 +846,7 @@ function renderReport(data){
   var html='<div class="rpt-summary">'
     +'<div class="rs-item"><div class="rs-val">'+s.sessions+'</div><div class="rs-label">Phiên</div></div>'
     +'<div class="rs-item"><div class="rs-val">'+s.lsx+'</div><div class="rs-label">LSX</div></div>'
+    +'<div class="rs-item"><div class="rs-val">'+(s.bao||0)+'</div><div class="rs-label">Bao</div></div>'
     +'<div class="rs-item"><div class="rs-val">'+s.pcs+'</div><div class="rs-label">PCS</div></div>'
     +'<div class="rs-item"><div class="rs-val">'+s.kg+'</div><div class="rs-label">KG</div></div>'
     +'</div>';
@@ -864,7 +865,7 @@ function renderReport(data){
       +'<span class="loc-tri" id="'+accId+'Tri">&#9654;</span>'
       +'<div class="loc-acc-info">'
       +'<div class="loc-acc-title">'+esc(loc.viTri)+'</div>'
-      +'<div class="loc-acc-meta">'+loc.totalLsx+' LSX | '+loc.totalPcs+' PCS | '+loc.totalKg+' kg</div>'
+      +'<div class="loc-acc-meta">'+loc.totalLsx+' LSX | '+(loc.totalBao||loc.rows.length)+' bao | '+loc.totalPcs+' PCS | '+loc.totalKg+' kg</div>'
       +'</div></div>'
       +'<div class="loc-acc-body" id="'+accId+'Body">';
 
@@ -949,6 +950,7 @@ function renderDashboard(data){
     +'<div class="db-card"><div class="dc-val">'+data.tongNguoi+'</div><div class="dc-label">Người tham gia</div></div>'
     +'<div class="db-card"><div class="dc-val">'+data.tongViTri+'</div><div class="dc-label">Vị trí</div></div>'
     +'<div class="db-card"><div class="dc-val">'+data.tongLsx+'</div><div class="dc-label">LSX</div></div>'
+    +'<div class="db-card"><div class="dc-val">'+(data.tongBao||0).toLocaleString()+'</div><div class="dc-label">Tổng bao (lượt scan)</div></div>'
     +'<div class="db-card"><div class="dc-val">'+data.tongPcs.toLocaleString()+'</div><div class="dc-label">Tổng PCS</div></div>'
     +'<div class="db-card"><div class="dc-val">'+data.tongKg.toLocaleString()+'</div><div class="dc-label">Tổng KG</div></div>'
     +'</div>';
@@ -960,7 +962,7 @@ function renderDashboard(data){
       var v=data.byViTri[i];
       html+='<div class="db-row" style="cursor:pointer;" onclick="showDrillDown(\'viTri\',\''+esc(v.viTri).replace(/'/g,"\\'")+'\')">'
         +'<span class="dr-name">'+esc(v.viTri)+'</span>'
-        +'<span class="dr-stats">'+v.lsx+' LSX | <strong>'+v.pcs+'</strong> PCS | <strong>'+v.kg+'</strong> kg &#9654;</span></div>';
+        +'<span class="dr-stats">'+v.lsx+' LSX | <strong>'+(v.bao||0)+'</strong> bao | <strong>'+v.pcs+'</strong> PCS | <strong>'+v.kg+'</strong> kg &#9654;</span></div>';
     }
     html+='</div>';
   }
@@ -972,7 +974,7 @@ function renderDashboard(data){
       var n=data.byNguoi[i];
       html+='<div class="db-row" style="cursor:pointer;" onclick="showDrillDown(\'nguoi\',\''+esc(n.nguoi).replace(/'/g,"\\'")+'\')">'
         +'<span class="dr-name">'+esc(n.nguoi)+'</span>'
-        +'<span class="dr-stats">'+n.lsx+' LSX | <strong>'+n.pcs+'</strong> PCS | <strong>'+n.kg+'</strong> kg &#9654;</span></div>';
+        +'<span class="dr-stats">'+n.lsx+' LSX | <strong>'+(n.bao||0)+'</strong> bao | <strong>'+n.pcs+'</strong> PCS | <strong>'+n.kg+'</strong> kg &#9654;</span></div>';
     }
     html+='</div>';
   }
@@ -984,7 +986,7 @@ function renderDashboard(data){
       var l=data.byLsx[i];
       html+='<div class="db-row" style="cursor:pointer;" onclick="showDrillDown(\'lsx\',\''+esc(l.lsx).replace(/'/g,"\\'")+'\')">'
         +'<span class="dr-name">'+esc(l.lsx)+'</span>'
-        +'<span class="dr-stats">'+l.viTri+' VT | '+l.nguoi+' ng | <strong>'+l.pcs+'</strong> PCS | <strong>'+l.kg+'</strong> kg &#9654;</span></div>';
+        +'<span class="dr-stats">'+l.viTri+' VT | <strong>'+(l.bao||0)+'</strong> bao | <strong>'+l.pcs+'</strong> PCS | <strong>'+l.kg+'</strong> kg &#9654;</span></div>';
     }
     html+='</div>';
   }
@@ -1038,9 +1040,10 @@ async function showDrillDown(type, key){
 
 function renderDrillDown(data){
   var el=document.getElementById("detailContent");
-  var s=data.summary||{sessions:0,lsx:0,pcs:0,kg:0};
+  var s=data.summary||{sessions:0,lsx:0,bao:0,pcs:0,kg:0};
   var html='<div class="rpt-summary">'
     +'<div class="rs-item"><div class="rs-val">'+s.lsx+'</div><div class="rs-label">LSX</div></div>'
+    +'<div class="rs-item"><div class="rs-val">'+(s.bao||0)+'</div><div class="rs-label">Bao</div></div>'
     +'<div class="rs-item"><div class="rs-val">'+s.pcs+'</div><div class="rs-label">PCS</div></div>'
     +'<div class="rs-item"><div class="rs-val">'+s.kg+'</div><div class="rs-label">KG</div></div>'
     +'</div>';
@@ -1053,7 +1056,7 @@ function renderDrillDown(data){
   for(var i=0;i<locs.length;i++){
     var loc=locs[i];
     html+='<div style="margin:12px 0 4px;font-size:13px;font-weight:700;color:var(--teal);">&#128205; '+esc(loc.viTri)
-      +' <span style="font-weight:400;color:var(--muted);">('+loc.totalPcs+' PCS | '+loc.totalKg+' kg)</span></div>';
+      +' <span style="font-weight:400;color:var(--muted);">('+(loc.totalBao||loc.rows.length)+' bao | '+loc.totalPcs+' PCS | '+loc.totalKg+' kg)</span></div>';
     for(var j=0;j<loc.rows.length;j++){
       var r=loc.rows[j];
       html+='<div class="rpt-row">'
