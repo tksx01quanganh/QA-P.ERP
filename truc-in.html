@@ -67,6 +67,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .st-issued{background:#fef3c7;color:#92400e;}
 .st-under_repair{background:#dbeafe;color:#1d4ed8;}
 .st-scrapped{background:#fee2e2;color:#991b1b;}
+.st-new{background:#f1f5f9;color:#475569;}
 .cyl-sub{font-size:13px;color:var(--muted);margin-top:3px;}
 .cyl-loc{font-size:12px;color:var(--teal);margin-top:2px;font-weight:600;}
 
@@ -159,7 +160,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.4</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.5</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -173,6 +174,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <div class="dash-card amber" onclick="openSearch('ISSUED')"><div class="dc-num" id="dcIssued">—</div><div class="dc-lbl">Đã xuất</div></div>
       <div class="dash-card blue" onclick="openSearch('UNDER_REPAIR')"><div class="dc-num" id="dcRepair">—</div><div class="dc-lbl">Đang sửa</div></div>
       <div class="dash-card red" onclick="openSearch('SCRAPPED')"><div class="dc-num" id="dcScrap">—</div><div class="dc-lbl">Đã hủy</div></div>
+      <div class="dash-card full" id="dcNewCard" style="display:none;border-color:var(--amber);background:#fffbeb;" onclick="openSearch('NEW')"><div class="dc-num" id="dcNew" style="color:var(--amber);">—</div><div class="dc-lbl">Chưa nhập kho — đã khai báo, chưa có vị trí</div></div>
     </div>
 
     <div class="menu-list">
@@ -211,7 +213,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
 
     <div class="hint info" style="margin-top:16px;text-align:left;line-height:1.55;font-size:13px;">
-      <b>Lưu ý:</b> Trục mới khai báo trong tab <b>CYL_Master</b>. Vị trí khai báo trong master dùng chung
+      <b>Khai báo trục mới:</b> trong tab <b>CYL_Master</b>, điền mã trục và <b>current_location</b> —
+      để trống <b>current_status</b>, app tự hiểu là đã trong kho. Nếu trục chưa lên giá thì để trống cả vị trí,
+      rồi dùng <b>Nhập trục</b> trên app để đưa lên (có lưu lịch sử).<br/>
+      Vị trí khai báo trong master dùng chung
       <b>Location_MA</b>; danh mục loại vị trí khai trong <b>LocationType_MA</b>. Sau khi khai báo, bấm
       <b>&#8635; Làm mới</b> để app nạp danh sách mới nhất.
     </div>
@@ -361,6 +366,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <div class="chip" onclick="setFilter('ISSUED',this)">Đã xuất</div>
       <div class="chip" onclick="setFilter('UNDER_REPAIR',this)">Đang sửa</div>
       <div class="chip" onclick="setFilter('SCRAPPED',this)">Đã hủy</div>
+      <div class="chip" id="chipNew" style="display:none;" onclick="setFilter('NEW',this)">Chưa nhập kho</div>
     </div>
     <div id="searchResults"><div class="loading">Đang tải...</div></div>
   </div>
@@ -447,7 +453,7 @@ function checkSession() {
 }
 
 // ═══════════════ INIT ═══════════════
-var CACHE_KEY = "cylCache_v4";   // v2.4: đổi khoá vì thêm locAcceptTypes từ master loại
+var CACHE_KEY = "cylCache_v5";   // v2.5: đổi khoá vì thêm trạng thái NEW + notInStock
 
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) {
@@ -621,6 +627,13 @@ function updateDashboardUI(c) {
   document.getElementById("dcIssued").textContent = c.issued;
   document.getElementById("dcRepair").textContent = c.underRepair;
   document.getElementById("dcScrap").textContent = c.scrapped;
+
+  // v2.5: ô "Chưa nhập kho" chỉ hiện khi thực sự có — vận hành bình thường không thêm rối
+  var n = c.notInStock || 0;
+  document.getElementById("dcNew").textContent = n;
+  document.getElementById("dcNewCard").style.display = n > 0 ? "" : "none";
+  var chip = document.getElementById("chipNew");
+  if (chip) chip.style.display = n > 0 ? "" : "none";
 }
 
 // ═══════════════ SCREEN SWITCHING ═══════════════
@@ -1107,7 +1120,9 @@ function onCylFound(code, cyl, isNew) {
 
   el.innerHTML = '<div style="font-weight:700;font-size:16px;">' + esc(cyl.code) + '</div>' +
     '<div style="font-size:13px;margin-top:6px;line-height:1.5;">Trạng thái: <b>' + statusVi(cyl.curStatus) + '</b></div>' +
-    '<div style="font-size:13px;color:var(--muted);line-height:1.5;">BP: ' + esc(cyl.curDept || "—") + ' &nbsp;|&nbsp; VT: ' + esc(cyl.curLoc || "—") + '</div>';
+    '<div style="font-size:13px;color:var(--muted);line-height:1.5;">BP: ' + esc(cyl.curDept || "—") + ' &nbsp;|&nbsp; VT: ' + esc(cyl.curLoc || "—") + '</div>' +
+    (cyl.curStatus === "NEW"
+      ? '<div style="font-size:13px;color:var(--amber);margin-top:6px;line-height:1.5;">Trục mới khai báo, chưa nhập kho lần nào. Chọn vị trí bên dưới để đưa lên giá.</div>' : '');
   el.className = "scan-result show";
   document.getElementById("txnForm").style.display = "";
 }
@@ -1391,7 +1406,7 @@ function dr(label, value) {
 }
 
 function statusVi(s) {
-  var m = { AVAILABLE: "Trong kho", ISSUED: "Đã xuất", UNDER_REPAIR: "Đang sửa", SCRAPPED: "Đã hủy" };
+  var m = { AVAILABLE: "Trong kho", ISSUED: "Đã xuất", UNDER_REPAIR: "Đang sửa", SCRAPPED: "Đã hủy", NEW: "Chưa nhập kho" };
   return m[s] || s;
 }
 
