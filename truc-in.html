@@ -159,7 +159,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.3</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.4</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -200,7 +200,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
     <div class="hint err" id="locWarn" style="display:none;margin-top:16px;text-align:left;line-height:1.55;font-size:13px;">
       <b>Chưa có vị trí nào nhận trục trong Location_MA.</b> Chạy <b>migrateLocationMA()</b> trong Google Apps Script,
-      rồi trong tab <b>Location_MA</b> đặt <b>Location Type = TRUC</b> (hoặc <b>MIXED</b>) cho các giá trục.
+      rồi trong tab <b>Location_MA</b> đặt <b>Location Type</b> là loại có nhận trục cho các giá trục.
       Trong lúc chờ, app tạm dùng các vị trí đã phát sinh trong CYL_Master.
     </div>
 
@@ -212,7 +212,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
     <div class="hint info" style="margin-top:16px;text-align:left;line-height:1.55;font-size:13px;">
       <b>Lưu ý:</b> Trục mới khai báo trong tab <b>CYL_Master</b>. Vị trí khai báo trong master dùng chung
-      <b>Location_MA</b> (Location Type: TP / NVL / TRUC / CCDC / MIXED). Sau khi khai báo, bấm
+      <b>Location_MA</b>; danh mục loại vị trí khai trong <b>LocationType_MA</b>. Sau khi khai báo, bấm
       <b>&#8635; Làm mới</b> để app nạp danh sách mới nhất.
     </div>
   </div>
@@ -273,7 +273,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
         <!-- TO LOCATION (nhập trục, chuyển VT) — v2.2: CHỌN TỪ MASTER CYL_Location -->
         <div class="field" id="fToLoc" style="display:none;">
-          <label>Vị trí đích <span style="color:var(--red);">*</span> (chọn từ Location_MA — loại TRUC hoặc MIXED)</label>
+          <label>Vị trí đích <span style="color:var(--red);">*</span> (chọn từ Location_MA)</label>
           <div class="row2" style="margin-bottom:10px;">
             <button class="btn small" onclick="openScanner('loc')">&#128247; Scan vị trí</button>
             <button class="btn small ghost" onclick="showAllLoc()">&#128203; Xem tất cả</button>
@@ -447,7 +447,7 @@ function checkSession() {
 }
 
 // ═══════════════ INIT ═══════════════
-var CACHE_KEY = "cylCache_v3";   // v2.3: đổi khoá vì master vị trí chuyển sang Location_MA
+var CACHE_KEY = "cylCache_v4";   // v2.4: đổi khoá vì thêm locAcceptTypes từ master loại
 
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) {
@@ -481,6 +481,8 @@ function loadFromCache() {
     locSource = c.locSource || "empty";
     locTab = c.locTab || "Location_MA";
     locMissing = c.locMissing || [];
+    locAcceptTypes = c.locAcceptTypes || [];
+    locTypeTab = c.locTypeTab || "LocationType_MA";
     allCylinders = c.cylinders || [];
     dataReady = true;
     lastSyncTs = c.ts || 0;
@@ -559,6 +561,8 @@ function applyData(d) {
   locSource = d.locSource || "empty";
   locTab = d.locTab || "Location_MA";
   locMissing = d.locMissing || [];
+  locAcceptTypes = d.locAcceptTypes || [];
+  locTypeTab = d.locTypeTab || "LocationType_MA";
   allCylinders = d.cylinders || [];
   dataReady = true;
   lastSyncTs = Date.now();
@@ -594,6 +598,8 @@ function saveToCache(d) {
       locSource: d.locSource || "empty",
       locTab: d.locTab || "Location_MA",
       locMissing: d.locMissing || [],
+      locAcceptTypes: d.locAcceptTypes || [],
+      locTypeTab: d.locTypeTab || "LocationType_MA",
       cylinders: d.cylinders,
       ts: Date.now()
     }));
@@ -700,6 +706,8 @@ var locMaster = [];
 var locSource = "empty";
 var locTab = "Location_MA";
 var locMissing = [];   // các cột tải chưa có trên Sheet
+var locAcceptTypes = [];       // mã loại vị trí nhận được trục — do backend tính từ master
+var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
 
 function buildLocDatalist() {
@@ -735,6 +743,15 @@ function locLine(L, q) {
   return parts.join(' • ');
 }
 
+// Chuỗi mô tả các loại vị trí nhận được trục — lấy từ master, không cứng trong code
+function acceptTypesText() {
+  if (!locAcceptTypes.length) return "loại có khai nhận trục";
+  var b = [];
+  for (var i = 0; i < locAcceptTypes.length; i++) b.push("<b>" + esc(locAcceptTypes[i]) + "</b>");
+  if (b.length === 1) return b[0];
+  return b.slice(0, -1).join(", ") + " hoặc " + b[b.length - 1];
+}
+
 function fmtKg(n) {
   var v = Number(n || 0);
   return (Math.round(v * 100) / 100).toLocaleString("vi-VN");
@@ -750,7 +767,7 @@ function renderLocSuggest(hits, q) {
   if (!box) return;
   if (!locMaster.length) {
     box.innerHTML = '<div class="suggest-empty">Chưa có vị trí nào nhận trục.<br/>Trong tab <b>' + esc(locTab) + '</b> trên Google Sheet, ' +
-      'đặt <b>Location Type = TRUC</b> (hoặc <b>MIXED</b>) và <b>Status = ACTIVE</b>, rồi bấm <b>&#8635; Làm mới</b>.</div>';
+      'đặt <b>Location Type</b> là ' + acceptTypesText() + ' và <b>Status = ACTIVE</b>, rồi bấm <b>&#8635; Làm mới</b>.</div>';
     box.className = "suggest-list show";
     return;
   }
@@ -766,7 +783,7 @@ function renderLocSuggest(hits, q) {
     var L = shown[i];
     var line = locLine(L, q);
     html += '<div class="suggest-item" onclick="pickLoc(\'' + escAttr(L.ma) + '\')">' +
-      '<div class="si-code">' + hi(L.ma, q) + (L.type === "MIXED" ? ' <span class="cyl-status st-under_repair">Hỗn hợp</span>' : '') + '</div>' +
+      '<div class="si-code">' + hi(L.ma, q) + (L.type ? ' <span class="cyl-status st-under_repair">' + esc(L.type) + '</span>' : '') + '</div>' +
       (line ? '<div class="si-sub">' + line + '</div>' : '') +
       '</div>';
   }
@@ -828,7 +845,8 @@ function setLocError(code) {
   if (!el) return;
   el.className = "loc-picked bad";
   el.innerHTML = '&#10006; Vị trí <b>' + esc(code) + '</b> không dùng được cho trục.<br/>' +
-    'Cần có trong tab <b>' + esc(locTab) + '</b>, <b>Status = ACTIVE</b> và <b>Location Type = TRUC</b> hoặc <b>MIXED</b>.<br/>' +
+    'Cần có trong tab <b>' + esc(locTab) + '</b>, <b>Status = ACTIVE</b> và <b>Location Type</b> là ' +
+    acceptTypesText() + '.<br/>' +
     'Sửa trên Google Sheet, bấm <b>&#8635; Làm mới</b> rồi chọn lại.';
   el.style.display = "";
 }
