@@ -160,7 +160,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.5</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.6</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -453,7 +453,7 @@ function checkSession() {
 }
 
 // ═══════════════ INIT ═══════════════
-var CACHE_KEY = "cylCache_v5";   // v2.5: đổi khoá vì thêm trạng thái NEW + notInStock
+var CACHE_KEY = "cylCache_v6";   // v2.6: đổi khoá vì thêm thông tin chẩn đoán loc*
 
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) {
@@ -489,6 +489,10 @@ function loadFromCache() {
     locMissing = c.locMissing || [];
     locAcceptTypes = c.locAcceptTypes || [];
     locTypeTab = c.locTypeTab || "LocationType_MA";
+    locTypeSource = c.locTypeSource || "";
+    locScanned = c.locScanned || 0;
+    locReject = c.locReject || null;
+    locError = c.locError || "";
     allCylinders = c.cylinders || [];
     dataReady = true;
     lastSyncTs = c.ts || 0;
@@ -509,6 +513,59 @@ function fmtClock(ts) {
   return p(d.getHours()) + ":" + p(d.getMinutes()) + " " + p(d.getDate()) + "/" + p(d.getMonth() + 1);
 }
 
+// Dịch mã lý do sang tiếng Việt + hướng sửa
+var REJECT_VI = {
+  vi_tri_INACTIVE:            "Status = INACTIVE",
+  type_khong_nhan:            "Location Type không nhận trục",
+  type_khong_co_trong_master: "Location Type chưa khai trong " // + tên tab, nối ở dưới
+};
+
+// Cảnh báo có LÝ DO, thay vì câu chung chung
+function buildLocWarnHtml() {
+  var h = "<b>Chưa có vị trí nào nhận trục.</b>";
+
+  if (locError) {
+    return h + "<br/>Lỗi đọc master: " + esc(locError);
+  }
+
+  if (locTypeSource === "builtin") {
+    h += "<br/>Chưa đọc được tab <b>" + esc(locTypeTab) + "</b> (đang dùng bộ loại mặc định). " +
+         "Chạy <b>migrateLocationMA()</b> trong Google Apps Script.";
+  }
+
+  if (!locScanned) {
+    h += "<br/>Tab <b>" + esc(locTab) + "</b> không có dòng dữ liệu nào — hoặc chưa deploy bản mới " +
+         "(Manage deployments &rarr; New version).";
+  } else {
+    h += "<br/>Đã quét <b>" + locScanned + "</b> dòng trong <b>" + esc(locTab) + "</b>, " +
+         "không dòng nào dùng được cho trục.";
+  }
+
+  if (locReject && locReject.total) {
+    var lines = [];
+    for (var k in locReject.byReason) {
+      if (!locReject.byReason.hasOwnProperty(k)) continue;
+      var lbl = REJECT_VI[k] || k;
+      if (k === "type_khong_co_trong_master") lbl += locTypeTab;
+      lines.push(locReject.byReason[k] + " dòng: " + lbl);
+    }
+    if (lines.length) h += "<br/>Lý do: " + esc(lines.join(" • "));
+
+    var bad = [];
+    for (var v in locReject.badTypeValues) {
+      if (locReject.badTypeValues.hasOwnProperty(v)) bad.push('"' + v + '" (' + locReject.badTypeValues[v] + ')');
+    }
+    if (bad.length) {
+      h += "<br/>Giá trị Location Type đang gây loại: <b>" + esc(bad.join(", ")) + "</b>. " +
+           "Cần là " + acceptTypesText() + ".";
+    }
+  }
+
+  h += "<br/>Xem chi tiết từng dòng: mở <b>&lt;URL app&gt;?action=locDiag&amp;need=TRUC</b>.";
+  h += "<br/>Trong lúc chờ, app tạm dùng các vị trí đã phát sinh trong CYL_Master.";
+  return h;
+}
+
 function updateSyncBar(isCache) {
   var el = document.getElementById("syncTxt");
   if (!el) return;
@@ -517,9 +574,13 @@ function updateSyncBar(isCache) {
   el.textContent = allCylinders.length + " trục • " + locMaster.length + " vị trí • cập nhật " +
     fmtClock(lastSyncTs) + (isCache ? " (bộ nhớ máy)" : "");
 
-  // Cảnh báo: chưa có vị trí nhận trục trong Location_MA
+  // Cảnh báo: chưa có vị trí nhận trục trong Location_MA — kèm LÝ DO cụ thể
   var w = document.getElementById("locWarn");
-  if (w) w.style.display = (dataReady && locSource !== "master") ? "" : "none";
+  if (w) {
+    var show = dataReady && locSource !== "master";
+    w.style.display = show ? "" : "none";
+    if (show) w.innerHTML = buildLocWarnHtml();
+  }
 
   // Cảnh báo: thiếu cột quản tải (dành cho module thành phẩm sau này)
   var cw = document.getElementById("capWarn");
@@ -569,6 +630,10 @@ function applyData(d) {
   locMissing = d.locMissing || [];
   locAcceptTypes = d.locAcceptTypes || [];
   locTypeTab = d.locTypeTab || "LocationType_MA";
+  locTypeSource = d.locTypeSource || "";
+  locScanned = d.locScanned || 0;
+  locReject = d.locReject || null;
+  locError = d.locError || "";
   allCylinders = d.cylinders || [];
   dataReady = true;
   lastSyncTs = Date.now();
@@ -606,6 +671,10 @@ function saveToCache(d) {
       locMissing: d.locMissing || [],
       locAcceptTypes: d.locAcceptTypes || [],
       locTypeTab: d.locTypeTab || "LocationType_MA",
+      locTypeSource: d.locTypeSource || "",
+      locScanned: d.locScanned || 0,
+      locReject: d.locReject || null,
+      locError: d.locError || "",
       cylinders: d.cylinders,
       ts: Date.now()
     }));
@@ -720,6 +789,10 @@ var locSource = "empty";
 var locTab = "Location_MA";
 var locMissing = [];   // các cột tải chưa có trên Sheet
 var locAcceptTypes = [];       // mã loại vị trí nhận được trục — do backend tính từ master
+var locTypeSource = "";        // "master" = đã đọc LocationType_MA | "builtin" = còn dùng bộ mặc định
+var locScanned = 0;            // số dòng đã quét trong Location_MA
+var locReject = null;          // { total, byReason, badTypeValues } — vì sao vị trí bị loại
+var locError = "";
 var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
 
