@@ -160,7 +160,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.6</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.8</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -205,6 +205,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       rồi trong tab <b>Location_MA</b> đặt <b>Location Type</b> là loại có nhận trục cho các giá trục.
       Trong lúc chờ, app tạm dùng các vị trí đã phát sinh trong CYL_Master.
     </div>
+
+    <div class="hint err" id="typeColWarn" style="display:none;margin-top:12px;text-align:left;line-height:1.55;font-size:13px;"></div>
 
     <div class="hint" id="capWarn" style="display:none;margin-top:12px;text-align:left;line-height:1.55;font-size:13px;background:#fffbeb;color:#92400e;">
       <b>Chưa có cột quản tải.</b> Chạy <b>migrateLocationMA()</b> để thêm
@@ -453,7 +455,7 @@ function checkSession() {
 }
 
 // ═══════════════ INIT ═══════════════
-var CACHE_KEY = "cylCache_v6";   // v2.6: đổi khoá vì thêm thông tin chẩn đoán loc*
+var CACHE_KEY = "cylCache_v8";   // v2.8: đổi khoá vì đổi cách nhận cột
 
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) {
@@ -493,6 +495,7 @@ function loadFromCache() {
     locScanned = c.locScanned || 0;
     locReject = c.locReject || null;
     locError = c.locError || "";
+    locTypeColsMissing = c.locTypeColsMissing || [];
     allCylinders = c.cylinders || [];
     dataReady = true;
     lastSyncTs = c.ts || 0;
@@ -582,6 +585,24 @@ function updateSyncBar(isCache) {
     if (show) w.innerHTML = buildLocWarnHtml();
   }
 
+  // Cảnh báo: cột bắt buộc trong LocationType_MA không nhận diện được.
+  // Đây là loại lỗi ĐỔI HÀNH VI chứ không chỉ mất hiển thị, nên phải hiện kể cả khi app vẫn chạy.
+  var tw = document.getElementById("typeColWarn");
+  if (tw) {
+    var showTw = dataReady && locTypeColsMissing && locTypeColsMissing.length;
+    tw.style.display = showTw ? "" : "none";
+    if (showTw) {
+      var li = "";
+      for (var i = 0; i < locTypeColsMissing.length; i++) {
+        var mc = locTypeColsMissing[i];
+        li += "<br/>&bull; cột <b>" + esc(mc.cot || "?") + "</b> (" + esc(mc.header) + ") — nếu thiếu thì " + esc(mc.hau_qua);
+      }
+      tw.innerHTML = "<b>Tab " + esc(locTypeTab) + " thiếu cột.</b> App đang tạm lấy giá trị mặc định." +
+        li + "<br/>Tên tiêu đề đặt sao cũng được — chỉ cần bảng có đủ cột theo đúng thứ tự. " +
+        "Bổ sung trên Google Sheet rồi bấm <b>&#8635; Làm mới</b>.";
+    }
+  }
+
   // Cảnh báo: thiếu cột quản tải (dành cho module thành phẩm sau này)
   var cw = document.getElementById("capWarn");
   if (cw) {
@@ -634,6 +655,7 @@ function applyData(d) {
   locScanned = d.locScanned || 0;
   locReject = d.locReject || null;
   locError = d.locError || "";
+  locTypeColsMissing = d.locTypeColsMissing || [];
   allCylinders = d.cylinders || [];
   dataReady = true;
   lastSyncTs = Date.now();
@@ -675,6 +697,7 @@ function saveToCache(d) {
       locScanned: d.locScanned || 0,
       locReject: d.locReject || null,
       locError: d.locError || "",
+      locTypeColsMissing: d.locTypeColsMissing || [],
       cylinders: d.cylinders,
       ts: Date.now()
     }));
@@ -793,6 +816,7 @@ var locTypeSource = "";        // "master" = đã đọc LocationType_MA | "buil
 var locScanned = 0;            // số dòng đã quét trong Location_MA
 var locReject = null;          // { total, byReason, badTypeValues } — vì sao vị trí bị loại
 var locError = "";
+var locTypeColsMissing = [];   // cột bắt buộc trong LocationType_MA không nhận diện được
 var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
 
