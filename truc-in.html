@@ -160,7 +160,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v2.8</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v3.0</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -174,6 +174,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <div class="dash-card amber" onclick="openSearch('ISSUED')"><div class="dc-num" id="dcIssued">—</div><div class="dc-lbl">Đã xuất</div></div>
       <div class="dash-card blue" onclick="openSearch('UNDER_REPAIR')"><div class="dc-num" id="dcRepair">—</div><div class="dc-lbl">Đang sửa</div></div>
       <div class="dash-card red" onclick="openSearch('SCRAPPED')"><div class="dc-num" id="dcScrap">—</div><div class="dc-lbl">Đã hủy</div></div>
+      <div class="dash-card full" id="dcBadCard" style="display:none;border-color:var(--red);background:#fef2f2;" onclick="showBadStatus()"><div class="dc-num" id="dcBad" style="color:var(--red);">—</div><div class="dc-lbl">Trạng thái không hợp lệ — bấm để xem</div></div>
       <div class="dash-card full" id="dcNewCard" style="display:none;border-color:var(--amber);background:#fffbeb;" onclick="openSearch('NEW')"><div class="dc-num" id="dcNew" style="color:var(--amber);">—</div><div class="dc-lbl">Chưa nhập kho — đã khai báo, chưa có vị trí</div></div>
     </div>
 
@@ -206,6 +207,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       Trong lúc chờ, app tạm dùng các vị trí đã phát sinh trong CYL_Master.
     </div>
 
+    <div class="hint err" id="verWarn" style="display:none;margin-top:12px;text-align:left;line-height:1.55;font-size:13px;"></div>
+
     <div class="hint err" id="typeColWarn" style="display:none;margin-top:12px;text-align:left;line-height:1.55;font-size:13px;"></div>
 
     <div class="hint" id="capWarn" style="display:none;margin-top:12px;text-align:left;line-height:1.55;font-size:13px;background:#fffbeb;color:#92400e;">
@@ -215,8 +218,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
 
     <div class="hint info" style="margin-top:16px;text-align:left;line-height:1.55;font-size:13px;">
-      <b>Khai báo trục mới:</b> trong tab <b>CYL_Master</b>, điền mã trục và <b>current_location</b> —
-      để trống <b>current_status</b>, app tự hiểu là đã trong kho. Nếu trục chưa lên giá thì để trống cả vị trí,
+      <b>Khai báo trục mới:</b> trong tab <b>CYL_Master</b> chỉ cần điền mã trục và <b>current_location</b>.
+      <b>Đừng gõ gì vào cột current_status</b> — có vị trí là app tự hiểu đang trong kho, và app tự ghi
+      ISSUED / UNDER_REPAIR / SCRAPPED khi có giao dịch. Nếu trục chưa lên giá thì để trống cả vị trí,
       rồi dùng <b>Nhập trục</b> trên app để đưa lên (có lưu lịch sử).<br/>
       Vị trí khai báo trong master dùng chung
       <b>Location_MA</b>; danh mục loại vị trí khai trong <b>LocationType_MA</b>. Sau khi khai báo, bấm
@@ -455,7 +459,7 @@ function checkSession() {
 }
 
 // ═══════════════ INIT ═══════════════
-var CACHE_KEY = "cylCache_v8";   // v2.8: đổi khoá vì đổi cách nhận cột
+var CACHE_KEY = "cylCache_v9";   // v2.9: đổi khoá vì thêm đếm trạng thái lạ
 
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) {
@@ -496,6 +500,8 @@ function loadFromCache() {
     locReject = c.locReject || null;
     locError = c.locError || "";
     locTypeColsMissing = c.locTypeColsMissing || [];
+    badStatusValues = c.unknownValues || {};
+    serverVersion = c.serverVersion || "";
     allCylinders = c.cylinders || [];
     dataReady = true;
     lastSyncTs = c.ts || 0;
@@ -577,6 +583,25 @@ function updateSyncBar(isCache) {
   el.textContent = allCylinders.length + " trục • " + locMaster.length + " vị trí • cập nhật " +
     fmtClock(lastSyncTs) + (isCache ? " (bộ nhớ máy)" : "");
 
+  // Lệch phiên bản app / server = chưa deploy bản mới lên Google Apps Script.
+  // Đây là nguyên nhân hay gặp nhất khi "code đúng mà app vẫn sai".
+  var vw = document.getElementById("verWarn");
+  if (vw) {
+    var mismatch = dataReady && serverVersion && serverVersion !== APP_VERSION;
+    vw.style.display = mismatch ? "" : "none";
+    if (mismatch) {
+      vw.innerHTML = "<b>Chưa deploy bản mới.</b> File giao diện đang là <b>v" + esc(APP_VERSION) +
+        "</b> nhưng code trên Google Apps Script vẫn là <b>v" + esc(serverVersion) + "</b>.<br/>" +
+        "Vào Apps Script &rarr; <b>Manage deployments &rarr; New version</b> (không dùng New deployment), " +
+        "rồi bấm <b>&#8635; Làm mới</b>.";
+    } else if (dataReady && !serverVersion) {
+      vw.style.display = "";
+      vw.innerHTML = "<b>Chưa deploy bản mới.</b> Server không trả về số phiên bản, nghĩa là code trên " +
+        "Google Apps Script còn cũ hơn v2.5.<br/>Vào Apps Script &rarr; " +
+        "<b>Manage deployments &rarr; New version</b>, rồi bấm <b>&#8635; Làm mới</b>.";
+    }
+  }
+
   // Cảnh báo: chưa có vị trí nhận trục trong Location_MA — kèm LÝ DO cụ thể
   var w = document.getElementById("locWarn");
   if (w) {
@@ -656,6 +681,8 @@ function applyData(d) {
   locReject = d.locReject || null;
   locError = d.locError || "";
   locTypeColsMissing = d.locTypeColsMissing || [];
+  badStatusValues = d.unknownValues || {};
+  serverVersion = d.serverVersion || "";
   allCylinders = d.cylinders || [];
   dataReady = true;
   lastSyncTs = Date.now();
@@ -698,6 +725,8 @@ function saveToCache(d) {
       locReject: d.locReject || null,
       locError: d.locError || "",
       locTypeColsMissing: d.locTypeColsMissing || [],
+      unknownValues: d.unknownValues || {},
+      serverVersion: d.serverVersion || "",
       cylinders: d.cylinders,
       ts: Date.now()
     }));
@@ -726,6 +755,29 @@ function updateDashboardUI(c) {
   document.getElementById("dcNewCard").style.display = n > 0 ? "" : "none";
   var chip = document.getElementById("chipNew");
   if (chip) chip.style.display = n > 0 ? "" : "none";
+
+  // v2.9: trạng thái gõ sai — KHÔNG được để lọt im lặng.
+  // Đây chính là lý do từng thấy "Trong kho = 0" mà danh sách vẫn có trục.
+  var bad = c.unknown || 0;
+  var bc = document.getElementById("dcBadCard");
+  if (bc) {
+    document.getElementById("dcBad").textContent = bad;
+    bc.style.display = bad > 0 ? "" : "none";
+  }
+}
+
+function showBadStatus() {
+  var lines = [];
+  for (var k in badStatusValues) {
+    if (badStatusValues.hasOwnProperty(k)) lines.push('"' + k + '" — ' + badStatusValues[k] + " trục");
+  }
+  alert("TRẠNG THÁI KHÔNG HỢP LỆ trong CYL_Master\n\n" +
+        (lines.length ? lines.join("\n") : "(không có)") +
+        "\n\nCÁCH NHANH NHẤT: chạy cylClearStatusWhereLocated() trong Apps Script — " +
+        "nó xoá trắng ô trạng thái ở mọi dòng ĐÃ CÓ VỊ TRÍ, app tự hiểu là đang trong kho. " +
+        "Dòng ISSUED / UNDER_REPAIR / SCRAPPED không bị đụng.\n\n" +
+        "Sau đó chạy setupCylValidation() để gắn dropdown, sau này không gõ sai được nữa.\n\n" +
+        "Giá trị hợp lệ nếu muốn ghi rõ: AVAILABLE, ISSUED, UNDER_REPAIR, SCRAPPED.");
 }
 
 // ═══════════════ SCREEN SWITCHING ═══════════════
@@ -817,6 +869,9 @@ var locScanned = 0;            // số dòng đã quét trong Location_MA
 var locReject = null;          // { total, byReason, badTypeValues } — vì sao vị trí bị loại
 var locError = "";
 var locTypeColsMissing = [];   // cột bắt buộc trong LocationType_MA không nhận diện được
+var badStatusValues = {};      // giá trị current_status gõ sai trong CYL_Master
+var APP_VERSION = "3.0";       // phiên bản file HTML này
+var serverVersion = "";        // phiên bản Code_CylMgmt.gs đang chạy trên Google
 var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
 
