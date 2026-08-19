@@ -426,6 +426,7 @@ let state = {
   fromScan:    false,  // true nếu vào screenMay từ "Chuyển máy/CN"
   branch:      "CT",   // nhánh ghi nhận: "CT" (Cắt/Thủ công — nhập KL tay) | "GTB" (Giấy/Thùng/Bìa — KL tự = KL QR)
   branchLocked: false, // true = nhánh đến từ phân quyền (?branch= trong ChucNang) → không cho quay về màn chọn nhánh
+  batchId:     null,   // v5.4 — mã lô đang chờ gửi, giữ nguyên qua các lần "Gửi lại"
 };
 
 const BRANCH_LABEL = { CT: "Cắt / Thủ công", GTB: "Giấy / Thùng / Bìa", TI: "Thổi / In" };
@@ -1482,25 +1483,64 @@ function saveToQueue(payload){
   localStorage.setItem(LS_QUEUE,JSON.stringify(q));
 }
 
+/* ── v5.4 (19/08/2026) — MÃ LÔ CHỐNG GHI TRÙNG ─────────────────────────────
+   Sự cố 19/08/2026: 18 bao bị ghi 2 lần, cột A (giờ quét) giống hệt nhau,
+   cột O (giờ máy chủ nhận) là 06:00:38 và 16:55:04.
+
+   Nguyên nhân: fetch() ném lỗi KHÔNG có nghĩa là máy chủ chưa ghi. Rớt sóng
+   lúc đang chờ phản hồi, khoá màn hình, hay doPost chạy quá lâu đều làm fetch
+   ném lỗi TRONG KHI dữ liệu đã nằm trên Sheet. Nhánh catch của sendAll() lại
+   hiểu là "chưa gửi được" → cất vào hàng đợi → lần sau gửi lại → ghi 2 lần.
+
+   Cách chữa: mỗi lần bấm Gửi sinh 1 batchId, GIỮ NGUYÊN qua mọi lần gửi lại.
+   Máy chủ thấy batchId đã ghi thì bỏ qua (trả duplicate:true).
+   ⚠ Tuyệt đối KHÔNG sinh batchId mới trong tryFlushQueue — làm vậy là xoá
+   sạch tác dụng của cơ chế này.
+─────────────────────────────────────────────────────────────────────────── */
+function newBatchId(){
+  const d=new Date(), p=n=>String(n).padStart(2,"0");
+  const stamp = d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"-"+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());
+  const rnd = Math.random().toString(36).slice(2,8);
+  return "B-"+stamp+"-"+rnd;
+}
+
+// Chặn hai luồng flush chạy chồng nhau: sự kiện "online" và bộ hẹn giờ lúc mở
+// app đều gọi tryFlushQueue(). Không có cờ này, hai luồng cùng đọc một hàng đợi
+// và cùng gửi một lô đi (backend vẫn chặn được nhờ batchId, nhưng chặn ngay
+// từ đây thì đỡ một lượt gọi mạng vô ích).
+let flushingQueue = false;
+
 async function tryFlushQueue(){
   if(!CONFIG.APPS_SCRIPT_URL) return;
+  if(flushingQueue) return;
   const q=JSON.parse(localStorage.getItem(LS_QUEUE)||"[]");
   if(!q.length) return;
-  const remaining=[]; let sentCount=0;
-  for(const payload of q){
-    try{
-      const res=await fetch(CONFIG.APPS_SCRIPT_URL,{
-        method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body:JSON.stringify(payload),redirect:"follow"
-      });
-      const out=await res.json().catch(()=>({result:"ok"}));
-      if(out.result==="ok"||out.success){
-        sentCount+=(out.inserted||(payload.rows&&payload.rows.length)||1);
-      } else { remaining.push(payload); }
-    }catch(e){ remaining.push(payload); }
+  flushingQueue = true;
+  try{
+    const remaining=[]; let sentCount=0, dupCount=0;
+    for(const payload of q){
+      // Lô cũ nằm sẵn trong hàng đợi từ trước bản này thì chưa có batchId.
+      // Gán một lần rồi GHI NGƯỢC lại hàng đợi, để nếu lần gửi này thất bại
+      // thì lần sau vẫn dùng đúng mã đó.
+      if(!payload.batchId) payload.batchId = newBatchId();
+      try{
+        const res=await fetch(CONFIG.APPS_SCRIPT_URL,{
+          method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+          body:JSON.stringify(payload),redirect:"follow"
+        });
+        const out=await res.json().catch(()=>({result:"ok"}));
+        if(out.result==="ok"||out.success){
+          if(out.duplicate) dupCount+=(payload.rows&&payload.rows.length)||1;
+          else sentCount+=(out.inserted||(payload.rows&&payload.rows.length)||1);
+        } else { remaining.push(payload); }
+      }catch(e){ remaining.push(payload); }
+    }
+    localStorage.setItem(LS_QUEUE,JSON.stringify(remaining));
+    if(sentCount>0){ FB.sendOk(); showToast("✓ Đã gửi "+sentCount+" bao lưu offline lên Sheet!",4000); }
+    if(dupCount>0){ showToast("ℹ "+dupCount+" bao lưu offline thực ra đã lên Sheet từ trước — không ghi trùng.",5000); }
+  } finally {
+    flushingQueue = false;
   }
-  localStorage.setItem(LS_QUEUE,JSON.stringify(remaining));
-  if(sentCount>0){ FB.sendOk(); showToast("✓ Đã gửi "+sentCount+" bao lưu offline lên Sheet!",4000); }
 }
 
 async function sendAll(){
@@ -1510,8 +1550,13 @@ async function sendAll(){
   btn.innerHTML='<span class="spin"></span> Đang gửi...';
   banner("warn","Đang gửi "+state.rows.length+" bao...");
 
+  // v5.4 — mã lô. Giữ nguyên cho tới khi lô này gửi xong, kể cả khi người dùng
+  // bấm "Gửi lại" sau một lần lỗi: nếu lần trước máy chủ đã ghi rồi thì lần này
+  // bị chặn, còn nếu chưa ghi thì vẫn ghi bình thường.
+  if(!state.batchId) state.batchId = newBatchId();
   const payload={
     action:"submit",
+    batchId: state.batchId,
     user: state.user,
     rows: state.rows.map(r=>({
       ts:r.ts, user:state.user,
@@ -1533,9 +1578,12 @@ async function sendAll(){
       const n=out.inserted||state.rows.length;
       FB.sendOk();
       state.rows=[]; saveRows();
+      state.batchId=null;                 // v5.4 — lô đã xong, lô sau dùng mã mới
       state.currentMay=null; state.currentCN=null;
       btn.disabled=false; btn.textContent="Gửi tất cả lên Google Sheet";
-      showToast("✓ Gửi thành công "+n+" bao!",2500);
+      showToast(out.duplicate
+        ? "✓ Lô này đã lên Sheet từ trước — không ghi trùng."
+        : "✓ Gửi thành công "+n+" bao!",2500);
       setTimeout(()=>{
         if(state.permissions.length > 0) enterModuleScreen();
         else logout();
@@ -1547,8 +1595,9 @@ async function sendAll(){
     }
   }catch(e){
     FB.sendFail();
-    saveToQueue(payload);
+    saveToQueue(payload);              // payload đã mang batchId → gửi lại không ghi trùng
     state.rows=[]; saveRows();
+    state.batchId=null;                // lô đã nằm trong hàng đợi, lô mới dùng mã mới
     state.currentMay=null; state.currentCN=null;
     stopCamera();
     btn.disabled=false; btn.textContent="Gửi tất cả lên Google Sheet";
