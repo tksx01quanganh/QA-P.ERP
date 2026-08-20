@@ -53,6 +53,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .subtype-btn .sb-title{font-size:16px;font-weight:700;color:var(--txt);line-height:1.35;}
 .subtype-btn .sb-code{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.6px;margin-top:6px;line-height:1.4;text-transform:uppercase;}
 
+/* v4.0 — giao dịch theo lô: thanh bước, danh sách trục đã scan, thanh nút dưới */
+.stepbar{display:flex;gap:6px;margin-bottom:14px;}
+.stepbar .sp{flex:1;height:6px;border-radius:4px;background:var(--border);}
+.stepbar .sp.done{background:var(--teal);}
+.stepbar .sp.now{background:var(--teal);opacity:.55;}
+.step-h{font-size:15px;font-weight:700;margin-bottom:10px;}
+.txn-foot{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 12px;background:#fff;border-top:2px solid var(--border);}
+.txn-foot .btn{flex:1;}
+.txn-foot .btn.ghost{flex:0 0 40%;}
+.row2 .btn.iconly{flex:0 0 64px;padding-left:0;padding-right:0;text-align:center;}
+.batch-head{display:flex;align-items:center;margin:14px 0 8px;font-size:14px;font-weight:700;color:var(--teal-d);}
+.batch-head .lnk{margin-left:auto;background:none;border:none;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;padding:4px;}
+.bitem{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;}
+.bitem.bad{border-color:var(--red);background:#fef2f2;}
+.bitem.checking{opacity:.7;}
+.bitem .bi-n{font-size:12px;font-weight:700;color:var(--muted);min-width:22px;padding-top:2px;}
+.bitem .bi-body{flex:1;min-width:0;}
+.bitem .bi-code{font-weight:700;font-size:15px;word-break:break-all;}
+.bitem .bi-sub{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45;}
+.bitem .bi-err{font-size:12px;color:var(--red);font-weight:600;margin-top:3px;line-height:1.45;}
+.bitem .bi-x{background:#fee2e2;color:var(--red);border:none;border-radius:8px;font-size:15px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0;}
+.summary-box{background:#ecfdf5;border:2px solid #a7f3d0;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.6;margin-bottom:14px;}
+.summary-box b{color:var(--teal-d);}
+/* đếm số trục hiện đè lên camera khi scan liên tục */
+.scan-badge{margin-top:10px;text-align:center;color:#fff;font-size:15px;font-weight:700;}
+.scan-last{margin-top:4px;text-align:center;color:#a7f3d0;font-size:13px;min-height:18px;}
+
 /* search */
 .search-box{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:12px;font-size:16px;outline:none;margin-bottom:10px;}
 .search-box:focus{border-color:var(--teal);}
@@ -160,13 +187,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v3.0</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.0</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
     <div class="sync-bar">
       <span class="sb-txt" id="syncTxt">Chưa có dữ liệu</span>
       <button id="btnRefreshDash" onclick="hardRefresh()">&#8635; Làm mới</button>
+      <button id="btnCheckSrv" onclick="checkServer()" style="background:#475569;">&#128269; Kiểm tra server</button>
     </div>
     <div class="dash-grid">
       <div class="dash-card full" onclick="openSearch('')"><div class="dc-num" id="dcTotal">—</div><div class="dc-lbl">Tổng trục</div></div>
@@ -199,6 +227,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <div class="mb-icon">&#128203;</div>
         <div class="mb-text"><div class="mb-title">Danh sách trục</div><div class="mb-desc">Tìm kiếm, lọc theo trạng thái</div></div>
       </div>
+      <div class="menu-btn" onclick="openAddCyl()">
+        <div class="mb-icon">&#10133;</div>
+        <div class="mb-text"><div class="mb-title">Khai báo trục mới</div><div class="mb-desc">Thêm mã trục vào master, dùng được ngay</div></div>
+      </div>
+      <div class="menu-btn" onclick="openAddLoc()">
+        <div class="mb-icon">&#127991;</div>
+        <div class="mb-text"><div class="mb-title">Khai báo vị trí mới</div><div class="mb-desc">Thêm giá kệ vào master vị trí dùng chung</div></div>
+      </div>
     </div>
 
     <div class="hint err" id="locWarn" style="display:none;margin-top:16px;text-align:left;line-height:1.55;font-size:13px;">
@@ -218,12 +254,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
 
     <div class="hint info" style="margin-top:16px;text-align:left;line-height:1.55;font-size:13px;">
-      <b>Khai báo trục mới:</b> trong tab <b>CYL_Master</b> chỉ cần điền mã trục và <b>current_location</b>.
-      <b>Đừng gõ gì vào cột current_status</b> — có vị trí là app tự hiểu đang trong kho, và app tự ghi
-      ISSUED / UNDER_REPAIR / SCRAPPED khi có giao dịch. Nếu trục chưa lên giá thì để trống cả vị trí,
-      rồi dùng <b>Nhập trục</b> trên app để đưa lên (có lưu lịch sử).<br/>
-      Vị trí khai báo trong master dùng chung
-      <b>Location_MA</b>; danh mục loại vị trí khai trong <b>LocationType_MA</b>. Sau khi khai báo, bấm
+      <b>Khai báo master:</b> trục mới và vị trí mới khai được ngay trên app (2 mục cuối menu),
+      hoặc khai trực tiếp trên Google Sheet ở tab <b>CYL_Master</b> / <b>Location_MA</b> — dòng nào do app
+      khai sẽ có cột <b>nguon = APP</b> kèm tên người khai.<br/>
+      Trên Sheet chỉ cần điền mã trục và <b>current_location</b>; <b>đừng gõ gì vào cột current_status</b> —
+      có vị trí là app tự hiểu đang trong kho, và app tự ghi ISSUED / UNDER_REPAIR / SCRAPPED khi có giao dịch.
+      Trục chưa lên giá thì để trống cả vị trí, rồi dùng <b>Nhập trục</b> để đưa lên (có lưu lịch sử).<br/>
+      Danh mục loại vị trí khai trong <b>LocationType_MA</b>. Khai trên Sheet xong bấm
       <b>&#8635; Làm mới</b> để app nạp danh sách mới nhất.
     </div>
   </div>
@@ -234,78 +271,160 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <!-- ══════════════════════════════ -->
 <section id="scrTxn" class="screen">
   <div class="topbar">
-    <button class="icon-btn" onclick="cancelTxn()">&#8592;</button>
+    <button class="icon-btn" onclick="txnBack()">&#8592;</button>
     <div class="ttl" id="txnTitle">Giao dịch</div>
     <button class="icon-btn" onclick="cancelTxn()">&#127968;</button>
   </div>
-  <div class="wrap">
-    <!-- STEP 1: Chọn loại GD -->
-    <div id="txnStep1">
-      <h4 style="font-size:14px;color:var(--muted);margin-bottom:10px;">Chọn loại giao dịch</h4>
+  <div class="wrap" id="txnWrap">
+
+    <!-- Thanh bước -->
+    <div class="stepbar" id="txnStepBar"></div>
+
+    <!-- ── BƯỚC 1: Chọn loại giao dịch ── -->
+    <div class="txn-step" id="stepType">
+      <h4 class="step-h">Chọn loại giao dịch</h4>
       <div id="txnSubTypeList" class="menu-list"></div>
     </div>
 
-    <!-- STEP 2: Scan mã trục + thông tin -->
-    <div id="txnStep2" style="display:none;">
-      <div class="hint info" id="txnSubLabel">—</div>
+    <!-- ── BƯỚC: Vị trí (nhập kho / chuyển vị trí) ── -->
+    <div class="txn-step" id="stepLoc" style="display:none;">
+      <h4 class="step-h">Scan vị trí <span id="stepLocWord">nhập</span></h4>
+      <div class="row2" style="margin-bottom:10px;">
+        <button class="btn small" onclick="openScanner('loc')">&#128247; Scan vị trí</button>
+        <button class="btn small ghost" onclick="showAllLoc()">&#128203; Xem tất cả</button>
+      </div>
+      <div class="suggest-wrap">
+        <input type="text" id="txnToLoc" autocomplete="off" placeholder="Gõ mã vị trí, tên, khu... hoặc scan QR"
+               oninput="locSuggest()" onfocus="locSuggest()" />
+        <div id="locSuggestList" class="suggest-list"></div>
+      </div>
+      <div id="locPicked" class="loc-picked" style="display:none;"></div>
+      <button class="btn small ghost" style="margin-top:12px;" onclick="openAddLoc()">&#10133; Khai báo vị trí mới</button>
+    </div>
 
-      <!-- Scan / tìm mã trục -->
-      <div style="margin:14px 0 12px;">
-        <button class="btn small" onclick="openScanner('txn')" style="width:100%;">&#128247; Scan QR Trục</button>
+    <!-- ── BƯỚC: Danh sách trục (scan n lần) ── -->
+    <div class="txn-step" id="stepCyl" style="display:none;">
+      <h4 class="step-h" id="stepCylTitle">Scan / chọn trục</h4>
+      <div class="hint info" id="stepCylCtx" style="display:none;text-align:left;"></div>
+
+      <div class="row2" style="margin:10px 0 12px;">
+        <button class="btn small" onclick="openScanner('batch')">&#128247; Scan liên tục</button>
+        <button class="btn small ghost" onclick="openAddCyl()">&#10133; Trục mới</button>
       </div>
 
-      <div id="txnManual">
-        <div class="field" style="margin-bottom:12px;">
-          <label>Tìm trục (gõ ký tự bất kỳ)</label>
-          <div class="suggest-wrap">
-            <input type="text" id="txnCodeInput" autocomplete="off" placeholder="VD: CYL, 00123, mã SP..."
-                   oninput="txnSuggest()" onfocus="txnSuggest()" />
-            <div id="txnSuggestList" class="suggest-list"></div>
-          </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>Tìm trục (mã trục, số trục, mã SP)</label>
+        <div class="suggest-wrap">
+          <input type="text" id="txnCodeInput" autocomplete="off" placeholder="VD: CYL, 00123, mã SP..."
+                 oninput="txnSuggest()" onfocus="txnSuggest()" />
+          <div id="txnSuggestList" class="suggest-list"></div>
         </div>
       </div>
 
-      <!-- Kết quả scan/lookup -->
-      <div id="txnCylResult" class="scan-result"></div>
+      <div class="batch-head">
+        <span id="batchCount">Chưa chọn trục nào</span>
+        <button class="lnk" id="batchClear" onclick="clearBatch()" style="display:none;">Xoá hết</button>
+      </div>
+      <div id="batchList"></div>
+    </div>
 
-      <!-- Form bổ sung -->
-      <div id="txnForm" style="display:none;margin-top:14px;">
-        <!-- FROM DEPT (nhập trục) -->
-        <div class="field" id="fFromDept" style="display:none;">
-          <label>Bộ phận nguồn</label>
-          <select id="txnFromDept"><option value="">— Chọn —</option></select>
-        </div>
+    <!-- ── BƯỚC: Xác nhận ── -->
+    <div class="txn-step" id="stepConfirm" style="display:none;">
+      <h4 class="step-h">Kiểm tra và xác nhận</h4>
+      <div id="confirmSummary" class="summary-box"></div>
 
-        <!-- TO DEPT (xuất trục, chuyển BP) -->
-        <div class="field" id="fToDept" style="display:none;">
-          <label>Bộ phận đích</label>
-          <select id="txnToDept"><option value="">— Chọn —</option></select>
-        </div>
+      <div class="field" id="fToDept" style="display:none;">
+        <label>Bộ phận nhận <span style="color:var(--red);">*</span></label>
+        <select id="txnToDept"><option value="">— Chọn —</option></select>
+      </div>
 
-        <!-- TO LOCATION (nhập trục, chuyển VT) — v2.2: CHỌN TỪ MASTER CYL_Location -->
-        <div class="field" id="fToLoc" style="display:none;">
-          <label>Vị trí đích <span style="color:var(--red);">*</span> (chọn từ Location_MA)</label>
-          <div class="row2" style="margin-bottom:10px;">
-            <button class="btn small" onclick="openScanner('loc')">&#128247; Scan vị trí</button>
-            <button class="btn small ghost" onclick="showAllLoc()">&#128203; Xem tất cả</button>
-          </div>
-          <div class="suggest-wrap">
-            <input type="text" id="txnToLoc" autocomplete="off" placeholder="Gõ mã vị trí, tên, khu... hoặc scan QR"
-                   oninput="locSuggest()" onfocus="locSuggest()" />
-            <div id="locSuggestList" class="suggest-list"></div>
-          </div>
-          <div id="locPicked" class="loc-picked" style="display:none;"></div>
-        </div>
+      <div class="field">
+        <label>Ghi chú</label>
+        <textarea id="txnRemark" placeholder="Ghi chú cho cả lô (không bắt buộc)"></textarea>
+      </div>
 
-        <!-- REMARK -->
-        <div class="field">
-          <label>Ghi chú</label>
-          <textarea id="txnRemark" placeholder="Ghi chú (không bắt buộc)"></textarea>
-        </div>
+      <div id="confirmList"></div>
+    </div>
+  </div>
 
-        <button class="btn green" onclick="submitTxn()" id="txnSubmitBtn">Xác nhận giao dịch</button>
+  <!-- Thanh điều hướng dưới -->
+  <div class="txn-foot" id="txnFoot" style="display:none;">
+    <button class="btn ghost small" id="txnPrevBtn" onclick="txnPrev()">&#8592; Quay lại</button>
+    <button class="btn" id="txnNextBtn" onclick="txnNext()">Tiếp tục &#8594;</button>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ -->
+<!-- SCREEN: KHAI BÁO TRỤC MỚI      -->
+<!-- ══════════════════════════════ -->
+<section id="scrAddCyl" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="closeAddCyl()">&#8592;</button>
+    <div class="ttl">&#10133; Khai báo trục mới</div>
+    <button class="icon-btn" onclick="show('scrDash')">&#127968;</button>
+  </div>
+  <div class="wrap">
+    <div class="hint info" style="text-align:left;line-height:1.55;">
+      Khai xong, trục ở trạng thái <b>Chưa nhập kho</b>. Muốn đưa lên giá thì dùng
+      <b>Nhập trục</b> như bình thường — để lần lên giá đầu tiên vẫn có lịch sử.
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label>Mã trục <span style="color:var(--red);">*</span></label>
+      <div class="row2">
+        <input type="text" id="acCode" autocomplete="off" placeholder="VD: CYL00123" style="flex:1;" oninput="acCheck()"/>
+        <button class="btn small ghost iconly" onclick="openScanner('newcyl')">&#128247;</button>
+      </div>
+      <div id="acCodeMsg" class="loc-picked" style="display:none;"></div>
+    </div>
+    <div class="field"><label>Số trục</label><input type="text" id="acNumber" autocomplete="off" placeholder="VD: T-045"/></div>
+    <div class="field"><label>Chu vi (mm)</label><input type="text" id="acCirc" inputmode="decimal" autocomplete="off"/></div>
+    <div class="field"><label>Chiều dài (mm)</label><input type="text" id="acLen" inputmode="decimal" autocomplete="off"/></div>
+    <div class="field"><label>Mã thành phẩm</label><input type="text" id="acProduct" autocomplete="off" placeholder="VD: SP-A12"/></div>
+    <button class="btn green" id="acSaveBtn" onclick="submitAddCyl()">Lưu trục mới</button>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ -->
+<!-- SCREEN: KHAI BÁO VỊ TRÍ MỚI    -->
+<!-- ══════════════════════════════ -->
+<section id="scrAddLoc" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="closeAddLoc()">&#8592;</button>
+    <div class="ttl">&#10133; Khai báo vị trí mới</div>
+    <button class="icon-btn" onclick="show('scrDash')">&#127968;</button>
+  </div>
+  <div class="wrap">
+    <div class="hint info" style="text-align:left;line-height:1.55;">
+      Vị trí khai ở đây vào thẳng master dùng chung <b id="alTabName">Location_MA</b>,
+      có ghi lại người khai. Dùng được ngay cho giao dịch.
+    </div>
+    <div class="field" style="margin-top:14px;">
+      <label>Mã vị trí (Location ID) <span style="color:var(--red);">*</span></label>
+      <div class="row2">
+        <input type="text" id="alId" autocomplete="off" placeholder="VD: A02-01" style="flex:1;" oninput="alCheck()"/>
+        <button class="btn small ghost iconly" onclick="openScanner('newloc')">&#128247;</button>
+      </div>
+      <div id="alIdMsg" class="loc-picked" style="display:none;"></div>
+    </div>
+    <div class="field">
+      <label>Mã QR dán trên giá</label>
+      <input type="text" id="alQr" autocomplete="off" placeholder="Để trống = dùng luôn mã vị trí"/>
+    </div>
+    <div class="field"><label>Tên vị trí</label><input type="text" id="alName" autocomplete="off" placeholder="VD: Giá A02 tầng 1"/></div>
+    <div class="field"><label>Khu / giá cha (Parent)</label><input type="text" id="alParent" autocomplete="off" placeholder="VD: A02"/></div>
+    <div class="field">
+      <label>Loại vị trí <span style="color:var(--red);">*</span></label>
+      <select id="alType" onchange="alTypeChanged()"><option value="">— Chọn —</option></select>
+      <div class="hint" style="font-size:12px;margin-top:6px;text-align:left;background:#f8fafc;color:var(--muted);">
+        Danh mục loại lấy từ <b id="alTypeTab">LocationType_MA</b>. Chỉ hiện loại nhận được trục.
       </div>
     </div>
+    <div class="field"><label>Bộ phận quản lý</label><select id="alDept"><option value="">— Chọn —</option></select></div>
+    <div class="field" id="alCapField" style="display:none;">
+      <label>Sức chứa (kg)</label>
+      <input type="text" id="alCap" inputmode="decimal" autocomplete="off" placeholder="Để trống nếu không giới hạn"/>
+    </div>
+    <button class="btn green" id="alSaveBtn" onclick="submitAddLoc()">Lưu vị trí mới</button>
   </div>
 </section>
 
@@ -384,9 +503,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <div id="ovScanner" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:50;flex-direction:column;align-items:center;justify-content:center;">
   <div style="width:90%;max-width:400px;">
     <div id="qrReader"></div>
+    <div class="scan-badge" id="scanBadge" style="display:none;"></div>
+    <div class="scan-last" id="scanLast"></div>
     <div style="margin-top:12px;text-align:center;">
-      <button class="btn gray small" onclick="closeScanner()">Đóng</button>
+      <button class="btn gray small" onclick="closeScanner()" id="scanCloseBtn">Đóng</button>
     </div>
+  </div>
+</div>
+
+<!-- OVERLAY: kiểm tra server -->
+<div id="ovDiag" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.92);z-index:60;padding:14px;overflow-y:auto;">
+  <div style="max-width:640px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div style="color:#fff;font-weight:700;font-size:16px;flex:1;">Kiểm tra kết nối server</div>
+      <button class="btn gray small" onclick="document.getElementById('ovDiag').style.display='none'">Đóng</button>
+    </div>
+    <pre id="diagOut" style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:10px;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all;margin:0;">Đang kiểm tra...</pre>
+    <button class="btn small" style="margin-top:10px;" onclick="copyDiag()">Sao chép kết quả</button>
   </div>
 </div>
 
@@ -411,8 +544,6 @@ var debounceT = null;
 // Transaction state
 var txnGroup = "";
 var txnSubType = null;
-var txnCyl = null;
-var txnCylCode = "";
 var prevScreen = "scrDash";
 
 // Data cache
@@ -459,7 +590,7 @@ function checkSession() {
 }
 
 // ═══════════════ INIT ═══════════════
-var CACHE_KEY = "cylCache_v9";   // v2.9: đổi khoá vì thêm đếm trạng thái lạ
+var CACHE_KEY = "cylCache_v10";  // v4.0: đổi khoá vì thêm locAcceptTypeList
 
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) {
@@ -494,6 +625,7 @@ function loadFromCache() {
     locTab = c.locTab || "Location_MA";
     locMissing = c.locMissing || [];
     locAcceptTypes = c.locAcceptTypes || [];
+    locAcceptTypeList = c.locAcceptTypeList || [];
     locTypeTab = c.locTypeTab || "LocationType_MA";
     locTypeSource = c.locTypeSource || "";
     locScanned = c.locScanned || 0;
@@ -573,6 +705,78 @@ function buildLocWarnHtml() {
   h += "<br/>Xem chi tiết từng dòng: mở <b>&lt;URL app&gt;?action=locDiag&amp;need=TRUC</b>.";
   h += "<br/>Trong lúc chờ, app tạm dùng các vị trí đã phát sinh trong CYL_Master.";
   return h;
+}
+
+// ═══════════════ KIỂM TRA SERVER (v3.1) ═══════════════
+// Gọi thẳng API và in NGUYÊN VĂN phản hồi. Cần thiết vì apiGet() dùng r.json():
+// nếu Google trả về trang HTML (sai URL deployment, hết quyền, phải đăng nhập...)
+// thì JSON.parse ném lỗi và app chỉ hiện một toast rồi tiếp tục dùng dữ liệu cũ —
+// nhìn bề ngoài giống hệt "code chưa cập nhật".
+function checkServer() {
+  document.getElementById("ovDiag").style.display = "block";
+  var out = document.getElementById("diagOut");
+  var lines = [];
+  lines.push("URL app đang gọi:");
+  lines.push(API);
+  lines.push("");
+  lines.push("So URL này với deployment anh vừa tạo trong Apps Script.");
+  lines.push("Nếu khác nhau → app đang gọi bản cũ, phải sửa dòng API trong truc-in.html.");
+  lines.push("");
+  out.textContent = lines.join("\n") + "\n\nĐang gọi cylVersion...";
+
+  var url = API + "?action=cylVersion&_t=" + Date.now();
+  fetch(url).then(function(r) {
+    lines.push("── cylVersion ──");
+    lines.push("HTTP " + r.status + " " + (r.statusText || ""));
+    lines.push("Content-Type: " + (r.headers.get("content-type") || "(không có)"));
+    return r.text();
+  }).then(function(txt) {
+    lines.push("Nguyên văn (400 ký tự đầu):");
+    lines.push(txt.substring(0, 400));
+    var isHtml = txt.replace(/^\s+/, "").charAt(0) === "<";
+    if (isHtml) {
+      lines.push("");
+      lines.push(">>> Đây là trang HTML, KHÔNG phải dữ liệu JSON.");
+      lines.push(">>> Thường do: URL deployment sai, hoặc deployment chưa đặt");
+      lines.push('>>> "Who has access" = Anyone, nên Google trả về trang đăng nhập.');
+    }
+    out.textContent = lines.join("\n");
+    return fetch(API + "?action=cylInit&_t=" + Date.now()).then(function(r2) { return r2.text(); });
+  }).then(function(txt2) {
+    lines.push("");
+    lines.push("── cylInit ──");
+    var d = null;
+    try { d = JSON.parse(txt2); } catch (e) {
+      lines.push("Không đọc được JSON. Nguyên văn 300 ký tự đầu:");
+      lines.push(txt2.substring(0, 300));
+      out.textContent = lines.join("\n");
+      return;
+    }
+    lines.push("result = " + d.result + (d.error ? "  |  error = " + d.error : ""));
+    lines.push("serverVersion = " + (d.serverVersion || "(KHÔNG có → code trên Google còn cũ)"));
+    lines.push("counts = " + JSON.stringify(d.counts || {}));
+    lines.push("số trục trả về = " + ((d.cylinders || []).length));
+    lines.push("locSource = " + (d.locSource || "(không có)"));
+    var keys = [];
+    for (var k in d) if (d.hasOwnProperty(k)) keys.push(k);
+    lines.push("các trường nhận được: " + keys.join(", "));
+    out.textContent = lines.join("\n");
+  }).catch(function(e) {
+    lines.push("");
+    lines.push("LỖI khi gọi: " + e.message);
+    lines.push("Thường do URL sai, mất mạng, hoặc deployment không cho phép truy cập.");
+    out.textContent = lines.join("\n");
+  });
+}
+
+function copyDiag() {
+  var t = document.getElementById("diagOut").textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(function() { toast("Đã sao chép"); },
+                                         function() { toast("Không sao chép được", 1); });
+  } else {
+    toast("Trình duyệt không hỗ trợ sao chép", 1);
+  }
 }
 
 function updateSyncBar(isCache) {
@@ -675,6 +879,7 @@ function applyData(d) {
   locTab = d.locTab || "Location_MA";
   locMissing = d.locMissing || [];
   locAcceptTypes = d.locAcceptTypes || [];
+  locAcceptTypeList = d.locAcceptTypeList || [];
   locTypeTab = d.locTypeTab || "LocationType_MA";
   locTypeSource = d.locTypeSource || "";
   locScanned = d.locScanned || 0;
@@ -705,6 +910,13 @@ function renderActiveScreen() {
       var L = findLoc(txnLocCode);
       if (L) setLocPicked(L); else setLocError(txnLocCode);
     }
+    // v4.0 — trạng thái trục trong lô có thể đã đổi (người khác vừa xuất/nhập)
+    for (var bi = 0; bi < txnBatch.length; bi++) {
+      var it = txnBatch[bi];
+      var fresh = findCylLocal(it.code);
+      if (fresh) { it.cyl = fresh; it.err = cylErrFor(fresh); }
+    }
+    renderBatch();
   }
 }
 
@@ -719,6 +931,7 @@ function saveToCache(d) {
       locTab: d.locTab || "Location_MA",
       locMissing: d.locMissing || [],
       locAcceptTypes: d.locAcceptTypes || [],
+      locAcceptTypeList: d.locAcceptTypeList || [],
       locTypeTab: d.locTypeTab || "LocationType_MA",
       locTypeSource: d.locTypeSource || "",
       locScanned: d.locScanned || 0,
@@ -816,7 +1029,14 @@ function refreshIfStale() {
 function goBack() { show("scrDash"); }
 function goHome() { window.location.href = "index.html"; }
 function goBackDetail() { show(prevScreen); }
-function cancelTxn() { show("scrDash"); }
+function cancelTxn() {
+  if (txnBatch.length > 1 && !confirm("Bỏ lô đang scan (" + txnBatch.length + " trục)?")) return;
+  safeStopScan();
+  document.getElementById("ovScanner").style.display = "none";
+  txnBatch = [];
+  txnBatchId = "";
+  show("scrDash");
+}
 
 // ═══════════════ API ═══════════════
 function apiGet(action, params, cb, retries) {
@@ -849,8 +1069,11 @@ function apiPost(data, cb, retries) {
     else if (retries > 0) setTimeout(function() { apiPost(data, cb, retries - 1); }, 1000);
     else cb({ result: "error", error: "Không nhận được phản hồi" });
   }).catch(function(e) {
-    if (retries > 0) setTimeout(function() { apiPost(data, cb, retries - 1); }, 1000);
-    else toast("Lỗi kết nối: " + e.message, 1);
+    if (retries > 0) { setTimeout(function() { apiPost(data, cb, retries - 1); }, 1000); return; }
+    // v4.0 — PHẢI gọi cb kể cả khi hỏng mạng, nếu không nút bấm kẹt ở
+    // "Đang ghi..." vĩnh viễn và người dùng không biết phải làm gì.
+    // Gửi lại an toàn: cùng batchId thì server không ghi lần hai.
+    cb({ result: "error", error: "Lỗi kết nối: " + e.message + " — bấm lại để gửi lại (không sợ ghi trùng)" });
   });
 }
 
@@ -864,13 +1087,14 @@ var locSource = "empty";
 var locTab = "Location_MA";
 var locMissing = [];   // các cột tải chưa có trên Sheet
 var locAcceptTypes = [];       // mã loại vị trí nhận được trục — do backend tính từ master
+var locAcceptTypeList = [];    // v4.0: kèm tên + có quản tải kg, cho dropdown khai vị trí mới
 var locTypeSource = "";        // "master" = đã đọc LocationType_MA | "builtin" = còn dùng bộ mặc định
 var locScanned = 0;            // số dòng đã quét trong Location_MA
 var locReject = null;          // { total, byReason, badTypeValues } — vì sao vị trí bị loại
 var locError = "";
 var locTypeColsMissing = [];   // cột bắt buộc trong LocationType_MA không nhận diện được
 var badStatusValues = {};      // giá trị current_status gõ sai trong CYL_Master
-var APP_VERSION = "3.0";       // phiên bản file HTML này
+var APP_VERSION = "4.0";       // phiên bản file HTML này
 var serverVersion = "";        // phiên bản Code_CylMgmt.gs đang chạy trên Google
 var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
@@ -991,10 +1215,12 @@ function setLocPicked(L) {
   var el = document.getElementById("locPicked");
   if (!L) {
     txnLocCode = "";
+    if (typeof updateFoot === "function") updateFoot();
     if (el) { el.style.display = "none"; el.className = "loc-picked"; el.innerHTML = ""; }
     return;
   }
   txnLocCode = L.ma;
+  if (typeof updateFoot === "function") updateFoot();   // v4.0: mở khoá nút Tiếp tục
   if (el) {
     el.className = "loc-picked ok";
     el.innerHTML = '&#10004; Vị trí: <b>' + esc(L.ma) + '</b>' + (L.ten ? ' — ' + esc(L.ten) : '') +
@@ -1006,6 +1232,7 @@ function setLocPicked(L) {
 
 function setLocError(code) {
   txnLocCode = "";
+  if (typeof updateFoot === "function") updateFoot();
   var el = document.getElementById("locPicked");
   if (!el) return;
   el.className = "loc-picked bad";
@@ -1034,35 +1261,75 @@ function fillDeptSelect(selId) {
   });
 }
 
-// ═══════════════ TRANSACTION — Luồng chính ═══════════════
+// ═══════════════════════════════════════════════════════════
+// v4.0 — GIAO DỊCH THEO LÔ (nhiều trục / 1 lần)
+// ═══════════════════════════════════════════════════════════
+//
+// Luồng:
+//   Xuất  : loại GD → scan/chọn n trục → bộ phận nhận + ghi chú → Xuất
+//   Nhập  : loại GD → scan vị trí nhập → scan/chọn n trục → ghi chú → Nhập
+//   Chuyển: chuyển vị trí đi theo luồng Nhập; chuyển bộ phận đi theo luồng Xuất
+//
+// Bộ phận NGUỒN không còn phải chọn tay: hệ thống đã biết từng trục đang ở đâu,
+// màn danh sách hiện sẵn BP hiện tại của từng trục và backend tự ghi vào GD.
+//
+// Trục sai nghiệp vụ bị CHẶN NGAY LÚC SCAN (kiểm bằng dữ liệu trong máy để phản hồi
+// tức thì, rồi kiểm lại với server ngầm) → lô gửi lên chỉ gồm trục hợp lệ.
+
+var txnSteps    = [];     // các bước của loại GD đang chọn
+var txnStepIdx  = 0;
+var txnBatch    = [];     // [{code, cyl, err, checking}]
+var txnBatchId  = "";     // giữ nguyên khi gửi lại → server không ghi trùng
+var txnSubLabel = "";
+var txnBusy     = false;
+
+var STEP_TITLES = {
+  IN:       "Nhập trục",
+  OUT:      "Xuất trục",
+  TRANSFER: "Chuyển trục"
+};
+
+function stepsForSubType(code) {
+  var t = (LOCAL_SUB_TYPES[code] || {}).type;
+  // Có vị trí đích → phải scan vị trí TRƯỚC khi scan trục (cả lô vào cùng 1 vị trí)
+  if (t === "IN" || code === "TRANSFER_LOCATION") return ["type", "loc", "cyl", "confirm"];
+  return ["type", "cyl", "confirm"];
+}
+
+function needDeptStep() {
+  return (txnGroup === "OUT" && txnSubType !== "OUT_SCRAP") || txnSubType === "TRANSFER_DEPARTMENT";
+}
+
+// ═══════════════ VÀO LUỒNG ═══════════════
 function startTxn(group) {
   try {
-    txnGroup = group;
-    txnSubType = null;
-    txnCyl = null;
-    txnCylCode = "";
-
-    var titles = { IN: "Nhập trục", OUT: "Xuất trục", TRANSFER: "Chuyển vị trí" };
-    document.getElementById("txnTitle").textContent = titles[group] || "Giao dịch";
-
-    // Reset UI
-    document.getElementById("txnCylResult").className = "scan-result";
-    document.getElementById("txnCylResult").innerHTML = "";
-    document.getElementById("txnForm").style.display = "none";
-    document.getElementById("txnStep2").style.display = "none";
-    hideSuggest();
-    resetLocField();
-
-    // Build sub-type list
+    resetTxn(group);
     document.getElementById("txnSubTypeList").innerHTML = buildSubTypeHtml(group, "pickSubType");
-    document.getElementById("txnStep1").style.display = "";
-
-    // Chuyển màn hình
+    goStep(0);
     switchScreen("scrTxn");
     safeStopScan();
   } catch (e) {
     alert("Lỗi startTxn: " + e.message);
   }
+}
+
+function resetTxn(group) {
+  txnGroup   = group;
+  txnSubType = null;
+  txnSubLabel = "";
+  txnBatch   = [];
+  txnBatchId = "";
+  txnBusy    = false;
+  txnSteps   = ["type"];
+  txnStepIdx = 0;
+  document.getElementById("txnTitle").textContent = STEP_TITLES[group] || "Giao dịch";
+  var rm = document.getElementById("txnRemark"); if (rm) rm.value = "";
+  var td = document.getElementById("txnToDept"); if (td) td.value = "";
+  var ci = document.getElementById("txnCodeInput"); if (ci) ci.value = "";
+  hideSuggest();
+  resetLocField();
+  var cl = document.getElementById("confirmList"); if (cl) cl.innerHTML = "";
+  renderBatch();
 }
 
 // Dựng nút loại GD: tên tiếng Việt ở TRÊN, mã tiếng Anh ở DƯỚI (không dính nhau)
@@ -1079,34 +1346,17 @@ function buildSubTypeHtml(group, handler) {
   return html;
 }
 
-// quickTxn: từ static buttons trong detail (fallback)
 function quickTxn(group) { startTxn(group); }
 
-// quickTxnFor: từ detail screen — trục đã biết
+// Từ màn chi tiết: trục đã biết → nạp sẵn vào lô, vẫn cho scan thêm trục khác
 function quickTxnFor(group) {
   try {
     var cyl = window._detailCyl;
     if (!cyl) return startTxn(group);
-
-    txnGroup = group;
-    txnCylCode = cyl.code;
-    txnCyl = cyl;
-
-    var titles = { IN: "Nhập trục", OUT: "Xuất trục", TRANSFER: "Chuyển vị trí" };
-    document.getElementById("txnTitle").textContent = titles[group] + " — " + cyl.code;
-
-    // Reset UI
-    document.getElementById("txnCylResult").className = "scan-result";
-    document.getElementById("txnCylResult").innerHTML = "";
-    document.getElementById("txnForm").style.display = "none";
-    document.getElementById("txnStep2").style.display = "none";
-    hideSuggest();
-    resetLocField();
-
-    // Build sub-type list
-    document.getElementById("txnSubTypeList").innerHTML = buildSubTypeHtml(group, "pickSubTypeQuick");
-    document.getElementById("txnStep1").style.display = "";
-
+    resetTxn(group);
+    window._seedCyl = cyl.code;
+    document.getElementById("txnSubTypeList").innerHTML = buildSubTypeHtml(group, "pickSubType");
+    goStep(0);
     switchScreen("scrTxn");
     safeStopScan();
   } catch (e) {
@@ -1116,54 +1366,242 @@ function quickTxnFor(group) {
 
 function pickSubType(code, label) {
   try {
-    txnSubType = code;
-    document.getElementById("txnStep1").style.display = "none";
-    document.getElementById("txnStep2").style.display = "";
-    document.getElementById("txnSubLabel").textContent = label + " — scan QR hoặc gõ mã trục để tìm";
-    document.getElementById("txnCylResult").className = "scan-result";
-    document.getElementById("txnCylResult").innerHTML = "";
-    document.getElementById("txnForm").style.display = "none";
-    document.getElementById("txnManual").style.display = "";
-    document.getElementById("txnCodeInput").value = "";
-    hideSuggest();
-    fillDeptSelect("txnFromDept");
+    txnSubType  = code;
+    txnSubLabel = label;
+    txnSteps    = stepsForSubType(code);
+    txnBatchId  = makeBatchId();
+
+    document.getElementById("txnTitle").textContent = label;
     fillDeptSelect("txnToDept");
-    document.getElementById("fFromDept").style.display = (txnGroup === "IN") ? "" : "none";
-    document.getElementById("fToDept").style.display = ((txnGroup === "OUT" && code !== "OUT_SCRAP") || code === "TRANSFER_DEPARTMENT") ? "" : "none";
-    document.getElementById("fToLoc").style.display = (txnGroup === "IN" || code === "TRANSFER_LOCATION") ? "" : "none";
-    document.getElementById("txnFromDept").value = "";
     document.getElementById("txnToDept").value = "";
-    document.getElementById("txnRemark").value = "";
+    document.getElementById("fToDept").style.display = needDeptStep() ? "" : "none";
+    document.getElementById("stepLocWord").textContent = (txnGroup === "IN") ? "nhập" : "đích";
     resetLocField();
+
+    // Trục đến từ màn chi tiết
+    if (window._seedCyl) { addCylByCode(window._seedCyl); window._seedCyl = null; }
+
+    goStep(1);
   } catch (e) {
     alert("Lỗi pickSubType: " + e.message);
   }
 }
 
-function pickSubTypeQuick(code, label) {
-  try {
-    txnSubType = code;
-    document.getElementById("txnStep1").style.display = "none";
-    document.getElementById("txnStep2").style.display = "";
-    document.getElementById("txnSubLabel").textContent = label;
-    document.getElementById("txnManual").style.display = "none";
-    hideSuggest();
-    fillDeptSelect("txnFromDept");
-    fillDeptSelect("txnToDept");
-    document.getElementById("fFromDept").style.display = (txnGroup === "IN") ? "" : "none";
-    document.getElementById("fToDept").style.display = ((txnGroup === "OUT" && code !== "OUT_SCRAP") || code === "TRANSFER_DEPARTMENT") ? "" : "none";
-    document.getElementById("fToLoc").style.display = (txnGroup === "IN" || code === "TRANSFER_LOCATION") ? "" : "none";
-    document.getElementById("txnFromDept").value = "";
-    document.getElementById("txnToDept").value = "";
-    document.getElementById("txnRemark").value = "";
-    resetLocField();
-    onCylFound(txnCylCode, txnCyl, false);
-  } catch (e) {
-    alert("Lỗi pickSubTypeQuick: " + e.message);
+// ═══════════════ BƯỚC ═══════════════
+function goStep(i) {
+  txnStepIdx = Math.max(0, Math.min(i, txnSteps.length - 1));
+  var key = txnSteps[txnStepIdx];
+
+  var ids = { type: "stepType", loc: "stepLoc", cyl: "stepCyl", confirm: "stepConfirm" };
+  for (var k in ids) {
+    if (!ids.hasOwnProperty(k)) continue;
+    var el = document.getElementById(ids[k]);
+    if (el) el.style.display = (k === key) ? "" : "none";
+  }
+
+  // Thanh bước
+  var bar = "";
+  for (var s = 0; s < txnSteps.length; s++) {
+    bar += '<div class="sp' + (s < txnStepIdx ? ' done' : (s === txnStepIdx ? ' now' : '')) + '"></div>';
+  }
+  document.getElementById("txnStepBar").innerHTML = bar;
+
+  if (key === "cyl")     onEnterCylStep();
+  if (key === "confirm") renderConfirm();
+
+  hideSuggest();
+  hideLocSuggest();
+  updateFoot();
+  window.scrollTo(0, 0);
+}
+
+function txnNext() {
+  var key = txnSteps[txnStepIdx];
+  if (key === "loc" && !txnLocCode) return toast("Chưa chọn vị trí", 1);
+  if (key === "cyl") {
+    if (!txnBatch.length) return toast("Chưa scan trục nào", 1);
+    if (batchErrCount())  return toast("Còn trục không hợp lệ trong lô — hãy bỏ ra", 1);
+  }
+  if (key === "confirm") return submitBatch();
+  goStep(txnStepIdx + 1);
+}
+
+function txnPrev() {
+  if (txnStepIdx <= 0) return cancelTxn();
+  goStep(txnStepIdx - 1);
+}
+
+function txnBack() { txnPrev(); }
+
+function updateFoot() {
+  var foot = document.getElementById("txnFoot");
+  if (!foot || !txnSteps.length) return;
+  var key  = txnSteps[txnStepIdx];
+  if (key === "type") { foot.style.display = "none"; return; }
+  foot.style.display = "";
+
+  var btn = document.getElementById("txnNextBtn");
+  var n   = txnBatch.length;
+
+  if (key === "confirm") {
+    btn.className = "btn green";
+    btn.textContent = (txnGroup === "IN" ? "Nhập " : txnGroup === "OUT" ? "Xuất " : "Chuyển ") + n + " trục";
+    btn.disabled = txnBusy || !n;
+  } else {
+    btn.className = "btn";
+    btn.innerHTML = "Tiếp tục &#8594;";
+    btn.disabled = (key === "loc") ? !txnLocCode : (!n || batchErrCount() > 0);
   }
 }
 
-// ═══════════════ AUTOCOMPLETE TÌM TRỤC (v2.1) ═══════════════
+// ═══════════════ BƯỚC DANH SÁCH TRỤC ═══════════════
+function onEnterCylStep() {
+  var ctx = document.getElementById("stepCylCtx");
+  document.getElementById("stepCylTitle").textContent =
+    (txnGroup === "IN" ? "Scan trục nhập kho" : txnGroup === "OUT" ? "Scan trục xuất" : "Scan trục cần chuyển");
+
+  if (txnLocCode) {
+    var L = findLoc(txnLocCode);
+    ctx.innerHTML = "Vị trí " + (txnGroup === "IN" ? "nhập" : "đích") + ": <b>" + esc(txnLocCode) + "</b>" +
+                    (L && L.ten ? " — " + esc(L.ten) : "");
+    ctx.style.display = "";
+  } else {
+    ctx.style.display = "none";
+  }
+  renderBatch();
+}
+
+function makeBatchId() {
+  return "B" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+}
+
+function findInBatch(code) {
+  var q = String(code || "").trim().toUpperCase();
+  for (var i = 0; i < txnBatch.length; i++) {
+    if (String(txnBatch[i].code).toUpperCase() === q) return txnBatch[i];
+  }
+  return null;
+}
+
+function findCylLocal(code) {
+  var q = String(code || "").trim().toUpperCase();
+  for (var i = 0; i < allCylinders.length; i++) {
+    if (String(allCylinders[i].code).trim().toUpperCase() === q) return allCylinders[i];
+  }
+  return null;
+}
+
+/** Trục này có làm được giao dịch đang chọn không? "" = được. */
+function cylErrFor(c) {
+  if (!c) return "chưa khai báo trong CYL_Master";
+  if (c.curStatus === "SCRAPPED" && txnGroup !== "IN") return "đã hủy (SCRAPPED)";
+  if (txnGroup === "IN" && c.curStatus === "AVAILABLE")
+    return "đã có trong kho tại " + (c.curLoc || "—");
+  if (txnGroup === "OUT" && txnSubType !== "OUT_SCRAP" && c.curStatus === "ISSUED")
+    return "đã xuất cho " + (c.curDept || "—") + ", chưa nhập về";
+  return "";
+}
+
+function batchErrCount() {
+  var n = 0;
+  for (var i = 0; i < txnBatch.length; i++) if (txnBatch[i].err) n++;
+  return n;
+}
+
+function addCylByCode(code) {
+  code = String(code || "").trim();
+  if (!code) return;
+
+  var dup = findInBatch(code);
+  if (dup) { toast("Trục " + dup.code + " đã có trong lô"); return; }
+
+  var c = findCylLocal(code);
+  var item = {
+    code: c ? c.code : code.toUpperCase(),
+    cyl: c || null,
+    err: cylErrFor(c),
+    checking: true
+  };
+  txnBatch.push(item);
+  renderBatch();
+
+  // Kiểm lại với server (dữ liệu trong máy có thể cũ) — không chặn thao tác scan
+  verifyBatchItem(item);
+}
+
+function verifyBatchItem(item) {
+  apiGet("cylLookup", { code: item.code }, function(d) {
+    item.checking = false;
+    if (d && d.result === "ok") {
+      item.cyl = d.cylinder;
+      item.err = cylErrFor(d.cylinder);
+    } else if (d && d.result === "notfound") {
+      item.cyl = null;
+      item.err = "chưa khai báo trong CYL_Master";
+    }
+    renderBatch();
+  }, 1);
+}
+
+function removeFromBatch(idx) {
+  txnBatch.splice(idx, 1);
+  renderBatch();
+}
+
+function clearBatch() {
+  if (txnBatch.length > 1 && !confirm("Xoá hết " + txnBatch.length + " trục khỏi lô?")) return;
+  txnBatch = [];
+  renderBatch();
+}
+
+function batchSubLine(it) {
+  if (!it.cyl) return "";
+  var c = it.cyl;
+  var parts = [];
+  // v4.0 — yêu cầu: nhập từ SX/sửa thì hiện BP hiện tại của TỪNG trục,
+  // thay cho việc bắt người dùng chọn "bộ phận nguồn" một lần cho cả lô
+  parts.push("BP hiện tại: <b>" + esc(c.curDept || "—") + "</b>");
+  if (txnGroup !== "IN" && c.curLoc) parts.push("VT: " + esc(c.curLoc));
+  if (c.cylNumber) parts.push("Số trục: " + esc(c.cylNumber));
+  if (c.productCode) parts.push("SP: " + esc(c.productCode));
+  return parts.join(" • ");
+}
+
+function renderBatch() {
+  var box = document.getElementById("batchList");
+  var cnt = document.getElementById("batchCount");
+  var clr = document.getElementById("batchClear");
+  if (!box || !cnt) return;
+
+  var n = txnBatch.length, bad = batchErrCount();
+  cnt.innerHTML = n
+    ? ("Đã chọn <b>" + n + "</b> trục" + (bad ? ' — <span style="color:var(--red);">' + bad + " lỗi</span>" : ""))
+    : "Chưa chọn trục nào";
+  if (clr) clr.style.display = n ? "" : "none";
+
+  var html = "";
+  for (var i = 0; i < txnBatch.length; i++) {
+    var it = txnBatch[i];
+    var sub = batchSubLine(it);
+    html += '<div class="bitem' + (it.err ? " bad" : "") + (it.checking ? " checking" : "") + '">' +
+      '<div class="bi-n">' + (i + 1) + '.</div>' +
+      '<div class="bi-body">' +
+        '<div class="bi-code">' + esc(it.code) +
+          (it.cyl ? ' <span class="cyl-status st-' + String(it.cyl.curStatus).toLowerCase() + '">' + statusVi(it.cyl.curStatus) + '</span>' : '') +
+        '</div>' +
+        (sub ? '<div class="bi-sub">' + sub + '</div>' : '') +
+        (it.err ? '<div class="bi-err">&#10006; ' + esc(it.err) + '</div>' : '') +
+        (it.checking ? '<div class="bi-sub">đang kiểm với server...</div>' : '') +
+      '</div>' +
+      '<button class="bi-x" onclick="removeFromBatch(' + i + ')">&#10006;</button>' +
+      '</div>';
+  }
+  box.innerHTML = html;
+  updateFoot();
+  updateScanBadge();
+}
+
+// ═══════════════ AUTOCOMPLETE TÌM TRỤC ═══════════════
 var SUGGEST_MAX = 30;
 
 function hideSuggest() {
@@ -1180,8 +1618,11 @@ function hi(text, q) {
   return esc(s.substr(0, i)) + "<mark>" + esc(s.substr(i, q.length)) + "</mark>" + esc(s.substr(i + q.length));
 }
 
+// v4.0 — CHỈ khớp mã trục / số trục / mã thành phẩm.
+// Bỏ bộ phận và vị trí giá kệ: gõ "A01" trước đây ra cả loạt trục cùng giá,
+// làm nhiễu đúng lúc đang cần tìm nhanh một mã.
 function matchCyl(c, q) {
-  return [c.code, c.cylNumber, c.productCode, c.curDept, c.curLoc].join(" ").toLowerCase().indexOf(q) > -1;
+  return [c.code, c.cylNumber, c.productCode].join(" ").toLowerCase().indexOf(q) > -1;
 }
 
 function txnSuggest() {
@@ -1204,7 +1645,7 @@ function txnSuggest() {
 
   if (!hits.length) {
     box.innerHTML = '<div class="suggest-empty">Không có trục nào khớp "<b>' + esc(q) + '</b>".<br/>' +
-      'Nếu là trục mới: khai báo trong tab <b>CYL_Master</b> trên Google Sheet rồi bấm <b>&#8635; Làm mới</b>.</div>';
+      'Trục mới: bấm <b>&#10133; Trục mới</b> để khai báo ngay.</div>';
     box.className = "suggest-list show";
     return;
   }
@@ -1212,11 +1653,13 @@ function txnSuggest() {
   var html = "";
   for (var j = 0; j < hits.length; j++) {
     var c = hits[j];
+    var inLo = findInBatch(c.code);
     html += '<div class="suggest-item" onclick="pickSuggest(\'' + escAttr(c.code) + '\')">' +
-      '<div class="si-code">' + hi(c.code, q) + ' <span class="cyl-status st-' + String(c.curStatus).toLowerCase() + '">' + statusVi(c.curStatus) + '</span></div>' +
+      '<div class="si-code">' + hi(c.code, q) + ' <span class="cyl-status st-' + String(c.curStatus).toLowerCase() + '">' + statusVi(c.curStatus) + '</span>' +
+      (inLo ? ' <span style="font-size:11px;color:var(--teal);font-weight:700;">đã trong lô</span>' : '') + '</div>' +
       '<div class="si-sub">' + (c.cylNumber ? 'Số trục: ' + hi(c.cylNumber, q) + ' • ' : '') +
       (c.productCode ? 'SP: ' + hi(c.productCode, q) + ' • ' : '') +
-      'BP: ' + hi(c.curDept || "—", q) + ' • VT: ' + hi(c.curLoc || "—", q) + '</div>' +
+      'BP: ' + esc(c.curDept || "—") + '</div>' +
       '</div>';
   }
   html += '<div class="suggest-empty" style="font-size:12px;">' + hits.length +
@@ -1225,126 +1668,315 @@ function txnSuggest() {
   box.className = "suggest-list show";
 }
 
+// Chọn từ gợi ý = THÊM VÀO LÔ, ô tìm được xoá trắng để scan/gõ tiếp
 function pickSuggest(code) {
-  document.getElementById("txnCodeInput").value = code;
+  addCylByCode(code);
+  var inp = document.getElementById("txnCodeInput");
+  if (inp) { inp.value = ""; inp.focus(); }
   hideSuggest();
-  lookupCode(code, function(cyl, isNew) { onCylFound(code, cyl, isNew); });
-}
-
-// onCylFound: hiển thị info trục sau khi scan/lookup
-function onCylFound(code, cyl, isNew) {
-  var el = document.getElementById("txnCylResult");
-
-  // v2.1: KHÔNG tạo trục mới từ app — phải khai báo master trên Google Sheet
-  if (isNew || !cyl) {
-    el.innerHTML = '<div style="font-weight:700;font-size:16px;color:var(--red);">' + esc(code) + '</div>' +
-      '<div style="font-size:14px;color:var(--red);margin-top:8px;line-height:1.55;">Mã trục này <b>chưa được khai báo</b> trong CYL_Master.<br/>' +
-      'Hãy khai báo trên Google Sheet trước, sau đó bấm <b>&#8635; Làm mới</b> rồi thao tác lại.</div>';
-    el.className = "scan-result show new";
-    document.getElementById("txnForm").style.display = "none";
-    toast("Trục chưa khai báo master!", 1);
-    return;
-  }
-
-  // Validation: nhập trục đã có trong kho
-  if (txnGroup === "IN" && cyl.curStatus === "AVAILABLE") {
-    el.innerHTML = '<div style="font-weight:700;font-size:16px;color:var(--red);">' + esc(code) + '</div>' +
-      '<div style="font-size:14px;color:var(--red);margin-top:6px;">Trục đã có trong kho tại vị trí: <b>' + esc(cyl.curLoc || "—") + '</b> (BP: ' + esc(cyl.curDept || "—") + ')</div>';
-    el.className = "scan-result show new";
-    document.getElementById("txnForm").style.display = "none";
-    toast("Trục đã có trong kho!", 1);
-    return;
-  }
-
-  // Validation: xuất trục đã xuất (trừ xuất hủy)
-  if (txnGroup === "OUT" && txnSubType !== "OUT_SCRAP" && cyl.curStatus === "ISSUED") {
-    el.innerHTML = '<div style="font-weight:700;font-size:16px;color:var(--red);">' + esc(code) + '</div>' +
-      '<div style="font-size:14px;color:var(--red);margin-top:6px;">Trục đã xuất cho BP: <b>' + esc(cyl.curDept || "—") + '</b>. Phải nhập về kho trước.</div>';
-    el.className = "scan-result show new";
-    document.getElementById("txnForm").style.display = "none";
-    toast("Trục đã xuất, chưa nhập về!", 1);
-    return;
-  }
-
-  // OK — cho phép giao dịch
-  txnCylCode = code;
-  txnCyl = cyl;
-
-  el.innerHTML = '<div style="font-weight:700;font-size:16px;">' + esc(cyl.code) + '</div>' +
-    '<div style="font-size:13px;margin-top:6px;line-height:1.5;">Trạng thái: <b>' + statusVi(cyl.curStatus) + '</b></div>' +
-    '<div style="font-size:13px;color:var(--muted);line-height:1.5;">BP: ' + esc(cyl.curDept || "—") + ' &nbsp;|&nbsp; VT: ' + esc(cyl.curLoc || "—") + '</div>' +
-    (cyl.curStatus === "NEW"
-      ? '<div style="font-size:13px;color:var(--amber);margin-top:6px;line-height:1.5;">Trục mới khai báo, chưa nhập kho lần nào. Chọn vị trí bên dưới để đưa lên giá.</div>' : '');
-  el.className = "scan-result show";
-  document.getElementById("txnForm").style.display = "";
 }
 
 function manualLookup() {
   var code = document.getElementById("txnCodeInput").value.trim().toUpperCase();
   if (!code) return toast("Nhập mã trục");
-  hideSuggest();
-  lookupCode(code, function(cyl, isNew) { onCylFound(code, cyl, isNew); });
+  pickSuggest(code);
 }
 
 function lookupCode(code, cb) {
   apiGet("cylLookup", { code: code }, function(d) {
     if (d.result === "ok") cb(d.cylinder, false);
-    else if (d.result === "notfound") cb(null, true);   // v2.1: báo lỗi ở onCylFound
+    else if (d.result === "notfound") cb(null, true);
     else toast(d.error || "Lỗi", 1);
   });
 }
 
-function submitTxn() {
-  if (!txnCylCode) return toast("Chưa có mã trục", 1);
-  if (!txnSubType) return toast("Chưa chọn loại GD", 1);
-
-  // v2.2 — BR-012: vị trí đích phải được CHỌN TỪ MASTER
-  var needLoc = document.getElementById("fToLoc").style.display !== "none";
-  if (needLoc) {
-    var typed = (document.getElementById("txnToLoc").value || "").trim();
-    if (!typed) { toast("Chưa chọn vị trí đích", 1); document.getElementById("txnToLoc").focus(); return; }
-    if (!txnLocCode) {
-      var L = findLoc(typed);
-      if (L) setLocPicked(L);
-      else { setLocError(typed); toast("Vị trí phải chọn từ Location_MA", 1); return; }
-    }
+// ═══════════════ BƯỚC XÁC NHẬN ═══════════════
+function renderConfirm() {
+  var n = txnBatch.length;
+  var box = document.getElementById("confirmSummary");
+  var rows = [];
+  rows.push("Loại giao dịch: <b>" + esc(txnSubLabel) + "</b>");
+  rows.push("Số trục: <b>" + n + "</b>");
+  if (txnLocCode) {
+    var L = findLoc(txnLocCode);
+    rows.push("Vị trí " + (txnGroup === "IN" ? "nhập" : "đích") + ": <b>" + esc(txnLocCode) + "</b>" +
+              (L && L.ten ? " — " + esc(L.ten) : ""));
   }
+  if (txnGroup === "IN") rows.push("Bộ phận nguồn: <b>lấy tự động theo từng trục</b>");
+  box.innerHTML = rows.join("<br/>");
+
+  var html = "";
+  for (var i = 0; i < txnBatch.length; i++) {
+    var it = txnBatch[i];
+    html += '<div class="bitem">' +
+      '<div class="bi-n">' + (i + 1) + '.</div>' +
+      '<div class="bi-body"><div class="bi-code">' + esc(it.code) + '</div>' +
+      (batchSubLine(it) ? '<div class="bi-sub">' + batchSubLine(it) + '</div>' : '') +
+      '</div></div>';
+  }
+  document.getElementById("confirmList").innerHTML = html;
+}
+
+function submitBatch() {
+  if (txnBusy) return;
+  if (!txnBatch.length) return toast("Chưa chọn trục nào", 1);
+  if (batchErrCount()) { toast("Còn trục không hợp lệ trong lô", 1); return goStep(txnSteps.indexOf("cyl")); }
+
+  var toDept = document.getElementById("txnToDept").value;
+  if (needDeptStep() && !toDept) { toast("Chưa chọn bộ phận nhận", 1); return; }
 
   if (txnSubType === "OUT_SCRAP") {
-    if (!confirm("XÁC NHẬN XUẤT HỦY\n\nTrục: " + txnCylCode + "\n\nSau khi hủy sẽ không thể sử dụng lại.\nBạn chắc chắn?")) return;
+    var ds = txnBatch.map(function(x) { return x.code; }).join(", ");
+    if (!confirm("XÁC NHẬN XUẤT HỦY " + txnBatch.length + " TRỤC\n\n" + ds +
+                 "\n\nSau khi hủy sẽ không thể sử dụng lại.\nBạn chắc chắn?")) return;
   }
 
-  var btn = document.getElementById("txnSubmitBtn");
+  var codes = [];
+  for (var i = 0; i < txnBatch.length; i++) codes.push(txnBatch[i].code);
+
+  if (!txnBatchId) txnBatchId = makeBatchId();
+
+  txnBusy = true;
+  var btn = document.getElementById("txnNextBtn");
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> Đang xử lý...';
+  btn.innerHTML = '<span class="spin"></span> Đang ghi ' + codes.length + ' trục...';
 
-  var body = {
-    action: "cylTransaction",
-    cylCode: txnCylCode,
+  apiPost({
+    action: "cylTransactionBatch",
     subType: txnSubType,
-    fromDept: document.getElementById("txnFromDept").value,
-    toDept: document.getElementById("txnToDept").value,
-    toLoc: txnLocCode,   // v2.2: chỉ gửi mã đã xác nhận thuộc master
+    cylCodes: codes,
+    toDept: toDept,
+    toLoc: txnLocCode,
     remark: document.getElementById("txnRemark").value.trim(),
-    user: user
-  };
+    user: user,
+    batchId: txnBatchId
+  }, function(d) {
+    txnBusy = false;
+    if (!d || d.result !== "ok") {
+      updateFoot();
+      // Server chỉ đích danh trục sai → đánh dấu lại rồi quay về bước danh sách
+      if (d && d.invalid && d.invalid.length) {
+        for (var k = 0; k < d.invalid.length; k++) {
+          var it = findInBatch(d.invalid[k].code);
+          if (it) it.err = d.invalid[k].error;
+        }
+        renderBatch();
+        goStep(txnSteps.indexOf("cyl"));
+      }
+      return toast((d && d.error) || "Lỗi ghi giao dịch", 1);
+    }
 
-  apiPost(body, function(d) {
-    btn.disabled = false;
-    btn.textContent = "Xác nhận giao dịch";
-    if (d.result !== "ok") return toast(d.error || "Lỗi", 1);
-    toast("Thành công: " + d.txnNo);
+    toast(d.duplicate
+      ? "Lô này đã ghi trước đó (" + d.count + " trục) — không ghi lại"
+      : "Đã ghi " + d.count + " trục: " + (d.txnNos || []).slice(0, 2).join(", ") + (d.count > 2 ? "..." : ""));
+
+    txnBatchId = "";
+    resetTxn(txnGroup);
     switchScreen("scrDash");
     loadAll();
   });
 }
 
+// ═══════════════════════════════════════════════════════════
+// v4.0 — KHAI BÁO MASTER TỪ APP
+// ═══════════════════════════════════════════════════════════
+//
+// Vì sao mở lại: master khai xong mới giao dịch được là đúng, nhưng bắt người
+// trong kho chờ ai đó mở Google Sheet thì cả lô đứng lại. Đây là thao tác RIÊNG,
+// có chủ đích, ghi rõ ai khai (cột `nguon` = APP) — khác hẳn nhánh tự sinh master
+// ngầm trong lúc ghi giao dịch đã bỏ ở BR-011.
+
+var addReturn = "scrDash";   // màn hình quay lại sau khi khai xong
+
+function openAddCyl() {
+  var act = document.querySelector(".screen.active");
+  addReturn = act ? act.id : "scrDash";
+  document.getElementById("acCode").value = (document.getElementById("txnCodeInput") || {}).value || "";
+  document.getElementById("acNumber").value = "";
+  document.getElementById("acCirc").value = "";
+  document.getElementById("acLen").value = "";
+  document.getElementById("acProduct").value = "";
+  acCheck();
+  safeStopScan();
+  switchScreen("scrAddCyl");
+}
+
+function closeAddCyl() { switchScreen(addReturn); }
+
+function acCheck() {
+  var code = (document.getElementById("acCode").value || "").trim();
+  var el = document.getElementById("acCodeMsg");
+  if (!code) { el.style.display = "none"; return; }
+  var c = findCylLocal(code);
+  if (c) {
+    el.className = "loc-picked bad";
+    el.innerHTML = "&#10006; Mã <b>" + esc(code) + "</b> đã có trong master (" + statusVi(c.curStatus) + ").";
+    el.style.display = "";
+  } else {
+    el.className = "loc-picked ok";
+    el.innerHTML = "&#10004; Mã <b>" + esc(code) + "</b> chưa có — khai báo được.";
+    el.style.display = "";
+  }
+}
+
+function submitAddCyl() {
+  var code = (document.getElementById("acCode").value || "").trim().toUpperCase();
+  if (!code) return toast("Chưa nhập mã trục", 1);
+  if (findCylLocal(code)) return toast("Mã trục đã tồn tại", 1);
+
+  var btn = document.getElementById("acSaveBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Đang lưu...';
+
+  apiPost({
+    action: "cylAddMaster",
+    cylCode: code,
+    cylNumber: (document.getElementById("acNumber").value || "").trim(),
+    circumference: (document.getElementById("acCirc").value || "").trim(),
+    length: (document.getElementById("acLen").value || "").trim(),
+    productCode: (document.getElementById("acProduct").value || "").trim(),
+    user: user
+  }, function(d) {
+    btn.disabled = false;
+    btn.textContent = "Lưu trục mới";
+    if (!d || d.result !== "ok") return toast((d && d.error) || "Lỗi lưu trục", 1);
+
+    // Dùng được ngay: nạp vào danh sách trong máy, không cần chờ Làm mới
+    allCylinders.push(d.cylinder);
+    toast("Đã khai báo trục " + code);
+
+    var back = addReturn;
+    switchScreen(back);
+    if (back === "scrTxn") {
+      addCylByCode(code);   // khai xong là vào lô luôn
+      goStep(txnSteps.indexOf("cyl"));
+    } else {
+      loadAll();
+    }
+  });
+}
+
+function openAddLoc() {
+  var act = document.querySelector(".screen.active");
+  addReturn = act ? act.id : "scrDash";
+  document.getElementById("alId").value = (document.getElementById("txnToLoc") || {}).value || "";
+  document.getElementById("alQr").value = "";
+  document.getElementById("alName").value = "";
+  document.getElementById("alParent").value = "";
+  document.getElementById("alCap").value = "";
+  document.getElementById("alTabName").textContent = locTab;
+  document.getElementById("alTypeTab").textContent = locTypeTab;
+  fillDeptSelect("alDept");
+  fillLocTypeSelect();
+  alCheck();
+  safeStopScan();
+  switchScreen("scrAddLoc");
+}
+
+function closeAddLoc() { switchScreen(addReturn); }
+
+// Dropdown loại vị trí — lấy từ master LocationType_MA, KHÔNG hardcode trong app
+function fillLocTypeSelect() {
+  var sel = document.getElementById("alType");
+  sel.innerHTML = '<option value="">— Chọn loại —</option>';
+  var list = locAcceptTypeList || [];
+  if (!list.length) {
+    // Chưa đọc được master loại → dựng tạm từ danh sách mã đang dùng được
+    for (var j = 0; j < locAcceptTypes.length; j++) list.push({ code: locAcceptTypes[j], name: locAcceptTypes[j], quanTai: false });
+  }
+  for (var i = 0; i < list.length; i++) {
+    var o = document.createElement("option");
+    o.value = list[i].code;
+    o.textContent = list[i].name + " (" + list[i].code + ")";
+    o.setAttribute("data-cap", list[i].quanTai ? "1" : "0");
+    sel.appendChild(o);
+  }
+  if (list.length === 1) { sel.value = list[0].code; alTypeChanged(); }
+}
+
+function alTypeChanged() {
+  var sel = document.getElementById("alType");
+  var opt = sel.options[sel.selectedIndex];
+  var quanTai = opt && opt.getAttribute("data-cap") === "1";
+  document.getElementById("alCapField").style.display = quanTai ? "" : "none";
+}
+
+function alCheck() {
+  var code = (document.getElementById("alId").value || "").trim();
+  var el = document.getElementById("alIdMsg");
+  if (!code) { el.style.display = "none"; return; }
+  var L = findLoc(code);
+  if (L) {
+    el.className = "loc-picked bad";
+    el.innerHTML = "&#10006; Mã <b>" + esc(code) + "</b> đã có trong " + esc(locTab) + ".";
+  } else {
+    el.className = "loc-picked ok";
+    el.innerHTML = "&#10004; Mã <b>" + esc(code) + "</b> chưa có — khai báo được.";
+  }
+  el.style.display = "";
+}
+
+function submitAddLoc() {
+  var id = (document.getElementById("alId").value || "").trim();
+  var type = document.getElementById("alType").value;
+  if (!id) return toast("Chưa nhập mã vị trí", 1);
+  if (!type) return toast("Chưa chọn loại vị trí", 1);
+  if (findLoc(id)) return toast("Mã vị trí đã tồn tại", 1);
+
+  var btn = document.getElementById("alSaveBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Đang lưu...';
+
+  apiPost({
+    action: "locAdd",
+    id: id,
+    qr: (document.getElementById("alQr").value || "").trim(),
+    ten: (document.getElementById("alName").value || "").trim(),
+    parent: (document.getElementById("alParent").value || "").trim(),
+    dept: document.getElementById("alDept").value,
+    type: type,
+    capKg: (document.getElementById("alCap").value || "").trim(),
+    user: user
+  }, function(d) {
+    btn.disabled = false;
+    btn.textContent = "Lưu vị trí mới";
+    if (!d || d.result !== "ok") return toast((d && d.error) || "Lỗi lưu vị trí", 1);
+
+    var L = d.location;
+    // Dùng được ngay
+    locMaster.push({
+      ma: L.id, qr: L.qr, ten: L.ten, dept: L.dept, parent: L.parent,
+      type: L.type, typeVi: L.typeVi, capKg: L.capKg, loadKg: L.loadKg,
+      freeKg: L.freeKg, hasCap: L.hasCap, ghiChu: ""
+    });
+    toast("Đã khai báo vị trí " + L.id);
+
+    var back = addReturn;
+    switchScreen(back);
+    if (back === "scrTxn") {
+      document.getElementById("txnToLoc").value = L.id;
+      pickLoc(L.id);
+      goStep(txnSteps.indexOf("loc"));
+    } else {
+      loadAll();
+    }
+  });
+}
+
 // ═══════════════ QR SCANNER ═══════════════
+// v4.0 — chế độ "batch": camera KHÔNG đóng sau mỗi lần quét, cứ quét là thêm trục
+// vào lô. Không có nó thì scan 20 trục là 20 lần mở/đóng camera.
+var lastScanCode = "", lastScanTs = 0;
+
 function openScanner(mode) {
   scanMode = mode;
   safeStopScan();
+  lastScanCode = ""; lastScanTs = 0;
   document.getElementById("ovScanner").style.display = "flex";
   document.getElementById("qrReader").innerHTML = "";
+  document.getElementById("scanLast").textContent = "";
+  document.getElementById("scanCloseBtn").textContent = (mode === "batch") ? "Xong" : "Đóng";
+  updateScanBadge();
 
   try {
     scanner = new Html5Qrcode("qrReader");
@@ -1352,21 +1984,40 @@ function openScanner(mode) {
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 250 } },
       function(decoded) {
-        closeScanner();
         var code = decoded.trim();
-        if (scanMode === "txn") {
-          // Hiển thị mã trục vào ô tìm
-          document.getElementById("txnManual").style.display = "";
-          document.getElementById("txnCodeInput").value = code.toUpperCase();
-          hideSuggest();
-          lookupCode(code.toUpperCase(), function(cyl, isNew) { onCylFound(code.toUpperCase(), cyl, isNew); });
-        } else if (scanMode === "loc") {
-          // v2.2: vị trí scan phải có trong master CYL_Location
+
+        // ── Quét liên tục: giữ camera, chống đọc lặp cùng mã trong 2 giây ──
+        if (scanMode === "batch") {
+          var now = Date.now();
+          if (code === lastScanCode && now - lastScanTs < 2000) return;
+          lastScanCode = code; lastScanTs = now;
+          var before = txnBatch.length;
+          addCylByCode(code.toUpperCase());
+          var added = txnBatch.length > before;
+          var el = document.getElementById("scanLast");
+          if (el) el.textContent = (added ? "+ " : "đã có: ") + code.toUpperCase();
+          beep(added);
+          updateScanBadge();
+          return;
+        }
+
+        closeScanner();
+        if (scanMode === "loc") {
+          // Vị trí scan phải có trong master Location_MA
           document.getElementById("txnToLoc").value = code;
           hideLocSuggest();
           var Lf = findLoc(code);
           if (Lf) { setLocPicked(Lf); toast("Vị trí: " + Lf.ma); }
           else { setLocError(code); toast("Vị trí chưa khai báo master!", 1); }
+          updateFoot();
+        } else if (scanMode === "txn") {
+          addCylByCode(code.toUpperCase());
+        } else if (scanMode === "newcyl") {
+          document.getElementById("acCode").value = code.toUpperCase();
+          acCheck();
+        } else if (scanMode === "newloc") {
+          document.getElementById("alId").value = code;
+          alCheck();
         } else {
           showDetail(code.toUpperCase());
         }
@@ -1378,9 +2029,37 @@ function openScanner(mode) {
   }
 }
 
+function updateScanBadge() {
+  var b = document.getElementById("scanBadge");
+  if (!b) return;
+  if (scanMode !== "batch") { b.style.display = "none"; return; }
+  b.style.display = "";
+  b.innerHTML = "Đã scan <b>" + txnBatch.length + "</b> trục" +
+                (batchErrCount() ? ' — <span style="color:#fca5a5;">' + batchErrCount() + " lỗi</span>" : "");
+}
+
+// Tiếng bíp ngắn: trong kho ồn, nhìn màn hình mỗi lần quét là rất chậm
+function beep(ok) {
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!window._ac) window._ac = new AC();
+    var ac = window._ac, o = ac.createOscillator(), g = ac.createGain();
+    o.type = "sine";
+    o.frequency.value = ok ? 880 : 300;
+    g.gain.value = 0.08;
+    o.connect(g); g.connect(ac.destination);
+    o.start();
+    o.stop(ac.currentTime + (ok ? 0.09 : 0.22));
+  } catch (e) { /* thiết bị không cho phát tiếng → bỏ qua */ }
+}
+
 function closeScanner() {
   safeStopScan();
   document.getElementById("ovScanner").style.display = "none";
+  var wasBatch = (scanMode === "batch");
+  scanMode = "";
+  if (wasBatch) { renderBatch(); toast("Đã scan " + txnBatch.length + " trục"); }
 }
 
 function safeStopScan() {
