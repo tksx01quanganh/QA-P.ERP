@@ -80,8 +80,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .scan-badge{margin-top:10px;text-align:center;color:#fff;font-size:15px;font-weight:700;}
 .scan-last{margin-top:4px;text-align:center;color:#a7f3d0;font-size:13px;min-height:18px;}
 
+/* v4.1 — màn Hướng dẫn: từng mục gập/mở, đọc trên điện thoại */
+.hp-card{background:var(--card);border:2px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;}
+.hp-head{width:100%;display:flex;align-items:center;gap:10px;padding:15px 14px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;}
+.hp-head:active{background:#ecfdf5;}
+.hp-ic{font-size:20px;flex-shrink:0;width:26px;text-align:center;}
+.hp-t{flex:1;font-size:16px;font-weight:700;color:var(--txt);line-height:1.35;}
+.hp-ar{color:var(--muted);font-size:12px;transition:transform .15s;flex-shrink:0;}
+.hp-card.open .hp-ar{transform:rotate(180deg);}
+.hp-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
+.hp-card.open .hp-body{display:block;}
+.hp-when{font-size:14px;color:var(--teal-d);font-weight:600;background:#ecfdf5;border-radius:8px;padding:9px 11px;margin:12px 0;line-height:1.5;}
+.hp-steps{margin:0 0 4px 20px;font-size:15px;line-height:1.65;}
+.hp-steps li{margin-bottom:9px;}
+.hp-steps ul{margin:7px 0 0 4px;}
+.hp-steps ul li{margin-bottom:6px;font-size:14px;}
+.hp-note{font-size:14px;line-height:1.55;background:#f8fafc;border-left:4px solid var(--teal);padding:9px 11px;border-radius:0 8px 8px 0;margin-top:10px;}
+.hp-note.warn{background:#fffbeb;border-left-color:var(--amber);color:#92400e;}
+.hp-tb{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;}
+.hp-tb th{text-align:left;background:#f1f5f9;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.3px;padding:8px 9px;}
+.hp-tb td{padding:9px;border-top:1px solid var(--border);vertical-align:top;line-height:1.5;}
+.hp-tb tr td:first-child{color:var(--red);font-weight:600;}
+.hp-tb tr:first-child td{border-top:none;}
+
 /* search */
-.search-box{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:12px;font-size:16px;outline:none;margin-bottom:10px;}
+.search-box{width:100%;padding:15px 14px;border:2px solid var(--border);border-radius:12px;font-size:17px;min-height:56px;outline:none;margin-bottom:10px;}
 .search-box:focus{border-color:var(--teal);}
 
 /* cylinder cards */
@@ -113,12 +136,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .hist-detail{font-size:13px;color:var(--muted);margin-top:2px;}
 .hist-time{font-size:11px;color:var(--muted);margin-top:4px;}
 
-/* form */
-.field{margin-bottom:20px;}
-.field label{font-size:13px;font-weight:700;color:var(--muted);display:block;margin-bottom:8px;line-height:1.4;letter-spacing:.2px;}
-.field input,.field select,.field textarea{width:100%;padding:12px;border:2px solid var(--border);border-radius:10px;font-size:16px;outline:none;font-family:inherit;background:#fff;}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--teal);}
-.field textarea{resize:vertical;min-height:60px;}
+/* form — v4.1: ô nhập to hơn hẳn, ngón tay đeo găng trong kho vẫn bấm trúng */
+.field{margin-bottom:22px;}
+.field label{font-size:15px;font-weight:700;color:#334155;display:block;margin-bottom:8px;line-height:1.4;letter-spacing:.2px;}
+.field input,.field select,.field textarea,
+.suggest-wrap input{width:100%;padding:15px 14px;border:2px solid var(--border);border-radius:12px;font-size:17px;line-height:1.35;min-height:56px;outline:none;font-family:inherit;background:#fff;color:var(--txt);}
+.field input:focus,.field select:focus,.field textarea:focus,
+.suggest-wrap input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(15,118,110,.12);}
+.field input::placeholder,.field textarea::placeholder,
+.suggest-wrap input::placeholder{color:#94a3b8;font-size:16px;}
+.field select{appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;background-size:20px;padding-right:44px;}
+.field textarea{resize:vertical;min-height:96px;}
+/* ô có nút scan bên cạnh: cùng chiều cao với ô nhập */
+.row2 .btn.iconly{min-height:56px;font-size:20px;}
 
 /* autocomplete gợi ý trục */
 .suggest-wrap{position:relative;margin-bottom:6px;}
@@ -187,7 +219,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.0</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.1</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -235,6 +267,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
         <div class="mb-icon">&#127991;</div>
         <div class="mb-text"><div class="mb-title">Khai báo vị trí mới</div><div class="mb-desc">Thêm giá kệ vào master vị trí dùng chung</div></div>
       </div>
+      <div class="menu-btn" onclick="openHelp('')">
+        <div class="mb-icon">&#10068;</div>
+        <div class="mb-text"><div class="mb-title">Hướng dẫn sử dụng</div><div class="mb-desc">Từng bước thao tác và cách xử lý khi app báo đỏ</div></div>
+      </div>
     </div>
 
     <div class="hint err" id="locWarn" style="display:none;margin-top:16px;text-align:left;line-height:1.55;font-size:13px;">
@@ -273,6 +309,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <div class="topbar">
     <button class="icon-btn" onclick="txnBack()">&#8592;</button>
     <div class="ttl" id="txnTitle">Giao dịch</div>
+    <button class="icon-btn" onclick="openHelpForStep()">&#10068;</button>
     <button class="icon-btn" onclick="cancelTxn()">&#127968;</button>
   </div>
   <div class="wrap" id="txnWrap">
@@ -494,6 +531,185 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <div class="chip" id="chipNew" style="display:none;" onclick="setFilter('NEW',this)">Chưa nhập kho</div>
     </div>
     <div id="searchResults"><div class="loading">Đang tải...</div></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ -->
+<!-- SCREEN: HƯỚNG DẪN SỬ DỤNG      -->
+<!-- ══════════════════════════════ -->
+<section id="scrHelp" class="screen">
+  <div class="topbar">
+    <button class="icon-btn" onclick="closeHelp()">&#8592;</button>
+    <div class="ttl">&#10068; Hướng dẫn sử dụng</div>
+    <button class="icon-btn" onclick="show('scrDash')">&#127968;</button>
+  </div>
+  <div class="wrap">
+
+    <div class="hint info" style="text-align:left;line-height:1.6;">
+      Bấm vào từng mục để mở hướng dẫn. Trong lúc đang làm giao dịch, bấm nút
+      <b>&#10068;</b> ở góc trên là mở đúng phần đang cần.
+    </div>
+
+    <!-- 1. XUẤT TRỤC -->
+    <div class="hp-card">
+      <button class="hp-head" onclick="hpToggle('hp1',this)">
+        <span class="hp-ic">&#128228;</span>
+        <span class="hp-t">1. Xuất trục cho bộ phận</span>
+        <span class="hp-ar">&#9660;</span>
+      </button>
+      <div class="hp-body" id="hp1">
+        <p class="hp-when">Dùng khi: giao trục cho tổ in, đưa trục đi sửa, hoặc thanh lý trục hỏng.</p>
+        <ol class="hp-steps">
+          <li>Màn hình chính → bấm <b>Xuất trục</b>.</li>
+          <li>Chọn loại: <b>Xuất sang sản xuất</b> / <b>Xuất đi sửa chữa</b> / <b>Xuất hủy</b> / <b>Xuất khác</b>.</li>
+          <li>Quét trục — quét bao nhiêu cái cũng được:
+            <ul>
+              <li><b>Cách nhanh:</b> bấm <b>&#128247; Scan liên tục</b> rồi quét lần lượt từng trục. Camera không tắt giữa chừng. Nghe tiếng bíp cao là đã thêm, bíp trầm là trục đó có vấn đề. Quét xong bấm <b>Xong</b>.</li>
+              <li><b>Cách gõ tay:</b> gõ mã trục / số trục / mã sản phẩm vào ô tìm rồi bấm vào dòng hiện ra.</li>
+            </ul>
+          </li>
+          <li>Xem lại danh sách bên dưới. Bấm nút <b style="color:var(--red);">&#10006;</b> để bỏ trục quét nhầm.</li>
+          <li>Bấm <b>Tiếp tục</b> → chọn <b>Bộ phận nhận</b> → ghi chú nếu cần.</li>
+          <li>Bấm nút xanh <b>Xuất N trục</b>. Xong sẽ hiện thông báo và quay về màn hình chính.</li>
+        </ol>
+        <p class="hp-note"><b>Không phải chọn "bộ phận nguồn".</b> App tự biết từng trục đang ở đâu.</p>
+      </div>
+    </div>
+
+    <!-- 2. NHẬP TRỤC -->
+    <div class="hp-card">
+      <button class="hp-head" onclick="hpToggle('hp2',this)">
+        <span class="hp-ic">&#128229;</span>
+        <span class="hp-t">2. Nhập trục về kho</span>
+        <span class="hp-ar">&#9660;</span>
+      </button>
+      <div class="hp-body" id="hp2">
+        <p class="hp-when">Dùng khi: nhận trục từ tổ sản xuất trả về, hoặc nhận trục sửa xong.</p>
+        <ol class="hp-steps">
+          <li>Màn hình chính → bấm <b>Nhập trục</b>.</li>
+          <li>Chọn loại: <b>Nhập từ sản xuất</b> / <b>Nhập từ sửa chữa</b> / <b>Nhập khác</b>.</li>
+          <li><b>Quét mã QR trên giá kệ trước</b> — chỗ sẽ để trục. Quét đúng thì hiện khung xanh kèm tên giá.</li>
+          <li>Bấm <b>Tiếp tục</b> → quét lần lượt các trục cần cất lên giá đó.</li>
+          <li>Mỗi trục hiện sẵn <b>bộ phận đang giữ nó</b> — chỉ cần nhìn để đối chiếu, không phải chọn.</li>
+          <li>Bấm <b>Tiếp tục</b> → ghi chú nếu cần → bấm <b>Nhập N trục</b>.</li>
+        </ol>
+        <p class="hp-note">Cả lô vào <b>chung một giá</b>. Nếu chia nhiều giá thì làm nhiều lần, mỗi giá một lần.</p>
+      </div>
+    </div>
+
+    <!-- 3. CHUYỂN TRỤC -->
+    <div class="hp-card">
+      <button class="hp-head" onclick="hpToggle('hp3',this)">
+        <span class="hp-ic">&#128260;</span>
+        <span class="hp-t">3. Chuyển trục</span>
+        <span class="hp-ar">&#9660;</span>
+      </button>
+      <div class="hp-body" id="hp3">
+        <p class="hp-when">Dùng khi: dời trục sang giá khác trong kho, hoặc bàn giao trục giữa hai bộ phận mà không qua kho.</p>
+        <ul class="hp-steps">
+          <li><b>Chuyển vị trí</b> — làm giống Nhập trục: quét giá mới trước, rồi quét các trục cần dời.</li>
+          <li><b>Chuyển bộ phận</b> — làm giống Xuất trục: quét trục trước, rồi chọn bộ phận nhận.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 4. TRA CỨU -->
+    <div class="hp-card">
+      <button class="hp-head" onclick="hpToggle('hp4',this)">
+        <span class="hp-ic">&#128269;</span>
+        <span class="hp-t">4. Tra cứu một trục</span>
+        <span class="hp-ar">&#9660;</span>
+      </button>
+      <div class="hp-body" id="hp4">
+        <p class="hp-when">Dùng khi: cần biết trục đang ở đâu, ai đang giữ, đã đi những đâu.</p>
+        <ol class="hp-steps">
+          <li>Màn hình chính → <b>Tra cứu trục</b> → quét QR hoặc gõ mã.</li>
+          <li>Bấm vào dòng kết quả để xem chi tiết: vị trí hiện tại, bộ phận, thông số, và <b>toàn bộ lịch sử ra vào</b>.</li>
+        </ol>
+        <p class="hp-note">Ô tìm chỉ nhận <b>mã trục, số trục, mã sản phẩm</b>. Gõ tên giá kệ sẽ không ra kết quả — muốn xem một giá có những trục nào thì dùng <b>Danh sách trục</b> ở màn hình chính.</p>
+      </div>
+    </div>
+
+    <!-- 5. KHAI BÁO MỚI -->
+    <div class="hp-card">
+      <button class="hp-head" onclick="hpToggle('hp5',this)">
+        <span class="hp-ic">&#10133;</span>
+        <span class="hp-t">5. Trục mới / giá kệ mới chưa có trong app</span>
+        <span class="hp-ar">&#9660;</span>
+      </button>
+      <div class="hp-body" id="hp5">
+        <p class="hp-when">Dùng khi: quét một trục hoặc một giá mà app báo <b>"chưa khai báo"</b>.</p>
+        <ol class="hp-steps">
+          <li>Bấm <b>&#10133; Trục mới</b> (ở bước quét trục) hoặc <b>&#10133; Khai báo vị trí mới</b> (ở bước quét vị trí). Cũng có ở màn hình chính.</li>
+          <li>Điền <b>mã trục</b> (hoặc <b>mã vị trí</b>) — app báo ngay mã đó đã có hay chưa. Các ô còn lại điền được gì thì điền.</li>
+          <li>Bấm <b>Lưu</b> → quay lại đúng chỗ đang làm dở, dùng được ngay.</li>
+        </ol>
+        <p class="hp-note">Trục vừa khai ở trạng thái <b>Chưa nhập kho</b>. Muốn đưa lên giá thì làm <b>Nhập trục</b> như bình thường.</p>
+        <p class="hp-note warn">Gõ đúng mã ngay từ đầu. Mã sai sẽ nằm lại trong danh mục và phải nhờ quản lý sửa trên Google Sheet.</p>
+      </div>
+    </div>
+
+    <!-- 6. BÁO ĐỎ -->
+    <div class="hp-card">
+      <button class="hp-head" onclick="hpToggle('hp6',this)">
+        <span class="hp-ic">&#9888;</span>
+        <span class="hp-t">6. App báo đỏ — làm gì?</span>
+        <span class="hp-ar">&#9660;</span>
+      </button>
+      <div class="hp-body" id="hp6">
+        <table class="hp-tb">
+          <tr><th>App báo</th><th>Nghĩa là</th><th>Làm gì</th></tr>
+          <tr><td>đã có trong kho tại A01-02</td><td>Trục này chưa ai xuất đi, đang nằm trên giá</td><td>Không nhập lại. Kiểm tra xem có nhầm trục không</td></tr>
+          <tr><td>đã xuất cho In ống, chưa nhập về</td><td>Trục đang ở ngoài</td><td>Phải <b>Nhập trục</b> về kho trước rồi mới xuất tiếp</td></tr>
+          <tr><td>đã hủy (SCRAPPED)</td><td>Trục đã thanh lý</td><td>Không dùng nữa. Nếu dùng lại thật thì báo quản lý</td></tr>
+          <tr><td>chưa khai báo trong CYL_Master</td><td>App chưa biết mã trục này</td><td>Bấm <b>&#10133; Trục mới</b> để khai (xem mục 5)</td></tr>
+          <tr><td>Vị trí không dùng được cho trục</td><td>Giá đó không dành để trục, hoặc đã ngưng dùng</td><td>Quét giá khác, hoặc báo quản lý</td></tr>
+          <tr><td>Lỗi kết nối</td><td>Mất mạng lúc đang ghi</td><td><b>Bấm lại nút xanh.</b> Không sợ ghi trùng — app tự nhận ra lô đã ghi rồi</td></tr>
+        </table>
+        <p class="hp-note">Trục báo đỏ trong danh sách thì bấm <b style="color:var(--red);">&#10006;</b> bỏ nó ra, phần còn lại vẫn ghi bình thường.</p>
+      </div>
+    </div>
+
+    <!-- 7. TRẠNG THÁI -->
+    <div class="hp-card">
+      <button class="hp-head" onclick="hpToggle('hp7',this)">
+        <span class="hp-ic">&#127991;</span>
+        <span class="hp-t">7. Các trạng thái trục</span>
+        <span class="hp-ar">&#9660;</span>
+      </button>
+      <div class="hp-body" id="hp7">
+        <table class="hp-tb">
+          <tr><th>Trạng thái</th><th>Nghĩa</th></tr>
+          <tr><td><span class="cyl-status st-available">Trong kho</span></td><td>Đang nằm trên giá, xuất được ngay</td></tr>
+          <tr><td><span class="cyl-status st-issued">Đã xuất</span></td><td>Đang ở bộ phận sản xuất</td></tr>
+          <tr><td><span class="cyl-status st-under_repair">Đang sửa</span></td><td>Đã đưa đi sửa chữa</td></tr>
+          <tr><td><span class="cyl-status st-scrapped">Đã hủy</span></td><td>Thanh lý, không dùng nữa</td></tr>
+          <tr><td><span class="cyl-status st-new">Chưa nhập kho</span></td><td>Đã khai mã nhưng chưa lên giá lần nào</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- 8. MẸO -->
+    <div class="hp-card">
+      <button class="hp-head" onclick="hpToggle('hp8',this)">
+        <span class="hp-ic">&#128161;</span>
+        <span class="hp-t">8. Mấy điều nên nhớ</span>
+        <span class="hp-ar">&#9660;</span>
+      </button>
+      <div class="hp-body" id="hp8">
+        <ul class="hp-steps">
+          <li><b>Số liệu trông cũ?</b> Bấm nút <b>&#8635;</b> góc trên phải. Dòng chữ nhỏ dưới tiêu đề cho biết dữ liệu cập nhật lúc mấy giờ.</li>
+          <li><b>Bấm nhầm giữa chừng?</b> Bấm <b>&#8592;</b> để lùi lại một bước. Chưa bấm nút xanh cuối cùng thì chưa có gì được ghi.</li>
+          <li><b>Quét trùng một trục hai lần</b> — app tự bỏ qua, không cần lo.</li>
+          <li><b>Xuất hủy</b> sẽ hỏi lại một lần nữa. Đọc kỹ danh sách trước khi đồng ý — hủy rồi không dùng lại được.</li>
+          <li><b>Mỗi lô ghi chung một ghi chú.</b> Cần ghi chú riêng từng trục thì tách thành nhiều lô.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="hint" style="margin-top:16px;text-align:left;line-height:1.6;background:#f8fafc;color:var(--muted);font-size:13px;">
+      Vướng chỗ nào mà hướng dẫn chưa nói tới, chụp màn hình gửi cho phòng Chuỗi cung ứng.
+    </div>
   </div>
 </section>
 
@@ -1094,7 +1310,7 @@ var locReject = null;          // { total, byReason, badTypeValues } — vì sao
 var locError = "";
 var locTypeColsMissing = [];   // cột bắt buộc trong LocationType_MA không nhận diện được
 var badStatusValues = {};      // giá trị current_status gõ sai trong CYL_Master
-var APP_VERSION = "4.0";       // phiên bản file HTML này
+var APP_VERSION = "4.1";       // phiên bản file HTML này
 var serverVersion = "";        // phiên bản Code_CylMgmt.gs đang chạy trên Google
 var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
@@ -2269,6 +2485,47 @@ function toast(msg, isErr) {
   el.classList.add("show");
   clearTimeout(el._t);
   el._t = setTimeout(function() { el.classList.remove("show"); }, 2500);
+}
+
+// ═══════════════ HƯỚNG DẪN SỬ DỤNG (v4.1) ═══════════════
+var helpReturn = "scrDash";
+
+function openHelp(openId) {
+  var act = document.querySelector(".screen.active");
+  helpReturn = (act && act.id !== "scrHelp") ? act.id : "scrDash";
+  safeStopScan();
+  document.getElementById("ovScanner").style.display = "none";
+
+  // Đóng hết rồi mở đúng mục cần
+  var cards = document.querySelectorAll("#scrHelp .hp-card");
+  for (var i = 0; i < cards.length; i++) cards[i].classList.remove("open");
+  if (openId) {
+    var b = document.getElementById(openId);
+    if (b && b.parentNode) {
+      b.parentNode.classList.add("open");
+      switchScreen("scrHelp");
+      setTimeout(function() { b.parentNode.scrollIntoView({ block: "start" }); }, 60);
+      return;
+    }
+  }
+  switchScreen("scrHelp");
+  window.scrollTo(0, 0);
+}
+
+function closeHelp() { switchScreen(helpReturn); }
+
+function hpToggle(id, btn) {
+  var card = btn.parentNode;
+  var wasOpen = card.classList.contains("open");
+  var cards = document.querySelectorAll("#scrHelp .hp-card");
+  for (var i = 0; i < cards.length; i++) cards[i].classList.remove("open");
+  if (!wasOpen) card.classList.add("open");
+}
+
+// Nút ? trên màn giao dịch → mở thẳng mục đúng với việc đang làm
+function openHelpForStep() {
+  var map = { IN: "hp2", OUT: "hp1", TRANSFER: "hp3" };
+  openHelp(map[txnGroup] || "");
 }
 
 function toggleEl(id) {
