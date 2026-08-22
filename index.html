@@ -148,7 +148,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
      SCREEN 1: Đăng nhập (Username + Mật khẩu)
 ════════════════════════════════════════════ -->
 <section id="screenLogin" class="screen active">
-  <div class="topbar"><div class="ttl">QA-P.ERP</div></div>
+  <!-- v5.5 — số hiệu bản app hiện ngay màn đăng nhập, để kiểm tra máy nào còn bản cũ -->
+  <div class="topbar"><div class="ttl">QA-P.ERP</div><div id="appVerTag" style="margin-left:auto;font-size:12px;opacity:.65"></div></div>
   <div class="picker-wrap">
     <div class="field">
       <label>Username</label>
@@ -410,6 +411,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 const CONFIG = {
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec"
 };
+
+// v5.5 — SỐ HIỆU BẢN APP.
+// Gửi kèm mọi payload và hiện ở góc thanh tiêu đề. Có nó mới trả lời được câu
+// "máy này đã cập nhật chưa?" — trước đây không có cách nào biết, mà điện thoại
+// giữ bản cũ trong cache chính là lý do lỗi ghi trùng còn tái diễn sau khi vá.
+// ⚠ Sửa số này MỖI LẦN đổi index.html, và bump luôn CACHE trong sw.js.
+const APP_VER = "5.5";
 
 /* ══════════════════════════════════════════════════
    TRẠNG THÁI
@@ -1557,6 +1565,7 @@ async function sendAll(){
   const payload={
     action:"submit",
     batchId: state.batchId,
+    appVer: APP_VER,
     user: state.user,
     rows: state.rows.map(r=>({
       ts:r.ts, user:state.user,
@@ -1704,6 +1713,7 @@ document.getElementById("loginUser").addEventListener("keydown", onEnterKey(()=>
 document.getElementById("loginPass").addEventListener("keydown", onEnterKey(doLogin));
 
 function boot(){
+  try{ document.getElementById("appVerTag").textContent = "v"+APP_VER; }catch(e){}
   state.rows=JSON.parse(localStorage.getItem(LS_ROWS)||"[]");
   // Preload lists in background
   loadMachines();
