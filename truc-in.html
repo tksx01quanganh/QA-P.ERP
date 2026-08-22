@@ -80,6 +80,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .scan-badge{margin-top:10px;text-align:center;color:#fff;font-size:15px;font-weight:700;}
 .scan-last{margin-top:4px;text-align:center;color:#a7f3d0;font-size:13px;min-height:18px;}
 
+/* v4.2 — bảng chọn trục đang ngoài kho (tick) */
+.ov-full{position:fixed;inset:0;background:var(--bg);z-index:55;display:flex;flex-direction:column;}
+.ov-fixed{padding:12px 12px 0;background:var(--bg);}
+.ov-scroll{flex:1;overflow-y:auto;padding:0 12px 12px;}
+.ov-foot{padding:10px 12px;background:#fff;border-top:2px solid var(--border);}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;-webkit-overflow-scrolling:touch;}
+.chips .chip{flex-shrink:0;padding:9px 14px;border:2px solid var(--border);border-radius:20px;background:#fff;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;}
+.chips .chip.on{border-color:var(--teal);background:#ecfdf5;color:var(--teal-d);}
+.out-bar{display:flex;align-items:center;font-size:13px;color:var(--muted);font-weight:600;margin:2px 0 10px;}
+.out-bar .lnk{margin-left:auto;background:none;border:none;color:var(--teal);font-size:13px;font-weight:700;cursor:pointer;padding:4px;}
+.oitem{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;}
+.oitem.on{border-color:var(--teal);background:#ecfdf5;}
+.oitem .obox{width:26px;height:26px;border:2px solid var(--border);border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;background:#fff;margin-top:2px;}
+.oitem.on .obox{background:var(--teal);border-color:var(--teal);}
+.oitem .obody{flex:1;min-width:0;}
+.oitem .ocode{font-weight:700;font-size:15px;line-height:1.35;}
+.oitem .osub{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45;}
+.oitem .odays{font-size:12px;font-weight:700;margin-top:3px;}
+.days-ok{color:var(--muted);}
+.days-warn{color:var(--amber);}
+.days-old{color:var(--red);}
+.pick-tag{font-size:10px;font-weight:800;letter-spacing:.5px;padding:2px 6px;border-radius:6px;background:#fef3c7;color:#92400e;margin-left:6px;vertical-align:middle;}
+.warn-box{background:#fffbeb;border:2px solid #fcd34d;color:#92400e;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.55;margin-bottom:14px;}
+
 /* v4.1 — màn Hướng dẫn: từng mục gập/mở, đọc trên điện thoại */
 .hp-card{background:var(--card);border:2px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;}
 .hp-head{width:100%;display:flex;align-items:center;gap:10px;padding:15px 14px;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;}
@@ -219,7 +243,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.1</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.2</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -344,10 +368,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <h4 class="step-h" id="stepCylTitle">Scan / chọn trục</h4>
       <div class="hint info" id="stepCylCtx" style="display:none;text-align:left;"></div>
 
-      <div class="row2" style="margin:10px 0 12px;">
+      <div class="row2" style="margin:10px 0 10px;">
         <button class="btn small" onclick="openScanner('batch')">&#128247; Scan liên tục</button>
         <button class="btn small ghost" onclick="openAddCyl()">&#10133; Trục mới</button>
       </div>
+
+      <!-- v4.2 — chỉ luồng NHẬP: chọn từ danh sách trục đang ngoài kho -->
+      <button class="btn small ghost" id="btnOutside" style="width:100%;margin-bottom:12px;display:none;"
+              onclick="openOutside()">&#128203; Chọn từ danh sách ngoài kho (<span id="outsideCount">0</span>)</button>
 
       <div class="field" style="margin-bottom:10px;">
         <label>Tìm trục (mã trục, số trục, mã SP)</label>
@@ -369,6 +397,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="txn-step" id="stepConfirm" style="display:none;">
       <h4 class="step-h">Kiểm tra và xác nhận</h4>
       <div id="confirmSummary" class="summary-box"></div>
+      <div id="confirmWarn" class="warn-box" style="display:none;"></div>
 
       <div class="field" id="fToDept" style="display:none;">
         <label>Bộ phận nhận <span style="color:var(--red);">*</span></label>
@@ -589,11 +618,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
           <li>Màn hình chính → bấm <b>Nhập trục</b>.</li>
           <li>Chọn loại: <b>Nhập từ sản xuất</b> / <b>Nhập từ sửa chữa</b> / <b>Nhập khác</b>.</li>
           <li><b>Quét mã QR trên giá kệ trước</b> — chỗ sẽ để trục. Quét đúng thì hiện khung xanh kèm tên giá.</li>
-          <li>Bấm <b>Tiếp tục</b> → quét lần lượt các trục cần cất lên giá đó.</li>
+          <li>Bấm <b>Tiếp tục</b> → đưa các trục cần cất lên giá đó vào danh sách, bằng 1 trong 2 cách:
+            <ul>
+              <li><b>Quét QR</b> — cách chuẩn, nên dùng khi QR còn đọc được.</li>
+              <li><b>&#128203; Chọn từ danh sách ngoài kho</b> — mở bảng liệt kê mọi trục đang ở ngoài, lọc theo bộ phận, tick chọn. Dùng khi QR bẩn/rách hoặc cả xe trục về cùng lúc.</li>
+            </ul>
+          </li>
           <li>Mỗi trục hiện sẵn <b>bộ phận đang giữ nó</b> — chỉ cần nhìn để đối chiếu, không phải chọn.</li>
           <li>Bấm <b>Tiếp tục</b> → ghi chú nếu cần → bấm <b>Nhập N trục</b>.</li>
         </ol>
         <p class="hp-note">Cả lô vào <b>chung một giá</b>. Nếu chia nhiều giá thì làm nhiều lần, mỗi giá một lần.</p>
+        <p class="hp-note warn"><b>Trục tick phải có thật trước mặt.</b> Trục chọn bằng tick mang nhãn
+        <span class="pick-tag">TICK</span> và bước xác nhận sẽ nhắc lại số lượng. Tick theo trí nhớ là làm sai
+        số liệu tồn kho của cả xưởng — thà quét chậm còn hơn ghi khống.</p>
+        <p class="hp-note">Bảng ngoài kho xếp <b>trục đi lâu nhất lên đầu</b>; số ngày chuyển vàng khi quá 14 ngày, đỏ khi quá 30 ngày.</p>
       </div>
     </div>
 
@@ -703,6 +741,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
           <li><b>Quét trùng một trục hai lần</b> — app tự bỏ qua, không cần lo.</li>
           <li><b>Xuất hủy</b> sẽ hỏi lại một lần nữa. Đọc kỹ danh sách trước khi đồng ý — hủy rồi không dùng lại được.</li>
           <li><b>Mỗi lô ghi chung một ghi chú.</b> Cần ghi chú riêng từng trục thì tách thành nhiều lô.</li>
+          <li><b>Danh sách tick chỉ có ở Nhập trục.</b> Xuất trục bắt buộc quét QR vì lúc đó phải cầm trục trên tay.</li>
         </ul>
       </div>
     </div>
@@ -712,6 +751,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
   </div>
 </section>
+
+<!-- ══════════════════════════════ -->
+<!-- OVERLAY: DANH SÁCH TRỤC NGOÀI KHO (v4.2) -->
+<!-- ══════════════════════════════ -->
+<div id="ovOutside" class="ov-full" style="display:none;">
+  <div class="topbar">
+    <div class="ttl">&#128203; Trục đang ngoài kho</div>
+    <button class="icon-btn" onclick="closeOutside()">Xong</button>
+  </div>
+
+  <div class="ov-fixed">
+    <div class="chips" id="outsideDeptChips"></div>
+    <input type="text" id="outsideSearch" class="search-box" autocomplete="off"
+           placeholder="Tìm trong danh sách: mã trục, số trục, mã SP..." oninput="renderOutside()" />
+    <div class="out-bar">
+      <span id="outsideStat">—</span>
+      <button class="lnk" onclick="pickAllOutside()">Chọn hết đang lọc</button>
+    </div>
+  </div>
+
+  <div class="ov-scroll" id="outsideList"></div>
+
+  <div class="ov-foot">
+    <button class="btn green" onclick="closeOutside()"><span id="outsidePicked">0</span> trục đã chọn — Xong</button>
+  </div>
+</div>
 
 <!-- ══════════════════════════════ -->
 <!-- OVERLAY: QR Scanner            -->
@@ -806,7 +871,7 @@ function checkSession() {
 }
 
 // ═══════════════ INIT ═══════════════
-var CACHE_KEY = "cylCache_v10";  // v4.0: đổi khoá vì thêm locAcceptTypeList
+var CACHE_KEY = "cylCache_v11";  // v4.2: đổi khoá vì cylinders có thêm lastTxnDate
 
 window.addEventListener("DOMContentLoaded", function() {
   if (!checkSession()) {
@@ -1249,6 +1314,7 @@ function cancelTxn() {
   if (txnBatch.length > 1 && !confirm("Bỏ lô đang scan (" + txnBatch.length + " trục)?")) return;
   safeStopScan();
   document.getElementById("ovScanner").style.display = "none";
+  document.getElementById("ovOutside").style.display = "none";
   txnBatch = [];
   txnBatchId = "";
   show("scrDash");
@@ -1310,7 +1376,7 @@ var locReject = null;          // { total, byReason, badTypeValues } — vì sao
 var locError = "";
 var locTypeColsMissing = [];   // cột bắt buộc trong LocationType_MA không nhận diện được
 var badStatusValues = {};      // giá trị current_status gõ sai trong CYL_Master
-var APP_VERSION = "4.1";       // phiên bản file HTML này
+var APP_VERSION = "4.2";       // phiên bản file HTML này
 var serverVersion = "";        // phiên bản Code_CylMgmt.gs đang chạy trên Google
 var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
@@ -1684,6 +1750,10 @@ function onEnterCylStep() {
   } else {
     ctx.style.display = "none";
   }
+  // v4.2 — danh sách "ngoài kho" chỉ có nghĩa với giao dịch NHẬP
+  document.getElementById("btnOutside").style.display = (txnGroup === "IN") ? "" : "none";
+  outsideDept = "";
+  var os = document.getElementById("outsideSearch"); if (os) os.value = "";
   renderBatch();
 }
 
@@ -1724,7 +1794,7 @@ function batchErrCount() {
   return n;
 }
 
-function addCylByCode(code) {
+function addCylByCode(code, pickMode) {
   code = String(code || "").trim();
   if (!code) return;
 
@@ -1736,6 +1806,8 @@ function addCylByCode(code) {
     code: c ? c.code : code.toUpperCase(),
     cyl: c || null,
     err: cylErrFor(c),
+    // v4.2 — nhớ trục này vào lô bằng cách nào, để ghi vào cột nguon_chon
+    pick: (pickMode === "TICK") ? "TICK" : "SCAN",
     checking: true
   };
   txnBatch.push(item);
@@ -1804,6 +1876,7 @@ function renderBatch() {
       '<div class="bi-body">' +
         '<div class="bi-code">' + esc(it.code) +
           (it.cyl ? ' <span class="cyl-status st-' + String(it.cyl.curStatus).toLowerCase() + '">' + statusVi(it.cyl.curStatus) + '</span>' : '') +
+          (it.pick === "TICK" ? ' <span class="pick-tag">TICK</span>' : '') +
         '</div>' +
         (sub ? '<div class="bi-sub">' + sub + '</div>' : '') +
         (it.err ? '<div class="bi-err">&#10006; ' + esc(it.err) + '</div>' : '') +
@@ -1815,6 +1888,8 @@ function renderBatch() {
   box.innerHTML = html;
   updateFoot();
   updateScanBadge();
+  updateOutsideBtn();
+  if (document.getElementById("ovOutside").style.display !== "none") renderOutside();
 }
 
 // ═══════════════ AUTOCOMPLETE TÌM TRỤC ═══════════════
@@ -1906,6 +1981,182 @@ function lookupCode(code, cb) {
   });
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// v4.2 — CHỌN TRỤC TỪ DANH SÁCH ĐANG NGOÀI KHO (tick)
+// ═══════════════════════════════════════════════════════════
+//
+// Vì sao có: QR trên trục hay bị dính mực/xước, và nhiều khi cả xe trục về
+// một lúc — bắt quét từng cái là chỗ người dùng bỏ app quay lại ghi sổ tay.
+//
+// Vì sao CHỈ cho luồng NHẬP: nhập là lúc trục đang ở ngoài, app biết chắc
+// danh sách "đáng lẽ phải về". Xuất thì bắt buộc phải cầm trục trên tay,
+// cho tick ở đó là mời gọi ghi khống.
+//
+// Đánh đổi đã chấp nhận: tick là ghi nhận "theo danh sách", không phải
+// "nhìn thấy tận mắt". Bù lại bằng 3 thứ: nhãn TICK trên từng dòng, cảnh báo
+// ở bước xác nhận, và cột `nguon_chon` trên Sheet để đo tỉ lệ tick về sau.
+
+var outsideDept = "";   // chip bộ phận đang lọc ("" = tất cả)
+
+/** Các trục đang ở ngoài kho: đã xuất hoặc đang sửa. */
+function outsideCyls() {
+  var out = [];
+  for (var i = 0; i < allCylinders.length; i++) {
+    var c = allCylinders[i];
+    if (c.curStatus === "ISSUED" || c.curStatus === "UNDER_REPAIR") out.push(c);
+  }
+  return out;
+}
+
+/** Số ngày kể từ giao dịch gần nhất. -1 = không rõ. */
+function daysOut(c) {
+  var raw = String(c.lastTxnDate || "").trim();
+  var m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return -1;
+  var d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  if (isNaN(d.getTime())) return -1;
+  var diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+  return diff < 0 ? 0 : diff;
+}
+
+function daysClass(n) {
+  if (n < 0) return "days-ok";
+  if (n >= 30) return "days-old";
+  if (n >= 14) return "days-warn";
+  return "days-ok";
+}
+
+function daysText(n) {
+  if (n < 0) return "chưa rõ ngày xuất";
+  if (n === 0) return "xuất hôm nay";
+  return "ngoài kho " + n + " ngày";
+}
+
+function updateOutsideBtn() {
+  var el = document.getElementById("outsideCount");
+  if (el) el.textContent = outsideCyls().length;
+}
+
+function openOutside() {
+  if (!dataReady) return toast("Đang tải danh sách trục, chờ chút...", 1);
+  var list = outsideCyls();
+  if (!list.length) return toast("Không có trục nào đang ở ngoài kho", 1);
+  safeStopScan();
+  document.getElementById("ovScanner").style.display = "none";
+  buildOutsideChips();
+  renderOutside();
+  document.getElementById("ovOutside").style.display = "flex";
+}
+
+function closeOutside() {
+  document.getElementById("ovOutside").style.display = "none";
+  renderBatch();
+  goStep(txnSteps.indexOf("cyl"));
+}
+
+/** Chip lọc theo bộ phận đang giữ trục — dựng từ dữ liệu thật, không hardcode. */
+function buildOutsideChips() {
+  var list = outsideCyls(), byDept = {};
+  for (var i = 0; i < list.length; i++) {
+    var d = list[i].curDept || "(không rõ)";
+    byDept[d] = (byDept[d] || 0) + 1;
+  }
+  var names = Object.keys(byDept).sort();
+  var html = '<div class="chip' + (outsideDept === "" ? " on" : "") +
+             '" onclick="setOutsideDept(\'\')">Tất cả (' + list.length + ')</div>';
+  for (var j = 0; j < names.length; j++) {
+    html += '<div class="chip' + (outsideDept === names[j] ? " on" : "") +
+            '" onclick="setOutsideDept(' + JSON.stringify(names[j]).replace(/"/g, "&quot;") + ')">' +
+            esc(names[j]) + ' (' + byDept[names[j]] + ')</div>';
+  }
+  document.getElementById("outsideDeptChips").innerHTML = html;
+}
+
+function setOutsideDept(d) {
+  outsideDept = d || "";
+  buildOutsideChips();
+  renderOutside();
+}
+
+/** Danh sách sau khi lọc chip + ô tìm, trục đi lâu nhất lên đầu. */
+function outsideFiltered() {
+  var q = (document.getElementById("outsideSearch").value || "").trim().toLowerCase();
+  var list = outsideCyls(), out = [];
+  for (var i = 0; i < list.length; i++) {
+    var c = list[i];
+    if (outsideDept && (c.curDept || "(không rõ)") !== outsideDept) continue;
+    if (q && !matchCyl(c, q)) continue;
+    out.push(c);
+  }
+  out.sort(function(a, b) {
+    var da = daysOut(a), db = daysOut(b);
+    if (da !== db) return db - da;                  // ngoài kho lâu nhất trước
+    return String(a.code).localeCompare(String(b.code));
+  });
+  return out;
+}
+
+function renderOutside() {
+  var list = outsideFiltered();
+  var box = document.getElementById("outsideList");
+
+  var html = "";
+  for (var i = 0; i < list.length; i++) {
+    var c = list[i];
+    var on = !!findInBatch(c.code);
+    var n = daysOut(c);
+    html += '<div class="oitem' + (on ? " on" : "") + '" onclick="toggleOutside(' +
+      JSON.stringify(c.code).replace(/"/g, "&quot;") + ')">' +
+      '<div class="obox">' + (on ? "&#10004;" : "") + '</div>' +
+      '<div class="obody">' +
+        '<div class="ocode">' + esc(c.code) +
+          ' <span class="cyl-status st-' + String(c.curStatus).toLowerCase() + '">' + statusVi(c.curStatus) + '</span></div>' +
+        '<div class="osub">BP: <b>' + esc(c.curDept || "—") + '</b>' +
+          (c.cylNumber ? ' • Số trục: ' + esc(c.cylNumber) : '') +
+          (c.productCode ? ' • SP: ' + esc(c.productCode) : '') + '</div>' +
+        '<div class="odays ' + daysClass(n) + '">' + daysText(n) + '</div>' +
+      '</div></div>';
+  }
+  if (!list.length) {
+    html = '<div class="suggest-empty">Không có trục nào khớp bộ lọc đang chọn.</div>';
+  }
+  box.innerHTML = html;
+
+  var nPicked = 0;
+  for (var k = 0; k < txnBatch.length; k++) if (txnBatch[k].pick === "TICK") nPicked++;
+  document.getElementById("outsideStat").textContent = "Hiện " + list.length + " trục";
+  document.getElementById("outsidePicked").textContent = txnBatch.length;
+}
+
+function toggleOutside(code) {
+  var it = findInBatch(code);
+  if (it) {
+    removeFromBatch(txnBatch.indexOf(it));
+  } else {
+    addCylByCode(code, "TICK");
+  }
+  renderOutside();
+}
+
+/** Tick hết phần đang lọc — hỏi lại khi số lượng lớn, tránh tick nhầm cả bộ phận. */
+function pickAllOutside() {
+  var list = outsideFiltered();
+  var them = [];
+  for (var i = 0; i < list.length; i++) if (!findInBatch(list[i].code)) them.push(list[i].code);
+  if (!them.length) return toast("Đã chọn hết rồi");
+  if (them.length > 10 && !confirm("Chọn thêm " + them.length + " trục đang hiện?\n\n" +
+      "Hãy chắc chắn tất cả số trục này đang thực sự nằm trước mặt bạn.")) return;
+  for (var j = 0; j < them.length; j++) addCylByCode(them[j], "TICK");
+  renderOutside();
+}
+
+function batchTickCount() {
+  var n = 0;
+  for (var i = 0; i < txnBatch.length; i++) if (txnBatch[i].pick === "TICK") n++;
+  return n;
+}
+
 // ═══════════════ BƯỚC XÁC NHẬN ═══════════════
 function renderConfirm() {
   var n = txnBatch.length;
@@ -1921,12 +2172,25 @@ function renderConfirm() {
   if (txnGroup === "IN") rows.push("Bộ phận nguồn: <b>lấy tự động theo từng trục</b>");
   box.innerHTML = rows.join("<br/>");
 
+  // v4.2 — trục tick là ghi nhận THEO DANH SÁCH, không phải nhìn tận mắt.
+  // Nói thẳng ở bước cuối, đúng lúc còn sửa được.
+  var nTick = batchTickCount();
+  var warn = document.getElementById("confirmWarn");
+  if (nTick) {
+    warn.innerHTML = "<b>&#9888; " + nTick + "/" + n + " trục chọn bằng tay (TICK), chưa quét QR.</b><br/>" +
+      "Hãy đối chiếu lại đúng số trục này đang nằm trước mặt trước khi xác nhận.";
+    warn.style.display = "";
+  } else {
+    warn.style.display = "none";
+  }
+
   var html = "";
   for (var i = 0; i < txnBatch.length; i++) {
     var it = txnBatch[i];
     html += '<div class="bitem">' +
       '<div class="bi-n">' + (i + 1) + '.</div>' +
-      '<div class="bi-body"><div class="bi-code">' + esc(it.code) + '</div>' +
+      '<div class="bi-body"><div class="bi-code">' + esc(it.code) +
+      (it.pick === "TICK" ? ' <span class="pick-tag">TICK</span>' : '') + '</div>' +
       (batchSubLine(it) ? '<div class="bi-sub">' + batchSubLine(it) + '</div>' : '') +
       '</div></div>';
   }
@@ -1947,8 +2211,11 @@ function submitBatch() {
                  "\n\nSau khi hủy sẽ không thể sử dụng lại.\nBạn chắc chắn?")) return;
   }
 
-  var codes = [];
-  for (var i = 0; i < txnBatch.length; i++) codes.push(txnBatch[i].code);
+  var codes = [], pickModes = {};
+  for (var i = 0; i < txnBatch.length; i++) {
+    codes.push(txnBatch[i].code);
+    pickModes[txnBatch[i].code] = txnBatch[i].pick || "SCAN";
+  }
 
   if (!txnBatchId) txnBatchId = makeBatchId();
 
@@ -1965,7 +2232,8 @@ function submitBatch() {
     toLoc: txnLocCode,
     remark: document.getElementById("txnRemark").value.trim(),
     user: user,
-    batchId: txnBatchId
+    batchId: txnBatchId,
+    pickModes: pickModes
   }, function(d) {
     txnBusy = false;
     if (!d || d.result !== "ok") {
