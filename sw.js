@@ -1,4 +1,4 @@
-const CACHE = 'qap-erp-v34';
+const CACHE = 'qap-erp-v35';  // v5.5 — bump MỖI LẦN đổi index.html để xoá bản cũ trong cache
 const ASSETS = [
   './',
   './index.html',
