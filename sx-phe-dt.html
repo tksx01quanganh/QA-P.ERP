@@ -157,6 +157,18 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 .spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.3);border-top:4px solid #fff;border-radius:50%;animation:spin .6s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* scan success flash */
+.scan-success-overlay{position:fixed;inset:0;background:rgba(22,163,74,.85);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;animation:flashIn .2s;}
+.scan-success-overlay.hidden{display:none;}
+.scan-success-overlay .ss-icon{font-size:80px;margin-bottom:16px;animation:popIn .3s ease-out;}
+.scan-success-overlay .ss-lsx{font-size:28px;font-weight:800;margin-bottom:8px;}
+.scan-success-overlay .ss-msg{font-size:16px;opacity:.9;margin-bottom:30px;}
+.scan-success-overlay .ss-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.scan-success-overlay .ss-btn{background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.6);color:#fff;border-radius:14px;padding:16px 24px;font-size:16px;font-weight:700;cursor:pointer;min-width:140px;text-align:center;}
+.scan-success-overlay .ss-btn:active{transform:scale(.97);background:rgba(255,255,255,.4);}
+@keyframes flashIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+
 /* nav bottom */
 .nav-bottom{display:flex;gap:10px;padding:12px;background:var(--card);border-top:1px solid var(--border);}
 .nav-bottom .btn{flex:1;}
@@ -192,7 +204,7 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
   <div class="topbar">
     <span class="ttl" id="dashTitle">Dashboard</span>
     <div style="display:flex;gap:6px;">
-      <button class="icon-btn" onclick="scanNewLSX()">➕ LSX mới</button>
+      <button class="icon-btn" onclick="openManualLSX()">➕ Nhập LSX</button>
       <button class="icon-btn" onclick="showScreen('scrCD')">← CĐ</button>
     </div>
   </div>
@@ -204,7 +216,8 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
   <div class="content">
     <div id="dashLSXList"></div>
     <div class="card" style="text-align:center;">
-      <button class="btn lg green" onclick="scanNewLSX()">📷 Scan / Nhập LSX mới</button>
+      <button class="btn lg green" onclick="startScanLSX()" style="margin-bottom:10px;">📷 Scan mã LSX</button>
+      <button class="btn lg blue" onclick="openManualLSX()">⌨️ Nhập thủ công</button>
     </div>
   </div>
   <div class="nav-bottom">
@@ -279,20 +292,38 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
   </div>
 </div>
 
-<!-- ═══════ MODAL: THÊM LSX ═══════ -->
+<!-- ═══════ MODAL: NHẬP LSX THỦ CÔNG ═══════ -->
 <div id="modalThemLSX" class="modal-overlay hidden">
   <div class="modal-sheet">
-    <h3>➕ Thêm LSX vào máy</h3>
+    <h3 id="themLSXTitle">⌨️ Nhập LSX thủ công</h3>
     <div class="fm-grp">
       <label class="fm-lbl">Mã LSX</label>
-      <input type="text" id="themLSXCode" class="fm-input" placeholder="Scan hoặc nhập mã LSX..." style="text-transform:uppercase;">
+      <input type="text" id="themLSXCode" class="fm-input" placeholder="Nhập mã LSX..." style="text-transform:uppercase;">
     </div>
     <div class="fm-grp">
       <label class="fm-lbl">KL yêu cầu (kg) — căn cứ phân bổ</label>
       <input type="number" id="themLSXKLYC" class="fm-input" placeholder="Nhập KLYC..." step="0.1" min="0" inputmode="decimal">
     </div>
-    <button class="btn green" onclick="submitThemLSX()">✅ Bắt đầu LSX</button>
+    <button class="btn green" onclick="submitThemLSX()">✅ Thêm LSX</button>
     <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalThemLSX')">Hủy</button>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: SCAN LSX (camera) ═══════ -->
+<div id="modalScan" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <h3>📷 Scan mã LSX</h3>
+    <div style="background:#000;border-radius:12px;overflow:hidden;margin-bottom:14px;position:relative;">
+      <video id="scanVideo" playsinline style="width:100%;display:block;"></video>
+      <div id="scanLine" style="position:absolute;top:50%;left:10%;right:10%;height:2px;background:var(--red);box-shadow:0 0 8px var(--red);animation:scanAnim 2s linear infinite;"></div>
+    </div>
+    <style>@keyframes scanAnim{0%,100%{top:30%}50%{top:70%}}</style>
+    <div id="scanStatus" style="text-align:center;color:var(--muted);font-size:14px;margin-bottom:10px;">Đưa mã vạch / QR vào khung hình...</div>
+    <div class="fm-grp">
+      <label class="fm-lbl">KL yêu cầu (kg) — nhập trước khi scan</label>
+      <input type="number" id="scanKLYC" class="fm-input" placeholder="Nhập KLYC..." step="0.1" min="0" inputmode="decimal">
+    </div>
+    <button class="btn ghost" onclick="stopScanAndClose()">✖ Đóng</button>
   </div>
 </div>
 
@@ -431,6 +462,18 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
     </div>
     <button class="btn" id="btnStatusConfirm" onclick="confirmStatus()">Xác nhận</button>
     <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalStatus')">Hủy</button>
+  </div>
+</div>
+
+<!-- Scan success overlay -->
+<div id="scanSuccessOverlay" class="scan-success-overlay hidden">
+  <div class="ss-icon">✅</div>
+  <div class="ss-lsx" id="ssLSXCode">—</div>
+  <div class="ss-msg">Đã nhận LSX thành công!</div>
+  <div class="ss-actions">
+    <button class="ss-btn" onclick="scanSuccessContinueScan()">📷 Scan tiếp</button>
+    <button class="ss-btn" onclick="scanSuccessManual()">⌨️ Nhập thủ công</button>
+    <button class="ss-btn" onclick="scanSuccessDone()">✅ Xong → Chọn máy</button>
   </div>
 </div>
 
@@ -665,17 +708,14 @@ function selectLSX(lsx) {
 }
 
 /* ══════════════════════════════════════════════════
-   SCAN LSX MỚI → NHẬP KLYC → CHỌN MÁY → START
+   SCAN / NHẬP LSX MỚI → KLYC → CHỌN MÁY → START
 ══════════════════════════════════════════════════ */
-function scanNewLSX() {
-  S.pendingLSX = [];
-  document.getElementById('modalThemLSX').classList.add('hidden');
 
-  // Mở modal nhập LSX + KLYC
-  openThemLSXModal(true);
-}
-
-function openThemLSXModal(isNew) {
+// --- NHẬP THỦ CÔNG ---
+function openManualLSX() {
+  S.pendingLSX = S.pendingLSX || [];
+  const isFromSX = !!S.curMay;
+  document.getElementById('themLSXTitle').textContent = isFromSX ? '➕ Thêm LSX vào máy' : '⌨️ Nhập LSX thủ công';
   document.getElementById('themLSXCode').value = '';
   document.getElementById('themLSXKLYC').value = '';
   document.getElementById('modalThemLSX').classList.remove('hidden');
@@ -688,7 +728,7 @@ async function submitThemLSX() {
 
   if (!lsx) return toast("Nhập mã LSX");
 
-  // Kiểm tra trùng
+  // Kiểm tra trùng trong active
   const existing = S.activeLSXs.find(i => String(i.lsx).toUpperCase() === lsx);
   if (existing) {
     closeModal('modalThemLSX');
@@ -721,9 +761,7 @@ async function submitThemLSX() {
         tong_cuon:0, tong_kl_sx:0, tong_kl_phe:0, tong_dt_phut:0
       };
       S.machineLSXs.push(newItem);
-      S.activeLSXs.push({
-        ...newItem, may: S.curMay.may
-      });
+      S.activeLSXs.push({ ...newItem, may: S.curMay.may });
 
       closeModal('modalThemLSX');
       renderSXLSXList();
@@ -738,6 +776,9 @@ async function submitThemLSX() {
   }
 
   // Nếu đang từ dashboard (LSX mới, chưa có máy)
+  // Kiểm tra trùng trong pending
+  if (S.pendingLSX.find(p => p.lsx === lsx)) return toast("LSX " + lsx + " đã có trong danh sách chờ");
+
   S.pendingLSX.push({ lsx, kl_yeu_cau: klyc });
   closeModal('modalThemLSX');
 
@@ -745,6 +786,175 @@ async function submitThemLSX() {
   renderMayLSXPreview();
   renderMayList();
   showScreen('scrMay');
+}
+
+// --- SCAN CAMERA ---
+let _scanStream = null;
+let _scanDetector = null;
+let _scanPaused = false;
+
+async function startScanLSX() {
+  S.pendingLSX = S.pendingLSX || [];
+  _scanPaused = false;
+
+  document.getElementById('scanKLYC').value = '';
+  document.getElementById('scanStatus').textContent = 'Đang mở camera...';
+  document.getElementById('modalScan').classList.remove('hidden');
+
+  try {
+    _scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('scanVideo');
+    video.srcObject = _scanStream;
+    await video.play();
+
+    document.getElementById('scanStatus').textContent = 'Đưa mã vạch / QR vào khung hình...';
+
+    // Kiểm tra BarcodeDetector API
+    if ('BarcodeDetector' in window) {
+      _scanDetector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'itf'] });
+      scanFrame();
+    } else {
+      document.getElementById('scanStatus').innerHTML = '⚠️ Trình duyệt không hỗ trợ scan tự động.<br>Dùng <b>Nhập thủ công</b> thay thế.';
+    }
+  } catch(e) {
+    document.getElementById('scanStatus').innerHTML = '⚠️ Không mở được camera: ' + e.message + '<br>Dùng <b>Nhập thủ công</b> thay thế.';
+  }
+}
+
+async function scanFrame() {
+  if (!_scanStream || _scanPaused) return;
+  const video = document.getElementById('scanVideo');
+  if (video.readyState < 2) {
+    requestAnimationFrame(scanFrame);
+    return;
+  }
+
+  try {
+    const barcodes = await _scanDetector.detect(video);
+    if (barcodes.length > 0) {
+      const code = barcodes[0].rawValue.trim().toUpperCase();
+      if (code) {
+        onScanResult(code);
+        return; // dừng scan loop
+      }
+    }
+  } catch(e) {}
+
+  requestAnimationFrame(scanFrame);
+}
+
+function onScanResult(lsx) {
+  _scanPaused = true;
+  const klyc = parseFloat(document.getElementById('scanKLYC').value) || 0;
+
+  // Kiểm tra trùng
+  const existing = S.activeLSXs.find(i => String(i.lsx).toUpperCase() === lsx);
+  if (existing) {
+    stopScan();
+    closeModal('modalScan');
+    selectLSX(String(existing.lsx));
+    toast("LSX " + lsx + " đã đang chạy — chuyển đến màn hình SX");
+    return;
+  }
+  if (S.pendingLSX.find(p => p.lsx === lsx)) {
+    toast("LSX " + lsx + " đã có trong danh sách chờ");
+    // Tiếp tục scan
+    setTimeout(() => { _scanPaused = false; scanFrame(); }, 1500);
+    return;
+  }
+
+  // Thêm vào pending
+  S.pendingLSX.push({ lsx, kl_yeu_cau: klyc });
+
+  // Hiệu ứng thành công: rung + chuông + khung xanh
+  triggerScanSuccess(lsx, klyc);
+}
+
+function triggerScanSuccess(lsx, klyc) {
+  // Rung
+  if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+
+  // Chuông
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine'; osc.frequency.value = 880;
+    gain.gain.value = 0.3;
+    osc.start(); osc.stop(ctx.currentTime + 0.15);
+    setTimeout(() => {
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2); gain2.connect(ctx.destination);
+      osc2.type = 'sine'; osc2.frequency.value = 1320;
+      gain2.gain.value = 0.3;
+      osc2.start(); osc2.stop(ctx.currentTime + 0.2);
+    }, 150);
+  } catch(e) {}
+
+  // Màn hình khung xanh
+  document.getElementById('ssLSXCode').textContent = lsx + (klyc ? ' (' + klyc + 'kg)' : '');
+  document.getElementById('scanSuccessOverlay').classList.remove('hidden');
+}
+
+function scanSuccessContinueScan() {
+  document.getElementById('scanSuccessOverlay').classList.add('hidden');
+  _scanPaused = false;
+  scanFrame();
+}
+
+function scanSuccessManual() {
+  document.getElementById('scanSuccessOverlay').classList.add('hidden');
+  stopScan();
+  closeModal('modalScan');
+  // Mở modal nhập thủ công, giữ pendingLSX
+  openManualLSXKeepPending();
+}
+
+function scanSuccessDone() {
+  document.getElementById('scanSuccessOverlay').classList.add('hidden');
+  stopScan();
+  closeModal('modalScan');
+
+  if (!S.pendingLSX.length) return toast("Chưa có LSX nào");
+
+  // Đi chọn máy
+  renderMayLSXPreview();
+  renderMayList();
+  showScreen('scrMay');
+}
+
+function stopScan() {
+  _scanPaused = true;
+  if (_scanStream) {
+    _scanStream.getTracks().forEach(t => t.stop());
+    _scanStream = null;
+  }
+  const video = document.getElementById('scanVideo');
+  if (video) video.srcObject = null;
+}
+
+function stopScanAndClose() {
+  stopScan();
+  closeModal('modalScan');
+  // Nếu đã có pending LSX, đi chọn máy
+  if (S.pendingLSX.length) {
+    renderMayLSXPreview();
+    renderMayList();
+    showScreen('scrMay');
+  }
+}
+
+// Mở modal nhập thủ công nhưng giữ pendingLSX (từ scan success → nhập thêm)
+function openManualLSXKeepPending() {
+  document.getElementById('themLSXTitle').textContent = '⌨️ Nhập thêm LSX';
+  document.getElementById('themLSXCode').value = '';
+  document.getElementById('themLSXKLYC').value = '';
+  document.getElementById('modalThemLSX').classList.remove('hidden');
+  setTimeout(() => document.getElementById('themLSXCode').focus(), 200);
 }
 
 function renderMayLSXPreview() {
@@ -756,12 +966,18 @@ function renderMayLSXPreview() {
          + (p.kl_yeu_cau ? '<span style="font-size:13px;color:var(--blue);font-weight:600;">KLYC: ' + p.kl_yeu_cau + 'kg</span>' : '')
          + '</div>';
   });
-  html += '<button class="btn small ghost" style="margin-top:8px;" onclick="addMorePendingLSX()">➕ Thêm LSX nữa</button>';
+  html += '<div style="display:flex;gap:8px;margin-top:8px;">'
+       + '<button class="btn small green" onclick="addMorePendingScan()">📷 Scan thêm</button>'
+       + '<button class="btn small ghost" onclick="addMorePendingManual()">⌨️ Nhập thêm</button>'
+       + '</div>';
   el.innerHTML = html;
 }
 
-function addMorePendingLSX() {
-  openThemLSXModal(false);
+function addMorePendingScan() {
+  startScanLSX();
+}
+function addMorePendingManual() {
+  openManualLSXKeepPending();
 }
 
 function renderMayList() {
@@ -830,7 +1046,7 @@ async function chonMay(tenMay, maMay) {
    THÊM LSX (từ SX screen)
 ══════════════════════════════════════════════════ */
 function themLSX() {
-  openThemLSXModal(false);
+  openManualLSX();
 }
 
 /* ══════════════════════════════════════════════════
