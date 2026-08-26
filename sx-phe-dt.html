@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0f766e" />
+<title>Ghi nhận SX — QA-P.ERP</title>
+<style>
+:root{
+  --teal:#0f766e; --teal-d:#0b5b54; --teal-l:#ccfbf1;
+  --green:#16a34a; --green-l:#f0fdf4;
+  --red:#dc2626; --red-l:#fef2f2;
+  --amber:#d97706; --amber-l:#fffbeb;
+  --blue:#2563eb; --blue-l:#eff6ff;
+  --purple:#7c3aed; --purple-l:#f5f3ff;
+  --gray:#64748b; --gray-l:#f1f5f9;
+  --bg:#f1f5f9; --card:#fff;
+  --txt:#0f172a; --muted:#64748b; --border:#e2e8f0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;height:100%;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:16px;line-height:1.4;}
+
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* topbar */
+.topbar{background:var(--teal);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:5;}
+.topbar .ttl{font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+
+/* buttons */
+.btn{border:0;border-radius:12px;font-size:17px;font-weight:700;padding:14px 16px;cursor:pointer;width:100%;color:#fff;background:var(--teal);display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn:active{transform:scale(.98);}
+.btn.lg{padding:18px;font-size:19px;}
+.btn.green{background:var(--green);}
+.btn.red{background:var(--red);}
+.btn.gray{background:var(--gray);}
+.btn.amber{background:var(--amber);}
+.btn.blue{background:var(--blue);}
+.btn.purple{background:var(--purple);}
+.btn.ghost{background:#fff;color:var(--teal);border:2px solid var(--teal);}
+.btn.ghost-red{background:#fff;color:var(--red);border:2px solid var(--red);}
+.btn.small{width:auto;padding:8px 14px;font-size:14px;border-radius:10px;}
+.btn:disabled{opacity:.5;pointer-events:none;}
+
+/* cards & sections */
+.content{flex:1;overflow:auto;padding:14px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px;}
+.card h3{margin:0 0 12px;font-size:15px;color:var(--teal-d);}
+.card .btn{margin-bottom:10px;}
+.card .btn:last-child{margin-bottom:0;}
+
+/* form elements */
+.fm-grp{margin-bottom:14px;}
+.fm-lbl{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:block;}
+.fm-input{width:100%;padding:12px;font-size:16px;border:2px solid var(--border);border-radius:12px;background:#fff;}
+.fm-input:focus{border-color:var(--teal);outline:none;}
+select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 14px center;}
+
+/* pick list */
+.pick-list{display:flex;flex-direction:column;gap:8px;}
+.pick-btn{background:#fff;border:2px solid var(--border);border-radius:14px;padding:14px;text-align:left;cursor:pointer;width:100%;position:relative;}
+.pick-btn:active{border-color:var(--teal);background:var(--teal-l);}
+.pick-btn.selected{border-color:var(--teal);background:var(--teal-l);}
+.pick-btn .pb-name{font-size:17px;font-weight:700;}
+.pick-btn .pb-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.pick-btn .pb-badge{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;color:#fff;}
+.pb-badge.tsd{background:var(--green);}
+.pb-badge.bo{background:var(--red);}
+
+.group-heading{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:6px 0 4px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+
+/* status bar */
+.status-bar{background:#1e293b;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;}
+.status-bar .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.dot-green{background:#22c55e;animation:pulse 1.5s infinite;}
+.dot-amber{background:#f59e0b;}
+.dot-gray{background:#94a3b8;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* action grid on SX screen */
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.act-btn{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:16px 10px;text-align:center;cursor:pointer;transition:all .15s;}
+.act-btn:active{transform:scale(.97);}
+.act-btn .ab-icon{font-size:28px;margin-bottom:4px;}
+.act-btn .ab-name{font-size:13px;font-weight:700;color:var(--txt);}
+.act-btn.c-green{border-color:#bbf7d0;background:var(--green-l);}
+.act-btn.c-red{border-color:#fecaca;background:var(--red-l);}
+.act-btn.c-amber{border-color:#fde68a;background:var(--amber-l);}
+.act-btn.c-blue{border-color:#bfdbfe;background:var(--blue-l);}
+.act-btn.c-purple{border-color:#ddd6fe;background:var(--purple-l);}
+
+/* info row */
+.info-row{display:flex;gap:8px;margin-bottom:8px;}
+.info-tag{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 10px;text-align:center;}
+.info-tag .it-val{font-size:20px;font-weight:800;color:var(--teal-d);}
+.info-tag .it-lbl{font-size:11px;color:var(--muted);font-weight:600;}
+
+/* dashboard LSX card */
+.lsx-card{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;}
+.lsx-card:active{border-color:var(--teal);}
+.lsx-card .lc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.lsx-card .lc-lsx{font-size:18px;font-weight:800;color:var(--teal-d);}
+.lsx-card .lc-status{font-size:12px;font-weight:700;padding:3px 10px;border-radius:8px;color:#fff;}
+.lc-status.DANG_CHAY{background:var(--green);}
+.lc-status.TAM_DUNG{background:var(--amber);}
+.lsx-card .lc-info{font-size:13px;color:var(--muted);}
+
+/* LSX chip on SX screen */
+.lsx-chip{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+.lsx-chip.active-lsx{border-color:var(--teal);background:var(--teal-l);}
+.lsx-chip .lc-main{flex:1;min-width:0;}
+.lsx-chip .lc-lsx{font-size:16px;font-weight:800;color:var(--teal-d);}
+.lsx-chip .lc-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.lsx-chip .lc-klyc{font-size:13px;font-weight:700;color:var(--blue);}
+.lsx-chip .lc-actions{display:flex;gap:4px;flex-shrink:0;}
+.chip-btn{border:0;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;color:#fff;}
+
+/* timer */
+.timer-box{text-align:center;padding:20px;background:var(--card);border-radius:16px;margin-bottom:14px;border:2px solid var(--border);}
+.timer-box.running{border-color:var(--red);background:var(--red-l);}
+.timer-time{font-size:42px;font-weight:800;font-variant-numeric:tabular-nums;}
+.timer-label{font-size:13px;color:var(--muted);margin-top:2px;}
+
+/* check items */
+.ck-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;}
+.ck-item .ci-name{font-size:15px;font-weight:700;margin-bottom:6px;}
+.ck-item .ci-unit{font-size:12px;color:var(--muted);}
+.ck-item .ci-range{font-size:11px;color:var(--blue);margin-top:2px;}
+.ck-item input[type="number"]{width:100%;padding:10px;font-size:17px;border:2px solid var(--border);border-radius:10px;text-align:center;}
+.ck-item input:focus{border-color:var(--teal);outline:none;}
+.ck-item textarea{width:100%;padding:10px;font-size:15px;border:2px solid var(--border);border-radius:10px;resize:vertical;min-height:50px;}
+.ck-item textarea:focus{border-color:var(--teal);outline:none;}
+.yn-row{display:flex;gap:8px;}
+.yn-btn{flex:1;padding:12px;font-size:15px;font-weight:700;border:2px solid var(--border);border-radius:12px;background:#fff;cursor:pointer;text-align:center;}
+.yn-btn:active{transform:scale(.98);}
+.yn-btn.ok-sel{border-color:var(--green);background:var(--green-l);color:var(--green);}
+.yn-btn.ng-sel{border-color:var(--red);background:var(--red-l);color:var(--red);}
+.yn-ng-note{margin-top:6px;}
+.yn-ng-note textarea{width:100%;padding:8px;font-size:14px;border:2px solid var(--red);border-radius:10px;resize:vertical;min-height:40px;}
+.warn-range{color:var(--red);font-size:12px;font-weight:600;margin-top:3px;}
+
+/* alloc preview */
+.alloc-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
+.alloc-row:last-child{border-bottom:0;}
+.alloc-lsx{font-weight:700;font-size:14px;flex:1;}
+.alloc-klyc{font-size:12px;color:var(--blue);width:60px;text-align:right;}
+.alloc-kl{font-size:16px;font-weight:800;color:var(--green);width:80px;text-align:right;}
+.alloc-pct{font-size:11px;color:var(--muted);width:40px;text-align:right;}
+
+/* toast / loading */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:99;opacity:0;transition:opacity .3s;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;}
+.loading{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100;}
+.loading.hidden{display:none;}
+.spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.3);border-top:4px solid #fff;border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* nav bottom */
+.nav-bottom{display:flex;gap:10px;padding:12px;background:var(--card);border-top:1px solid var(--border);}
+.nav-bottom .btn{flex:1;}
+
+/* modal overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:flex-end;justify-content:center;}
+.modal-overlay.hidden{display:none;}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:85vh;overflow:auto;padding:20px 16px 30px;animation:slideUp .25s;}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-sheet h3{margin:0 0 14px;font-size:17px;text-align:center;}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:0;font-size:22px;cursor:pointer;color:var(--muted);}
+</style>
+</head>
+<body>
+
+<!-- ═══════ MÀN HÌNH 1: CHỌN CÔNG ĐOẠN ═══════ -->
+<div id="scrCD" class="screen active">
+  <div class="topbar">
+    <span class="ttl">🏭 Ghi nhận SX Real-time</span>
+    <button class="icon-btn" onclick="goHome()">🏠</button>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h3>Chọn công đoạn sản xuất</h3>
+      <button class="btn lg blue" onclick="chonCD('thoi')">🔵 Thổi (PD_A04)</button>
+      <button class="btn lg purple" onclick="chonCD('in')">🟣 In (PD_A05)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MÀN HÌNH 2: DASHBOARD — LSX ĐANG CHẠY ═══════ -->
+<div id="scrDash" class="screen">
+  <div class="topbar">
+    <span class="ttl" id="dashTitle">Dashboard</span>
+    <div style="display:flex;gap:6px;">
+      <button class="icon-btn" onclick="scanNewLSX()">➕ LSX mới</button>
+      <button class="icon-btn" onclick="showScreen('scrCD')">← CĐ</button>
+    </div>
+  </div>
+  <div class="status-bar">
+    <span class="dot dot-green"></span>
+    <span id="dashUser">—</span>
+    <span style="margin-left:auto;font-size:12px;" id="dashShift">—</span>
+  </div>
+  <div class="content">
+    <div id="dashLSXList"></div>
+    <div class="card" style="text-align:center;">
+      <button class="btn lg green" onclick="scanNewLSX()">📷 Scan / Nhập LSX mới</button>
+    </div>
+  </div>
+  <div class="nav-bottom">
+    <button class="btn ghost" onclick="goHome()">🏠 Trang chủ</button>
+  </div>
+</div>
+
+<!-- ═══════ MÀN HÌNH 3: CHỌN MÁY ═══════ -->
+<div id="scrMay" class="screen">
+  <div class="topbar">
+    <span class="ttl">⚙️ Chọn máy</span>
+    <button class="icon-btn" onclick="showScreen('scrDash')">← Quay lại</button>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h3>LSX sẽ bắt đầu</h3>
+      <div id="mayLSXPreview"></div>
+    </div>
+    <div class="fm-grp">
+      <label class="fm-lbl">Chọn máy sản xuất</label>
+      <div id="mayList" class="pick-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MÀN HÌNH 4: SẢN XUẤT CHÍNH (per máy, multi-LSX) ═══════ -->
+<div id="scrSX" class="screen">
+  <div class="topbar">
+    <span class="ttl" id="sxTitle">SX — </span>
+    <button class="icon-btn" onclick="showScreen('scrDash')">← DS LSX</button>
+  </div>
+  <div class="status-bar">
+    <span class="dot dot-green" id="sxDot"></span>
+    <span id="sxStatusText">—</span>
+    <span style="margin-left:auto;font-size:12px;" id="sxMayLabel">—</span>
+  </div>
+  <div class="content">
+    <!-- Danh sách LSX trên máy này -->
+    <div class="card">
+      <h3>📋 LSX trên máy (<span id="sxLSXCount">0</span>)</h3>
+      <div id="sxLSXList"></div>
+      <button class="btn small ghost" onclick="themLSX()" style="margin-top:10px;">➕ Thêm LSX</button>
+    </div>
+
+    <!-- Thống kê nhanh (tổng tất cả LSX) -->
+    <div class="info-row" id="sxInfoRow">
+      <div class="info-tag"><div class="it-val" id="sxCuonCount">0</div><div class="it-lbl">Cuộn</div></div>
+      <div class="info-tag"><div class="it-val" id="sxKLTotal">0</div><div class="it-lbl">KL SX (kg)</div></div>
+      <div class="info-tag"><div class="it-val" id="sxPheTotal">0</div><div class="it-lbl">Phế (kg)</div></div>
+      <div class="info-tag"><div class="it-val" id="sxDTTotal">0</div><div class="it-lbl">DT (phút)</div></div>
+    </div>
+
+    <!-- Nút hành động -->
+    <div class="action-grid">
+      <div class="act-btn c-green" onclick="openCuon()">
+        <div class="ab-icon">📦</div>
+        <div class="ab-name">Hoàn thành cuộn</div>
+      </div>
+      <div class="act-btn c-red" onclick="openPhe()">
+        <div class="ab-icon">🗑️</div>
+        <div class="ab-name">Ghi phế</div>
+      </div>
+      <div class="act-btn c-amber" onclick="openDT()">
+        <div class="ab-icon">⏱️</div>
+        <div class="ab-name">Downtime</div>
+      </div>
+      <div class="act-btn c-blue" onclick="openCheck()">
+        <div class="ab-icon">✅</div>
+        <div class="ab-name">Check đầu ca</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: THÊM LSX ═══════ -->
+<div id="modalThemLSX" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <h3>➕ Thêm LSX vào máy</h3>
+    <div class="fm-grp">
+      <label class="fm-lbl">Mã LSX</label>
+      <input type="text" id="themLSXCode" class="fm-input" placeholder="Scan hoặc nhập mã LSX..." style="text-transform:uppercase;">
+    </div>
+    <div class="fm-grp">
+      <label class="fm-lbl">KL yêu cầu (kg) — căn cứ phân bổ</label>
+      <input type="number" id="themLSXKLYC" class="fm-input" placeholder="Nhập KLYC..." step="0.1" min="0" inputmode="decimal">
+    </div>
+    <button class="btn green" onclick="submitThemLSX()">✅ Bắt đầu LSX</button>
+    <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalThemLSX')">Hủy</button>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: HOÀN THÀNH CUỘN (multi-LSX allocation) ═══════ -->
+<div id="modalCuon" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <h3>📦 Hoàn thành cuộn</h3>
+    <div class="fm-grp">
+      <label class="fm-lbl">Cuộn số</label>
+      <input type="number" id="cuonSo" class="fm-input" readonly>
+    </div>
+    <div class="fm-grp">
+      <label class="fm-lbl">Khối lượng cuộn tổng (kg)</label>
+      <input type="number" id="cuonKL" class="fm-input" placeholder="Nhập KL cuộn..." step="0.1" min="0" inputmode="decimal" oninput="updateAllocPreview()">
+    </div>
+
+    <!-- Preview phân bổ theo KLYC -->
+    <div id="allocPreviewArea" style="display:none;">
+      <div class="card" style="background:var(--blue-l);border-color:var(--blue);">
+        <h3 style="color:var(--blue);">📊 Phân bổ theo KLYC</h3>
+        <div id="allocRows"></div>
+      </div>
+    </div>
+
+    <div class="fm-grp">
+      <label class="fm-lbl">Ghi chú (tùy chọn)</label>
+      <input type="text" id="cuonNote" class="fm-input" placeholder="Ghi chú...">
+    </div>
+    <button class="btn green" onclick="submitCuon()">💾 Lưu cuộn</button>
+    <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalCuon')">Hủy</button>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: GHI PHẾ ═══════ -->
+<div id="modalPhe" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <h3>🗑️ Ghi phế</h3>
+    <!-- Chọn LSX nếu có nhiều -->
+    <div id="pheLSXSelect" style="display:none;">
+      <div class="fm-grp">
+        <label class="fm-lbl">Ghi phế cho LSX nào?</label>
+        <select id="pheLSXChoice" class="fm-input"></select>
+      </div>
+    </div>
+    <div class="fm-grp">
+      <label class="fm-lbl">Chọn loại phế</label>
+      <div id="pheList" class="pick-list"></div>
+    </div>
+    <div id="pheForm" style="display:none">
+      <div class="fm-grp">
+        <label class="fm-lbl">Khối lượng (kg)</label>
+        <input type="number" id="pheKL" class="fm-input" placeholder="Nhập KL phế..." step="0.1" min="0" inputmode="decimal">
+      </div>
+      <div class="fm-grp">
+        <label class="fm-lbl">Ghi chú (tùy chọn)</label>
+        <input type="text" id="pheNote" class="fm-input" placeholder="Ghi chú...">
+      </div>
+      <button class="btn red" onclick="submitPhe()">💾 Lưu phế</button>
+    </div>
+    <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalPhe')">Hủy</button>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: DOWNTIME ═══════ -->
+<div id="modalDT" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <h3>⏱️ Downtime</h3>
+    <!-- Chọn LSX nếu có nhiều -->
+    <div id="dtLSXSelect" style="display:none;">
+      <div class="fm-grp">
+        <label class="fm-lbl">Ghi DT cho LSX nào?</label>
+        <select id="dtLSXChoice" class="fm-input"></select>
+      </div>
+    </div>
+    <div class="timer-box" id="dtTimerBox">
+      <div class="timer-time" id="dtTimerText">00:00:00</div>
+      <div class="timer-label" id="dtTimerLabel">Chưa bắt đầu</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;">
+      <button class="btn red" id="btnDTToggle" onclick="dtToggle()">⏱ Bắt đầu dừng</button>
+    </div>
+    <div class="card">
+      <h3>Hoặc nhập tay</h3>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <div style="flex:1"><label class="fm-lbl">Bắt đầu</label><input type="time" id="dtStart" class="fm-input"></div>
+        <div style="flex:1"><label class="fm-lbl">Kết thúc</label><input type="time" id="dtEnd" class="fm-input"></div>
+      </div>
+    </div>
+    <div class="fm-grp">
+      <label class="fm-lbl">Nguyên nhân dừng</label>
+      <div id="dtList" class="pick-list"></div>
+    </div>
+    <div id="dtSubmitArea" style="display:none">
+      <div class="fm-grp">
+        <label class="fm-lbl">Ghi chú (tùy chọn)</label>
+        <input type="text" id="dtNote" class="fm-input" placeholder="Ghi chú...">
+      </div>
+      <button class="btn amber" onclick="submitDT()">💾 Lưu Downtime</button>
+    </div>
+    <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalDT')">Hủy</button>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: CHECK ĐẦU CA ═══════ -->
+<div id="modalCheck" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <h3>✅ Kiểm tra đầu ca</h3>
+    <!-- Chọn LSX nếu có nhiều -->
+    <div id="checkLSXSelect" style="display:none;">
+      <div class="fm-grp">
+        <label class="fm-lbl">Kiểm tra cho LSX nào?</label>
+        <select id="checkLSXChoice" class="fm-input"></select>
+      </div>
+    </div>
+    <div id="checkItems"></div>
+    <button class="btn green" onclick="submitCheck()" id="btnSubmitCheck" disabled>💾 Lưu kiểm tra</button>
+    <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalCheck')">Hủy</button>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: XÁC NHẬN TRẠNG THÁI ═══════ -->
+<div id="modalStatus" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <h3 id="statusTitle">Xác nhận</h3>
+    <p id="statusMsg" style="text-align:center;color:var(--muted);margin-bottom:16px;"></p>
+    <!-- Chọn LSX nếu có nhiều -->
+    <div id="statusLSXSelect" style="display:none;">
+      <div class="fm-grp">
+        <label class="fm-lbl">Áp dụng cho LSX nào?</label>
+        <select id="statusLSXChoice" class="fm-input"></select>
+      </div>
+    </div>
+    <div class="fm-grp">
+      <label class="fm-lbl">Ghi chú (tùy chọn)</label>
+      <input type="text" id="statusNote" class="fm-input" placeholder="Lý do...">
+    </div>
+    <button class="btn" id="btnStatusConfirm" onclick="confirmStatus()">Xác nhận</button>
+    <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalStatus')">Hủy</button>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" class="loading hidden"><div class="spinner"></div></div>
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   CẤU HÌNH
+══════════════════════════════════════════════════ */
+const CONFIG = {
+  API_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec"
+};
+
+/* ══════════════════════════════════════════════════
+   TRẠNG THÁI TOÀN CỤC
+══════════════════════════════════════════════════ */
+let S = {
+  cd: null,           // "thoi" | "in"
+  cdLabel: "",        // "Thổi" | "In"
+  masters: null,      // từ pdtMasters
+  user: "",           // tên CN (login)
+  maCn: "",           // mã CN (username)
+
+  // Máy hiện tại
+  curMay: null,       // { may, ma_may }
+  // Danh sách LSX trên máy hiện tại
+  machineLSXs: [],    // [{ lsx, kl_yeu_cau, trang_thai, tong_cuon, tong_kl_sx, tong_kl_phe, tong_dt_phut }]
+
+  // Dashboard
+  activeLSXs: [],     // tất cả LSX active (từ pdtActiveLSX)
+
+  // Pending add LSX (trước khi chọn máy)
+  pendingLSX: [],     // [{lsx, kl_yeu_cau}] — LSX chờ start
+
+  // Phế
+  selectedPhe: null,
+  // DT
+  selectedDT: null,
+  dtRunning: false,
+  dtStartTime: null,
+  dtTimerInterval: null,
+  // Check
+  checkValues: {},
+  // Status
+  pendingStatus: null,
+};
+
+/* ══════════════════════════════════════════════════
+   KHỞI TẠO — Đọc session từ localStorage
+══════════════════════════════════════════════════ */
+(function init() {
+  try {
+    const sess = JSON.parse(localStorage.getItem("ghinhan_session") || "null");
+    if (sess && sess.username) {
+      S.user = sess.user || sess.username;
+      S.maCn = sess.username || "";
+    }
+  } catch(e) {}
+
+  // Auto-chọn CĐ nếu có query param
+  const params = new URLSearchParams(location.search);
+  const cdParam = params.get('cd');
+  if (cdParam === 'thoi' || cdParam === 'in') {
+    setTimeout(() => chonCD(cdParam), 100);
+  }
+})();
+
+/* ══════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goHome() {
+  window.location.href = 'index.html';
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+  if (id === 'modalDT' && S.dtTimerInterval) {
+    clearInterval(S.dtTimerInterval);
+    S.dtTimerInterval = null;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   API
+══════════════════════════════════════════════════ */
+let _jSeq = 0;
+function api(action, params, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const cb = "__pdt_" + (++_jSeq);
+    const s = document.createElement("script");
+    const timer = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, timeoutMs || 30000);
+    function cleanup() { clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = data => { cleanup(); resolve(data); };
+    s.onerror = () => { cleanup(); reject(new Error("network")); };
+    let url = CONFIG.API_URL + "?action=" + action + "&callback=" + cb;
+    if (params) for (const k in params) url += "&" + k + "=" + encodeURIComponent(params[k]);
+    url += "&t=" + Date.now();
+    s.src = url; document.body.appendChild(s);
+  });
+}
+
+async function apiPost(body) {
+  const r = await fetch(CONFIG.API_URL, {
+    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(body), redirect: "follow"
+  });
+  return r.json();
+}
+
+function loading(show) { document.getElementById('loadingOverlay').classList.toggle('hidden', !show); }
+function toast(msg, ms) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms || 3000);
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+/* ══════════════════════════════════════════════════
+   CA / NGÀY SX (client-side, giống backend)
+══════════════════════════════════════════════════ */
+function calcShift() {
+  const now = new Date();
+  const h = now.getHours();
+  let ca, ngaySX;
+  if (h >= 7 && h < 19) {
+    ca = "NGÀY"; ngaySX = now;
+  } else {
+    ca = "ĐÊM";
+    ngaySX = h < 7 ? new Date(now.getTime() - 86400000) : now;
+  }
+  const dd = String(ngaySX.getDate()).padStart(2,'0');
+  const mm = String(ngaySX.getMonth()+1).padStart(2,'0');
+  return { ca, ngaySX: dd+'/'+mm+'/'+ngaySX.getFullYear() };
+}
+
+/* ══════════════════════════════════════════════════
+   CHỌN CÔNG ĐOẠN → TẢI MASTER → DASHBOARD
+══════════════════════════════════════════════════ */
+async function chonCD(cd) {
+  S.cd = cd;
+  S.cdLabel = cd === "thoi" ? "Thổi" : "In";
+
+  loading(true);
+  try {
+    const data = await api("pdtMasters", { cd });
+    if (data.result !== "ok") throw new Error(data.error || "Lỗi tải master");
+    S.masters = data;
+    await loadActiveLSX();
+    enterDashboard();
+  } catch (e) {
+    alert("Lỗi tải danh mục: " + e.message);
+  } finally {
+    loading(false);
+  }
+}
+
+async function loadActiveLSX() {
+  try {
+    const data = await api("pdtActiveLSX", { cd: S.cd });
+    if (data.result === "ok") S.activeLSXs = data.items || [];
+  } catch(e) {}
+}
+
+/* ══════════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════════ */
+function enterDashboard() {
+  const shift = calcShift();
+  document.getElementById('dashTitle').textContent = "Dashboard — " + S.cdLabel;
+  document.getElementById('dashUser').textContent = S.user || "(chưa đăng nhập)";
+  document.getElementById('dashShift').textContent = "Ca " + shift.ca + " — " + shift.ngaySX;
+
+  renderDashLSX();
+  showScreen('scrDash');
+}
+
+function renderDashLSX() {
+  const el = document.getElementById('dashLSXList');
+  if (!S.activeLSXs.length) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:24px;">Chưa có LSX nào đang chạy.<br>Bấm <b>Scan / Nhập LSX mới</b> để bắt đầu.</div>';
+    return;
+  }
+
+  let html = '';
+  S.activeLSXs.forEach(item => {
+    const tt = String(item.trang_thai || "DANG_CHAY");
+    const ttLabel = { DANG_CHAY:"Đang chạy", TAM_DUNG:"Tạm dừng" }[tt] || tt;
+    const klyc = Number(item.kl_yeu_cau) || 0;
+    html += '<div class="lsx-card" onclick="selectLSX(\'' + esc(String(item.lsx)) + '\')">'
+         + '<div class="lc-top">'
+         + '<span class="lc-lsx">' + esc(String(item.lsx)) + '</span>'
+         + '<span class="lc-status ' + tt + '">' + ttLabel + '</span>'
+         + '</div>'
+         + '<div class="lc-info">Máy: ' + esc(String(item.may||"—"))
+         + (klyc ? ' · KLYC: ' + klyc + 'kg' : '')
+         + ' · Cuộn: ' + (item.tong_cuon||0)
+         + ' · KL: ' + (item.tong_kl_sx||0) + 'kg'
+         + '</div></div>';
+  });
+  el.innerHTML = html;
+}
+
+function selectLSX(lsx) {
+  const item = S.activeLSXs.find(i => String(i.lsx) === lsx);
+  if (!item) return;
+
+  const mayName = String(item.may || "");
+
+  // Tìm tất cả LSX trên cùng máy
+  S.curMay = { may: mayName, ma_may: "" };
+  S.machineLSXs = S.activeLSXs
+    .filter(i => String(i.may) === mayName && (i.trang_thai === "DANG_CHAY" || i.trang_thai === "TAM_DUNG"))
+    .map(i => ({
+      lsx: String(i.lsx),
+      kl_yeu_cau: Number(i.kl_yeu_cau) || 0,
+      trang_thai: String(i.trang_thai || "DANG_CHAY"),
+      tong_cuon: Number(i.tong_cuon) || 0,
+      tong_kl_sx: Number(i.tong_kl_sx) || 0,
+      tong_kl_phe: Number(i.tong_kl_phe) || 0,
+      tong_dt_phut: Number(i.tong_dt_phut) || 0,
+    }));
+
+  enterSXScreen();
+}
+
+/* ══════════════════════════════════════════════════
+   SCAN LSX MỚI → NHẬP KLYC → CHỌN MÁY → START
+══════════════════════════════════════════════════ */
+function scanNewLSX() {
+  S.pendingLSX = [];
+  document.getElementById('modalThemLSX').classList.add('hidden');
+
+  // Mở modal nhập LSX + KLYC
+  openThemLSXModal(true);
+}
+
+function openThemLSXModal(isNew) {
+  document.getElementById('themLSXCode').value = '';
+  document.getElementById('themLSXKLYC').value = '';
+  document.getElementById('modalThemLSX').classList.remove('hidden');
+  setTimeout(() => document.getElementById('themLSXCode').focus(), 200);
+}
+
+async function submitThemLSX() {
+  const lsx = document.getElementById('themLSXCode').value.trim().toUpperCase();
+  const klyc = parseFloat(document.getElementById('themLSXKLYC').value) || 0;
+
+  if (!lsx) return toast("Nhập mã LSX");
+
+  // Kiểm tra trùng
+  const existing = S.activeLSXs.find(i => String(i.lsx).toUpperCase() === lsx);
+  if (existing) {
+    closeModal('modalThemLSX');
+    selectLSX(String(existing.lsx));
+    return;
+  }
+
+  // Nếu đang ở SX screen (thêm LSX vào máy đang chạy)
+  if (S.curMay) {
+    const dup = S.machineLSXs.find(i => i.lsx === lsx);
+    if (dup) return toast("LSX " + lsx + " đã có trên máy");
+
+    loading(true);
+    try {
+      const res = await apiPost({
+        action: "pdtStartLSX",
+        cd: S.cd,
+        lsx: lsx,
+        kl_yeu_cau: klyc,
+        may: S.curMay.may,
+        ma_may: S.curMay.ma_may,
+        cn: S.user,
+        ma_cn: S.maCn,
+        ts: new Date().toISOString()
+      });
+      if (res.result !== "ok") throw new Error(res.error || "Lỗi bắt đầu LSX");
+
+      const newItem = {
+        lsx: lsx, kl_yeu_cau: klyc, trang_thai: "DANG_CHAY",
+        tong_cuon:0, tong_kl_sx:0, tong_kl_phe:0, tong_dt_phut:0
+      };
+      S.machineLSXs.push(newItem);
+      S.activeLSXs.push({
+        ...newItem, may: S.curMay.may
+      });
+
+      closeModal('modalThemLSX');
+      renderSXLSXList();
+      updateSXInfo();
+      toast("✅ Đã thêm LSX " + lsx + (klyc ? " (KLYC: " + klyc + "kg)" : ""));
+    } catch(e) {
+      alert("Lỗi: " + e.message);
+    } finally {
+      loading(false);
+    }
+    return;
+  }
+
+  // Nếu đang từ dashboard (LSX mới, chưa có máy)
+  S.pendingLSX.push({ lsx, kl_yeu_cau: klyc });
+  closeModal('modalThemLSX');
+
+  // Hiện preview và chọn máy
+  renderMayLSXPreview();
+  renderMayList();
+  showScreen('scrMay');
+}
+
+function renderMayLSXPreview() {
+  const el = document.getElementById('mayLSXPreview');
+  let html = '';
+  S.pendingLSX.forEach((p, idx) => {
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;' + (idx ? 'border-top:1px solid var(--border);' : '') + '">'
+         + '<span style="font-weight:800;font-size:16px;color:var(--teal-d);">' + esc(p.lsx) + '</span>'
+         + (p.kl_yeu_cau ? '<span style="font-size:13px;color:var(--blue);font-weight:600;">KLYC: ' + p.kl_yeu_cau + 'kg</span>' : '')
+         + '</div>';
+  });
+  html += '<button class="btn small ghost" style="margin-top:8px;" onclick="addMorePendingLSX()">➕ Thêm LSX nữa</button>';
+  el.innerHTML = html;
+}
+
+function addMorePendingLSX() {
+  openThemLSXModal(false);
+}
+
+function renderMayList() {
+  const el = document.getElementById('mayList');
+  const machines = S.masters.may || [];
+  if (!machines.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);">Chưa có máy nào trong danh mục.</div>';
+    return;
+  }
+  let html = '';
+  machines.forEach(m => {
+    const name = m.ten || m.name || m.ma || "";
+    const ma = m.ma || m.id || "";
+    html += '<button class="pick-btn" onclick="chonMay(\'' + esc(name) + '\',\'' + esc(ma) + '\')">'
+         + '<div class="pb-name">' + esc(name) + '</div>'
+         + '<div class="pb-sub">Mã: ' + esc(ma) + '</div>'
+         + '</button>';
+  });
+  el.innerHTML = html;
+}
+
+async function chonMay(tenMay, maMay) {
+  if (!S.pendingLSX.length) return toast("Chưa có LSX nào");
+
+  loading(true);
+  try {
+    // Start tất cả pending LSX trên máy này
+    for (const p of S.pendingLSX) {
+      const res = await apiPost({
+        action: "pdtStartLSX",
+        cd: S.cd,
+        lsx: p.lsx,
+        kl_yeu_cau: p.kl_yeu_cau || 0,
+        may: tenMay,
+        ma_may: maMay,
+        cn: S.user,
+        ma_cn: S.maCn,
+        ts: new Date().toISOString()
+      });
+      if (res.result !== "ok") throw new Error(res.error || "Lỗi bắt đầu LSX " + p.lsx);
+    }
+
+    // Thiết lập state
+    S.curMay = { may: tenMay, ma_may: maMay };
+    S.machineLSXs = S.pendingLSX.map(p => ({
+      lsx: p.lsx, kl_yeu_cau: p.kl_yeu_cau || 0, trang_thai: "DANG_CHAY",
+      tong_cuon:0, tong_kl_sx:0, tong_kl_phe:0, tong_dt_phut:0
+    }));
+
+    // Thêm vào active list
+    S.machineLSXs.forEach(ml => {
+      S.activeLSXs.push({ ...ml, may: tenMay });
+    });
+
+    S.pendingLSX = [];
+    toast("✅ Đã bắt đầu " + S.machineLSXs.length + " LSX trên máy " + tenMay);
+    enterSXScreen();
+  } catch(e) {
+    alert("Lỗi: " + e.message);
+  } finally {
+    loading(false);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   THÊM LSX (từ SX screen)
+══════════════════════════════════════════════════ */
+function themLSX() {
+  openThemLSXModal(false);
+}
+
+/* ══════════════════════════════════════════════════
+   MÀN HÌNH SẢN XUẤT CHÍNH (per máy)
+══════════════════════════════════════════════════ */
+function enterSXScreen() {
+  document.getElementById('sxTitle').textContent = "SX — Máy " + (S.curMay.may || "—");
+  document.getElementById('sxMayLabel').textContent = "Máy: " + (S.curMay.may || "—");
+  document.getElementById('sxDot').className = 'dot dot-green';
+  document.getElementById('sxStatusText').textContent = S.machineLSXs.length + " LSX đang chạy";
+
+  renderSXLSXList();
+  updateSXInfo();
+  showScreen('scrSX');
+}
+
+function renderSXLSXList() {
+  const el = document.getElementById('sxLSXList');
+  document.getElementById('sxLSXCount').textContent = S.machineLSXs.length;
+
+  let html = '';
+  S.machineLSXs.forEach((item, idx) => {
+    const tt = item.trang_thai;
+    const ttLabels = { DANG_CHAY:"Đang chạy", TAM_DUNG:"Tạm dừng", DONG:"Đóng", HOAN_THANH:"Hoàn thành" };
+    const ttColors = { DANG_CHAY:"var(--green)", TAM_DUNG:"var(--amber)", DONG:"var(--red)", HOAN_THANH:"var(--blue)" };
+
+    html += '<div class="lsx-chip">'
+         + '<div class="lc-main">'
+         + '<div class="lc-lsx">' + esc(item.lsx) + '</div>'
+         + '<div class="lc-meta">'
+         + (item.kl_yeu_cau ? 'KLYC: <b>' + item.kl_yeu_cau + 'kg</b> · ' : '')
+         + 'Cuộn: ' + (item.tong_cuon||0) + ' · KL: ' + (item.tong_kl_sx||0) + 'kg'
+         + '</div>'
+         + '</div>'
+         + '<div class="lc-actions">';
+
+    if (tt === 'DANG_CHAY') {
+      html += '<button class="chip-btn" style="background:var(--amber)" onclick="doStatusFor(' + idx + ',\'TAM_DUNG\')">⏸</button>';
+    } else if (tt === 'TAM_DUNG') {
+      html += '<button class="chip-btn" style="background:var(--green)" onclick="doStatusFor(' + idx + ',\'DANG_CHAY\')">▶</button>';
+    }
+    html += '<button class="chip-btn" style="background:var(--blue)" onclick="doStatusFor(' + idx + ',\'HOAN_THANH\')">✅</button>';
+    html += '</div>'
+         + '<div style="position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;color:#fff;background:' + (ttColors[tt]||'var(--gray)') + '">'
+         + (ttLabels[tt]||tt) + '</div>'
+         + '</div>';
+  });
+
+  el.innerHTML = html || '<div style="text-align:center;color:var(--muted);padding:10px;">Chưa có LSX nào.</div>';
+}
+
+function updateSXInfo() {
+  let cuon=0, kl=0, phe=0, dt=0;
+  S.machineLSXs.forEach(i => {
+    cuon += i.tong_cuon||0;
+    kl += i.tong_kl_sx||0;
+    phe += i.tong_kl_phe||0;
+    dt += i.tong_dt_phut||0;
+  });
+  document.getElementById('sxCuonCount').textContent = cuon;
+  document.getElementById('sxKLTotal').textContent = Math.round(kl*100)/100;
+  document.getElementById('sxPheTotal').textContent = Math.round(phe*100)/100;
+  document.getElementById('sxDTTotal').textContent = Math.round(dt*10)/10;
+}
+
+/* ══════════════════════════════════════════════════
+   CUỘN — Hoàn thành cuộn (multi-LSX allocation)
+══════════════════════════════════════════════════ */
+function getMaxCuonSo() {
+  let max = 0;
+  S.machineLSXs.forEach(i => { if ((i.tong_cuon||0) > max) max = i.tong_cuon; });
+  return max + 1;
+}
+
+function openCuon() {
+  const activeLSXs = S.machineLSXs.filter(i => i.trang_thai === 'DANG_CHAY' || i.trang_thai === 'TAM_DUNG');
+  if (!activeLSXs.length) return toast("Không có LSX nào đang chạy");
+
+  document.getElementById('cuonSo').value = getMaxCuonSo();
+  document.getElementById('cuonKL').value = '';
+  document.getElementById('cuonNote').value = '';
+
+  // Ẩn/hiện area phân bổ
+  const allocArea = document.getElementById('allocPreviewArea');
+  if (activeLSXs.length > 1) {
+    allocArea.style.display = 'block';
+    updateAllocPreview();
+  } else {
+    allocArea.style.display = 'none';
+  }
+
+  document.getElementById('modalCuon').classList.remove('hidden');
+  setTimeout(() => document.getElementById('cuonKL').focus(), 200);
+}
+
+function updateAllocPreview() {
+  const activeLSXs = S.machineLSXs.filter(i => i.trang_thai === 'DANG_CHAY' || i.trang_thai === 'TAM_DUNG');
+  if (activeLSXs.length <= 1) return;
+
+  const totalKL = parseFloat(document.getElementById('cuonKL').value) || 0;
+  const totalKLYC = activeLSXs.reduce((s, i) => s + (i.kl_yeu_cau || 0), 0);
+
+  const el = document.getElementById('allocRows');
+  let html = '';
+
+  activeLSXs.forEach(item => {
+    const klyc = item.kl_yeu_cau || 0;
+    let pct = 0, allocKL = 0;
+    if (totalKLYC > 0) {
+      pct = Math.round(klyc / totalKLYC * 100);
+      allocKL = Math.round(totalKL * klyc / totalKLYC * 100) / 100;
+    } else {
+      // Chia đều nếu không có KLYC
+      pct = Math.round(100 / activeLSXs.length);
+      allocKL = Math.round(totalKL / activeLSXs.length * 100) / 100;
+    }
+
+    html += '<div class="alloc-row">'
+         + '<span class="alloc-lsx">' + esc(item.lsx) + '</span>'
+         + '<span class="alloc-klyc">KLYC: ' + (klyc || '—') + '</span>'
+         + '<span class="alloc-pct">' + pct + '%</span>'
+         + '<span class="alloc-kl">' + (totalKL > 0 ? allocKL + ' kg' : '—') + '</span>'
+         + '</div>';
+  });
+
+  if (totalKLYC === 0) {
+    html += '<div style="font-size:12px;color:var(--amber);margin-top:6px;">⚠️ Chưa có KLYC — sẽ chia đều. Nhập KLYC khi thêm LSX để phân bổ chính xác.</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+async function submitCuon() {
+  const totalKL = parseFloat(document.getElementById('cuonKL').value);
+  if (!totalKL || totalKL <= 0) return toast("Nhập KL cuộn > 0");
+
+  const cuonSo = parseInt(document.getElementById('cuonSo').value) || 1;
+  const cuonId = genLocalId();
+  const note = document.getElementById('cuonNote').value.trim();
+
+  const activeLSXs = S.machineLSXs.filter(i => i.trang_thai === 'DANG_CHAY' || i.trang_thai === 'TAM_DUNG');
+  if (!activeLSXs.length) return toast("Không có LSX nào đang chạy");
+
+  // Tính phân bổ
+  const totalKLYC = activeLSXs.reduce((s, i) => s + (i.kl_yeu_cau || 0), 0);
+  const items = activeLSXs.map(item => {
+    let allocKL;
+    if (totalKLYC > 0) {
+      allocKL = Math.round(totalKL * (item.kl_yeu_cau || 0) / totalKLYC * 100) / 100;
+    } else {
+      allocKL = Math.round(totalKL / activeLSXs.length * 100) / 100;
+    }
+    return { lsx: item.lsx, kl: allocKL };
+  });
+
+  // Điều chỉnh sai số làm tròn
+  const diff = Math.round((totalKL - items.reduce((s, i) => s + i.kl, 0)) * 100) / 100;
+  if (diff !== 0 && items.length > 0) items[0].kl = Math.round((items[0].kl + diff) * 100) / 100;
+
+  loading(true);
+  try {
+    const res = await apiPost({
+      action: "pdtSubmitCuon",
+      cd: S.cd,
+      items: items,
+      cuon_so: cuonSo,
+      cuon_id: cuonId,
+      may: S.curMay.may,
+      ma_may: S.curMay.ma_may,
+      cn: S.user,
+      ma_cn: S.maCn,
+      ghi_chu: note,
+      ts: new Date().toISOString()
+    });
+    if (res.result !== "ok") throw new Error(res.error || "Lỗi ghi cuộn");
+
+    // Cập nhật local
+    items.forEach(it => {
+      const ml = S.machineLSXs.find(m => m.lsx === it.lsx);
+      if (ml) {
+        ml.tong_cuon = (ml.tong_cuon || 0) + 1;
+        ml.tong_kl_sx = Math.round(((ml.tong_kl_sx || 0) + it.kl) * 100) / 100;
+      }
+    });
+
+    renderSXLSXList();
+    updateSXInfo();
+    updateActiveLocal();
+    closeModal('modalCuon');
+
+    if (activeLSXs.length > 1) {
+      toast("✅ Cuộn " + cuonSo + " — " + totalKL + "kg phân bổ " + items.length + " LSX");
+    } else {
+      toast("✅ Cuộn " + cuonSo + " — " + totalKL + " kg");
+    }
+  } catch(e) {
+    alert("Lỗi: " + e.message);
+  } finally {
+    loading(false);
+  }
+}
+
+function genLocalId() {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2,6);
+}
+
+/* ══════════════════════════════════════════════════
+   PHẾ
+══════════════════════════════════════════════════ */
+function buildLSXSelect(selectId, containerId) {
+  const activeLSXs = S.machineLSXs.filter(i => i.trang_thai === 'DANG_CHAY' || i.trang_thai === 'TAM_DUNG');
+  const container = document.getElementById(containerId);
+  const sel = document.getElementById(selectId);
+
+  if (activeLSXs.length <= 1) {
+    container.style.display = 'none';
+    return activeLSXs[0] || null;
+  }
+
+  container.style.display = 'block';
+  let html = '';
+  activeLSXs.forEach(i => {
+    html += '<option value="' + esc(i.lsx) + '">' + esc(i.lsx)
+         + (i.kl_yeu_cau ? ' (KLYC: ' + i.kl_yeu_cau + 'kg)' : '') + '</option>';
+  });
+  sel.innerHTML = html;
+  return activeLSXs[0];
+}
+
+function getSelectedLSX(selectId, containerId) {
+  const activeLSXs = S.machineLSXs.filter(i => i.trang_thai === 'DANG_CHAY' || i.trang_thai === 'TAM_DUNG');
+  if (activeLSXs.length <= 1) return activeLSXs[0] || null;
+  const val = document.getElementById(selectId).value;
+  return S.machineLSXs.find(i => i.lsx === val) || activeLSXs[0];
+}
+
+function openPhe() {
+  S.selectedPhe = null;
+  document.getElementById('pheForm').style.display = 'none';
+  document.getElementById('pheKL').value = '';
+  document.getElementById('pheNote').value = '';
+  buildLSXSelect('pheLSXChoice', 'pheLSXSelect');
+  renderPheList();
+  document.getElementById('modalPhe').classList.remove('hidden');
+}
+
+function renderPheList() {
+  const el = document.getElementById('pheList');
+  const items = S.masters.phe || [];
+  const nhoms = S.masters.nhomPhe || [];
+  const nhomMap = {}; nhoms.forEach(n => { nhomMap[n.ma_nhom] = n; });
+
+  const groups = {};
+  items.forEach(p => { const g = p.ma_nhom||'KHAC'; if(!groups[g]) groups[g]=[]; groups[g].push(p); });
+
+  let html = '';
+  for (const gKey in groups) {
+    const nhom = nhomMap[gKey] || { ten_nhom: gKey };
+    const badge = nhom.tai_su_dung === 'Y' ? '<span class="pb-badge tsd">Tái SD</span>' : '<span class="pb-badge bo">Bỏ</span>';
+    html += '<div class="group-heading">' + esc(nhom.ten_nhom) + ' ' + badge + '</div>';
+    groups[gKey].forEach(p => {
+      html += '<button class="pick-btn" data-ma="' + p.ma_phe + '" onclick="selectPhe(this)">'
+           + '<div class="pb-name">' + esc(p.ten_phe) + '</div>'
+           + '<div class="pb-sub">' + esc(p.don_vi||'kg') + '</div></button>';
+    });
+  }
+  el.innerHTML = html || '<div style="text-align:center;color:var(--muted);">Chưa có danh mục phế.</div>';
+}
+
+function selectPhe(btn) {
+  document.querySelectorAll('#pheList .pick-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  S.selectedPhe = (S.masters.phe||[]).find(p => p.ma_phe === btn.dataset.ma);
+  document.getElementById('pheForm').style.display = 'block';
+  document.getElementById('pheKL').focus();
+}
+
+async function submitPhe() {
+  if (!S.selectedPhe) return toast("Chưa chọn loại phế");
+  const kl = parseFloat(document.getElementById('pheKL').value);
+  if (!kl || kl <= 0) return toast("Nhập KL > 0");
+
+  const target = getSelectedLSX('pheLSXChoice', 'pheLSXSelect');
+  if (!target) return toast("Không có LSX nào");
+
+  loading(true);
+  try {
+    const res = await apiPost({
+      action: "pdtSubmitPhe",
+      cd: S.cd,
+      lsx: target.lsx,
+      may: S.curMay.may, ma_may: S.curMay.ma_may,
+      cn: S.user, ma_cn: S.maCn,
+      ma_phe: S.selectedPhe.ma_phe,
+      ten_phe: S.selectedPhe.ten_phe,
+      ma_nhom: S.selectedPhe.ma_nhom,
+      kl: kl,
+      ghi_chu: document.getElementById('pheNote').value.trim(),
+      ts: new Date().toISOString()
+    });
+    if (res.result !== "ok") throw new Error(res.error || "Lỗi ghi phế");
+
+    const ml = S.machineLSXs.find(m => m.lsx === target.lsx);
+    if (ml) ml.tong_kl_phe = Math.round(((ml.tong_kl_phe||0) + kl)*100)/100;
+
+    renderSXLSXList();
+    updateSXInfo();
+    updateActiveLocal();
+    closeModal('modalPhe');
+    toast("✅ Phế " + S.selectedPhe.ten_phe + " — " + kl + "kg → " + target.lsx);
+  } catch(e) { alert("Lỗi: " + e.message); }
+  finally { loading(false); }
+}
+
+/* ══════════════════════════════════════════════════
+   DOWNTIME
+══════════════════════════════════════════════════ */
+function openDT() {
+  S.selectedDT = null;
+  S.dtRunning = false;
+  S.dtStartTime = null;
+  if (S.dtTimerInterval) { clearInterval(S.dtTimerInterval); S.dtTimerInterval = null; }
+  document.getElementById('dtTimerText').textContent = '00:00:00';
+  document.getElementById('dtTimerLabel').textContent = 'Chưa bắt đầu';
+  document.getElementById('dtTimerBox').classList.remove('running');
+  document.getElementById('btnDTToggle').textContent = '⏱ Bắt đầu dừng';
+  document.getElementById('btnDTToggle').className = 'btn red';
+  document.getElementById('dtStart').value = '';
+  document.getElementById('dtEnd').value = '';
+  document.getElementById('dtNote').value = '';
+  document.getElementById('dtSubmitArea').style.display = 'none';
+  buildLSXSelect('dtLSXChoice', 'dtLSXSelect');
+  renderDTList();
+  document.getElementById('modalDT').classList.remove('hidden');
+}
+
+function renderDTList() {
+  const el = document.getElementById('dtList');
+  const items = S.masters.dt || [];
+  const nhoms = S.masters.nhomDT || [];
+  const nhomMap = {}; nhoms.forEach(n => { nhomMap[n.ma_nhom] = n; });
+  const groups = {};
+  items.forEach(d => { const g = d.ma_nhom||'KHAC'; if(!groups[g]) groups[g]=[]; groups[g].push(d); });
+  const sorted = Object.keys(groups).sort((a,b) => ((nhomMap[a]||{}).thu_tu||99) - ((nhomMap[b]||{}).thu_tu||99));
+  let html = '';
+  sorted.forEach(gKey => {
+    const nhom = nhomMap[gKey] || { ten_nhom: gKey };
+    html += '<div class="group-heading">' + esc(nhom.ten_nhom) + '</div>';
+    groups[gKey].forEach(d => {
+      html += '<button class="pick-btn" data-ma="' + d.ma_dt + '" onclick="selectDT(this)">'
+           + '<div class="pb-name">' + esc(d.ten_dt) + '</div></button>';
+    });
+  });
+  el.innerHTML = html || '<div style="text-align:center;color:var(--muted);">Chưa có danh mục DT.</div>';
+}
+
+function selectDT(btn) {
+  document.querySelectorAll('#dtList .pick-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  S.selectedDT = (S.masters.dt||[]).find(d => d.ma_dt === btn.dataset.ma);
+  document.getElementById('dtSubmitArea').style.display = 'block';
+}
+
+function dtToggle() {
+  if (!S.dtRunning) {
+    S.dtRunning = true;
+    S.dtStartTime = new Date();
+    document.getElementById('dtTimerBox').classList.add('running');
+    document.getElementById('dtTimerLabel').textContent = 'Đang dừng máy...';
+    document.getElementById('btnDTToggle').textContent = '▶ Chạy lại';
+    document.getElementById('btnDTToggle').className = 'btn green';
+    S.dtTimerInterval = setInterval(updateDTTimer, 1000);
+  } else {
+    S.dtRunning = false;
+    clearInterval(S.dtTimerInterval); S.dtTimerInterval = null;
+    const elapsed = Math.round((new Date() - S.dtStartTime) / 1000);
+    const mins = Math.round(elapsed / 60 * 10) / 10;
+    document.getElementById('dtTimerLabel').textContent = 'Đã dừng ' + mins + ' phút';
+    document.getElementById('dtTimerBox').classList.remove('running');
+    document.getElementById('btnDTToggle').textContent = '⏱ Bắt đầu dừng';
+    document.getElementById('btnDTToggle').className = 'btn red';
+    document.getElementById('dtStart').value = fmtTime(S.dtStartTime);
+    document.getElementById('dtEnd').value = fmtTime(new Date());
+  }
+}
+
+function updateDTTimer() {
+  if (!S.dtStartTime) return;
+  const e = Math.round((new Date() - S.dtStartTime) / 1000);
+  document.getElementById('dtTimerText').textContent =
+    String(Math.floor(e/3600)).padStart(2,'0') + ':' +
+    String(Math.floor((e%3600)/60)).padStart(2,'0') + ':' +
+    String(e%60).padStart(2,'0');
+}
+
+function fmtTime(d) {
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+
+async function submitDT() {
+  if (!S.selectedDT) return toast("Chưa chọn nguyên nhân dừng");
+  const sv = document.getElementById('dtStart').value;
+  const ev = document.getElementById('dtEnd').value;
+  if (!sv || !ev) return toast("Thiếu giờ bắt đầu / kết thúc");
+  const [sh,sm] = sv.split(':').map(Number);
+  const [eh,em] = ev.split(':').map(Number);
+  let soPhut = (eh*60+em) - (sh*60+sm);
+  if (soPhut <= 0) return toast("Giờ kết thúc phải sau giờ bắt đầu");
+
+  const target = getSelectedLSX('dtLSXChoice', 'dtLSXSelect');
+  if (!target) return toast("Không có LSX nào");
+
+  loading(true);
+  try {
+    const res = await apiPost({
+      action: "pdtSubmitDT",
+      cd: S.cd,
+      lsx: target.lsx,
+      may: S.curMay.may, ma_may: S.curMay.ma_may,
+      cn: S.user, ma_cn: S.maCn,
+      ma_dt: S.selectedDT.ma_dt,
+      ten_dt: S.selectedDT.ten_dt,
+      ma_nhom: S.selectedDT.ma_nhom,
+      bat_dau: sv, ket_thuc: ev,
+      so_phut: soPhut,
+      nguon: S.dtStartTime ? "TIMER" : "MANUAL",
+      ghi_chu: document.getElementById('dtNote').value.trim(),
+      ts: new Date().toISOString()
+    });
+    if (res.result !== "ok") throw new Error(res.error || "Lỗi ghi DT");
+
+    const ml = S.machineLSXs.find(m => m.lsx === target.lsx);
+    if (ml) ml.tong_dt_phut = Math.round(((ml.tong_dt_phut||0) + soPhut)*10)/10;
+
+    renderSXLSXList();
+    updateSXInfo();
+    updateActiveLocal();
+    closeModal('modalDT');
+    toast("✅ DT " + S.selectedDT.ten_dt + " — " + soPhut + " phút → " + target.lsx);
+  } catch(e) { alert("Lỗi: " + e.message); }
+  finally { loading(false); }
+}
+
+/* ══════════════════════════════════════════════════
+   CHECK — Kiểm tra đầu ca
+══════════════════════════════════════════════════ */
+function openCheck() {
+  S.checkValues = {};
+  buildLSXSelect('checkLSXChoice', 'checkLSXSelect');
+  renderCheckItems();
+  document.getElementById('modalCheck').classList.remove('hidden');
+}
+
+function renderCheckItems() {
+  const el = document.getElementById('checkItems');
+  const items = S.masters.check || [];
+  if (!items.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">Chưa có mục kiểm tra.</div>';
+    return;
+  }
+  let html = '';
+  items.forEach(ck => {
+    html += '<div class="ck-item" data-ma="' + ck.ma_check + '">';
+    html += '<div class="ci-name">' + esc(ck.ten_check) + '</div>';
+
+    if (ck.kieu_nhap === 'SO') {
+      html += '<div class="ci-unit">' + esc(ck.don_vi||'') + '</div>';
+      if (ck.gia_tri_min !== null || ck.gia_tri_max !== null) {
+        html += '<div class="ci-range">Khoảng: '
+             + (ck.gia_tri_min!==null ? ck.gia_tri_min : '—') + ' ~ '
+             + (ck.gia_tri_max!==null ? ck.gia_tri_max : '—')
+             + ' ' + esc(ck.don_vi||'') + '</div>';
+      }
+      html += '<input type="number" inputmode="decimal" step="0.1" placeholder="Nhập..."'
+           + ' onchange="ckNumChange(this,\'' + ck.ma_check + '\',' + (ck.gia_tri_min??'null') + ',' + (ck.gia_tri_max??'null') + ')">';
+      html += '<div class="warn-range" id="warn_' + ck.ma_check + '"></div>';
+    } else if (ck.kieu_nhap === 'YN') {
+      html += '<div class="yn-row">'
+           + '<button class="yn-btn" onclick="ckYN(this,\'' + ck.ma_check + '\',\'OK\')">✅ OK</button>'
+           + '<button class="yn-btn" onclick="ckYN(this,\'' + ck.ma_check + '\',\'NG\')">❌ NG</button></div>';
+      html += '<div class="yn-ng-note" id="ng_' + ck.ma_check + '" style="display:none">'
+           + '<textarea placeholder="Ghi chú NG..." onchange="ckNGNote(this,\'' + ck.ma_check + '\')"></textarea></div>';
+    } else {
+      html += '<textarea placeholder="Ghi chú..." onchange="ckTextChange(this,\'' + ck.ma_check + '\')"></textarea>';
+    }
+    html += '</div>';
+  });
+  el.innerHTML = html;
+  updateCheckBtn();
+}
+
+function ckNumChange(input, ma, min, max) {
+  const val = parseFloat(input.value);
+  S.checkValues[ma] = { type:'SO', value:val };
+  const w = document.getElementById('warn_'+ma);
+  if (w) w.textContent = (!isNaN(val) && ((min!==null&&val<min)||(max!==null&&val>max))) ? '⚠️ Ngoài khoảng!' : '';
+  updateCheckBtn();
+}
+function ckYN(btn, ma, val) {
+  btn.parentElement.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('ok-sel','ng-sel'));
+  if (val==='OK') { btn.classList.add('ok-sel'); S.checkValues[ma]={type:'YN',value:'OK'}; document.getElementById('ng_'+ma).style.display='none'; }
+  else { btn.classList.add('ng-sel'); S.checkValues[ma]={type:'YN',value:'NG',note:''}; document.getElementById('ng_'+ma).style.display='block'; }
+  updateCheckBtn();
+}
+function ckNGNote(ta, ma) { if(S.checkValues[ma]) S.checkValues[ma].note = ta.value.trim(); }
+function ckTextChange(ta, ma) { S.checkValues[ma] = { type:'TEXT', value:ta.value.trim() }; updateCheckBtn(); }
+function updateCheckBtn() { document.getElementById('btnSubmitCheck').disabled = Object.keys(S.checkValues).length === 0; }
+
+async function submitCheck() {
+  for (const ma in S.checkValues) {
+    const v = S.checkValues[ma];
+    if (v.type==='YN' && v.value==='NG' && !v.note) return toast("Mục NG phải có ghi chú!");
+  }
+
+  const target = getSelectedLSX('checkLSXChoice', 'checkLSXSelect');
+  if (!target) return toast("Không có LSX nào");
+
+  loading(true);
+  try {
+    const res = await apiPost({
+      action: "pdtSubmitCheck",
+      cd: S.cd,
+      lsx: target.lsx,
+      may: S.curMay.may, ma_may: S.curMay.ma_may,
+      cn: S.user, ma_cn: S.maCn,
+      items: S.checkValues,
+      ts: new Date().toISOString()
+    });
+    if (res.result !== "ok") throw new Error(res.error || "Lỗi ghi check");
+    closeModal('modalCheck');
+    toast("✅ Đã ghi kiểm tra đầu ca → " + target.lsx);
+  } catch(e) { alert("Lỗi: " + e.message); }
+  finally { loading(false); }
+}
+
+/* ══════════════════════════════════════════════════
+   TRẠNG THÁI LSX (per LSX)
+══════════════════════════════════════════════════ */
+function doStatusFor(idx, newStatus) {
+  const item = S.machineLSXs[idx];
+  if (!item) return;
+  S.pendingStatus = { idx, newStatus, lsx: item.lsx };
+
+  const labels = { DANG_CHAY:"Tiếp tục sản xuất", TAM_DUNG:"Tạm dừng", DONG:"Đóng LSX", HOAN_THANH:"Hoàn thành LSX" };
+  const msgs = {
+    DANG_CHAY: "LSX " + item.lsx + " sẽ tiếp tục sản xuất.",
+    TAM_DUNG: "LSX " + item.lsx + " sẽ tạm dừng.",
+    DONG: "LSX " + item.lsx + " sẽ được đóng.",
+    HOAN_THANH: "LSX " + item.lsx + " sẽ được đánh dấu hoàn thành."
+  };
+  const colors = { DANG_CHAY:"green", TAM_DUNG:"amber", DONG:"red", HOAN_THANH:"blue" };
+
+  document.getElementById('statusTitle').textContent = labels[newStatus] || "Xác nhận";
+  document.getElementById('statusMsg').textContent = msgs[newStatus] || "";
+  document.getElementById('statusNote').value = '';
+  document.getElementById('statusLSXSelect').style.display = 'none';
+
+  const btn = document.getElementById('btnStatusConfirm');
+  btn.className = 'btn ' + (colors[newStatus] || '');
+  btn.textContent = labels[newStatus] || "Xác nhận";
+
+  document.getElementById('modalStatus').classList.remove('hidden');
+}
+
+async function confirmStatus() {
+  const ps = S.pendingStatus;
+  if (!ps) return;
+
+  loading(true);
+  try {
+    const res = await apiPost({
+      action: "pdtUpdateStatus",
+      cd: S.cd,
+      lsx: ps.lsx,
+      may: S.curMay.may, ma_may: S.curMay.ma_may,
+      cn: S.user, ma_cn: S.maCn,
+      trang_thai: ps.newStatus,
+      ghi_chu: document.getElementById('statusNote').value.trim(),
+      ts: new Date().toISOString()
+    });
+    if (res.result !== "ok") throw new Error(res.error || "Lỗi đổi trạng thái");
+
+    const item = S.machineLSXs[ps.idx];
+    if (item) item.trang_thai = ps.newStatus;
+
+    // Nếu HOAN_THANH hoặc DONG → xóa khỏi machine list
+    if (ps.newStatus === "HOAN_THANH" || ps.newStatus === "DONG") {
+      S.machineLSXs.splice(ps.idx, 1);
+      S.activeLSXs = S.activeLSXs.filter(i => String(i.lsx) !== ps.lsx);
+    }
+
+    renderSXLSXList();
+    updateSXInfo();
+    updateActiveLocal();
+    closeModal('modalStatus');
+    toast("✅ " + (res.msg || "Đã cập nhật trạng thái"));
+
+    // Nếu hết LSX trên máy → quay về dashboard
+    if (S.machineLSXs.length === 0) {
+      setTimeout(() => enterDashboard(), 500);
+    }
+  } catch(e) { alert("Lỗi: " + e.message); }
+  finally { loading(false); }
+}
+
+/* ══════════════════════════════════════════════════
+   LOCAL STATE SYNC
+══════════════════════════════════════════════════ */
+function updateActiveLocal() {
+  S.machineLSXs.forEach(ml => {
+    const idx = S.activeLSXs.findIndex(i => String(i.lsx) === ml.lsx);
+    if (idx >= 0) {
+      S.activeLSXs[idx].tong_cuon = ml.tong_cuon;
+      S.activeLSXs[idx].tong_kl_sx = ml.tong_kl_sx;
+      S.activeLSXs[idx].tong_kl_phe = ml.tong_kl_phe;
+      S.activeLSXs[idx].tong_dt_phut = ml.tong_dt_phut;
+      S.activeLSXs[idx].trang_thai = ml.trang_thai;
+    }
+  });
+}
+
+</script>
+</body>
+</html>
