@@ -243,7 +243,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.2</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.3</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -703,6 +703,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
           <tr><td>chưa khai báo trong CYL_Master</td><td>App chưa biết mã trục này</td><td>Bấm <b>&#10133; Trục mới</b> để khai (xem mục 5)</td></tr>
           <tr><td>Vị trí không dùng được cho trục</td><td>Giá đó không dành để trục, hoặc đã ngưng dùng</td><td>Quét giá khác, hoặc báo quản lý</td></tr>
           <tr><td>Lỗi kết nối</td><td>Mất mạng lúc đang ghi</td><td><b>Bấm lại nút xanh.</b> Không sợ ghi trùng — app tự nhận ra lô đã ghi rồi</td></tr>
+          <tr><td>Server trả TRANG HTML thay vì dữ liệu</td><td>Máy chủ đang có vấn đề, <b>dữ liệu chưa được ghi</b></td><td>Về màn hình chính bấm <b>&#128269; Kiểm tra server</b>, chụp màn hình gửi phòng Chuỗi cung ứng</td></tr>
         </table>
         <p class="hp-note">Trục báo đỏ trong danh sách thì bấm <b style="color:var(--red);">&#10006;</b> bỏ nó ra, phần còn lại vẫn ghi bình thường.</p>
       </div>
@@ -993,60 +994,134 @@ function buildLocWarnHtml() {
 // nếu Google trả về trang HTML (sai URL deployment, hết quyền, phải đăng nhập...)
 // thì JSON.parse ném lỗi và app chỉ hiện một toast rồi tiếp tục dùng dữ liệu cũ —
 // nhìn bề ngoài giống hệt "code chưa cập nhật".
+// v4.3 — Kiểm tra server: đo CẢ đường GET LẪN đường POST.
+//
+// Vì sao phải đo POST riêng: màn hình app dựng được từ localStorage nên nhìn vẫn
+// "chạy bình thường" ngay cả khi server đã hỏng. Chỉ đến lúc bấm ghi mới lộ ra.
+// GET tốt + POST hỏng và GET hỏng luôn là hai bệnh khác nhau, chữa khác nhau.
 function checkServer() {
   document.getElementById("ovDiag").style.display = "block";
   var out = document.getElementById("diagOut");
-  var lines = [];
-  lines.push("URL app đang gọi:");
-  lines.push(API);
-  lines.push("");
-  lines.push("So URL này với deployment anh vừa tạo trong Apps Script.");
-  lines.push("Nếu khác nhau → app đang gọi bản cũ, phải sửa dòng API trong truc-in.html.");
-  lines.push("");
-  out.textContent = lines.join("\n") + "\n\nĐang gọi cylVersion...";
+  var L = [];
+  var paint = function() { out.textContent = L.join("\n"); };
 
-  var url = API + "?action=cylVersion&_t=" + Date.now();
-  fetch(url).then(function(r) {
-    lines.push("── cylVersion ──");
-    lines.push("HTTP " + r.status + " " + (r.statusText || ""));
-    lines.push("Content-Type: " + (r.headers.get("content-type") || "(không có)"));
+  L.push("PHIÊN BẢN");
+  L.push("  File giao diện (HTML): v" + APP_VERSION);
+  L.push("  Code trên Google      : " + (serverVersion ? "v" + serverVersion : "(chưa biết)"));
+  L.push("");
+  L.push("URL app đang gọi:");
+  L.push("  " + API);
+  L.push("");
+
+  // Lỗi gần nhất mà app đã bắt được — thứ quý nhất khi đi tìm nguyên nhân
+  if (lastRaw) {
+    L.push("── LỖI GẦN NHẤT (" + lastRaw.luc + ") ──");
+    L.push("  " + lastRaw.method + " " + lastRaw.action + "  →  HTTP " + lastRaw.status);
+    L.push("  Content-Type: " + (lastRaw.ctype || "(không có)"));
+    L.push("  Nguyên văn server trả về (600 ký tự đầu):");
+    L.push("  " + lastRaw.body.substring(0, 600).replace(/\n/g, "\n  "));
+    L.push("");
+  }
+
+  L.push("Đang đo... (1/3 GET cylVersion)");
+  paint();
+
+  // ── 1. GET nhẹ nhất ──
+  fetch(API + "?action=cylVersion&_t=" + Date.now()).then(function(r) {
+    L.push("── 1. GET cylVersion ──");
+    L.push("  HTTP " + r.status + "  |  " + (r.headers.get("content-type") || "(không có content-type)"));
     return r.text();
   }).then(function(txt) {
-    lines.push("Nguyên văn (400 ký tự đầu):");
-    lines.push(txt.substring(0, 400));
-    var isHtml = txt.replace(/^\s+/, "").charAt(0) === "<";
-    if (isHtml) {
-      lines.push("");
-      lines.push(">>> Đây là trang HTML, KHÔNG phải dữ liệu JSON.");
-      lines.push(">>> Thường do: URL deployment sai, hoặc deployment chưa đặt");
-      lines.push('>>> "Who has access" = Anyone, nên Google trả về trang đăng nhập.');
+    var d = null;
+    try { d = JSON.parse(txt); } catch (e) { d = null; }
+    if (d) {
+      L.push("  OK — server nói version = " + (d.version || "(không có)"));
+      if (d.version && d.version !== APP_VERSION) {
+        L.push("  >>> LỆCH PHIÊN BẢN: HTML v" + APP_VERSION + " nhưng Google đang chạy v" + d.version);
+        L.push("  >>> Vào Apps Script → Manage deployments → New version.");
+      }
+    } else {
+      L.push("  KHÔNG phải JSON. Nguyên văn 400 ký tự đầu:");
+      L.push("  " + txt.substring(0, 400).replace(/\n/g, "\n  "));
+      L.push("  >>> " + explainRaw_(txt, 0));
     }
-    out.textContent = lines.join("\n");
+    L.push("");
+    L.push("Đang đo... (2/3 POST cylPing)");
+    paint();
+
+    // ── 2. POST rỗng — đo đúng đường đang hỏng, KHÔNG ghi gì ──
+    return fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "cylPing", user: user }),
+      redirect: "follow"
+    });
+  }).then(function(r) {
+    L.push("── 2. POST cylPing (không ghi gì) ──");
+    L.push("  HTTP " + r.status + "  |  " + (r.headers.get("content-type") || "(không có content-type)"));
+    return r.text();
+  }).then(function(txt) {
+    var d = null;
+    try { d = JSON.parse(txt); } catch (e) { d = null; }
+
+    if (!d) {
+      L.push("  KHÔNG phải JSON — ĐÂY LÀ CHỖ HỎNG. Nguyên văn 600 ký tự đầu:");
+      L.push("  " + txt.substring(0, 600).replace(/\n/g, "\n  "));
+      L.push("");
+      L.push("  >>> " + explainRaw_(txt, 0));
+      L.push("  >>> Việc cần làm, theo thứ tự:");
+      L.push("      1. Apps Script → Deploy → Manage deployments → biểu tượng bút chì");
+      L.push("         → Version: New version → Deploy. (KHÔNG dùng New deployment)");
+      L.push("      2. Kiểm tra Execute as = Me, Who has access = Anyone.");
+      L.push("      3. Nếu Google hỏi cấp quyền → Review permissions → Allow.");
+      L.push("      4. Apps Script → Executions: xem lần chạy đỏ gần nhất để biết lỗi thật.");
+    } else if (d.result !== "ok") {
+      L.push("  Server trả lỗi: " + (d.error || "(không rõ)"));
+    } else {
+      L.push("  OK — POST tới được code. Server v" + d.version);
+      L.push("  Tab giao dịch : " + d.txnTab);
+      L.push("  Số dòng       : " + d.soDong);
+      L.push("  Cột có dữ liệu: " + d.soCotCoData + "   |  Cột tối đa của tab: " + d.soCotToiDa +
+             "   |  Cần: " + d.canCot);
+      L.push("  Tiêu đề thật  : " + (d.header || []).join(" | "));
+      if (d.cotThieu && d.cotThieu.length) {
+        L.push("  >>> THIẾU CỘT: " + d.cotThieu.join(", "));
+        L.push("  >>> Chạy setupCylinder() trong Apps Script để thêm.");
+      } else {
+        L.push("  Cột: đủ.");
+      }
+      if (d.duCotDeGhi === false) {
+        L.push("  >>> " + d.canhBao);
+      }
+      L.push("  Tab master    : " + d.masterTab + " (" + d.masterDong + " dòng)");
+    }
+    L.push("");
+    L.push("Đang đo... (3/3 GET cylInit)");
+    paint();
     return fetch(API + "?action=cylInit&_t=" + Date.now()).then(function(r2) { return r2.text(); });
   }).then(function(txt2) {
-    lines.push("");
-    lines.push("── cylInit ──");
+    L.push("── 3. GET cylInit (dữ liệu chính) ──");
     var d = null;
-    try { d = JSON.parse(txt2); } catch (e) {
-      lines.push("Không đọc được JSON. Nguyên văn 300 ký tự đầu:");
-      lines.push(txt2.substring(0, 300));
-      out.textContent = lines.join("\n");
+    try { d = JSON.parse(txt2); } catch (e) { d = null; }
+    if (!d) {
+      L.push("  KHÔNG phải JSON. Nguyên văn 300 ký tự đầu:");
+      L.push("  " + txt2.substring(0, 300).replace(/\n/g, "\n  "));
+      L.push("  >>> Màn hình app đang hiện dữ liệu CŨ lưu trong máy, không phải dữ liệu thật.");
+      paint();
       return;
     }
-    lines.push("result = " + d.result + (d.error ? "  |  error = " + d.error : ""));
-    lines.push("serverVersion = " + (d.serverVersion || "(KHÔNG có → code trên Google còn cũ)"));
-    lines.push("counts = " + JSON.stringify(d.counts || {}));
-    lines.push("số trục trả về = " + ((d.cylinders || []).length));
-    lines.push("locSource = " + (d.locSource || "(không có)"));
-    var keys = [];
-    for (var k in d) if (d.hasOwnProperty(k)) keys.push(k);
-    lines.push("các trường nhận được: " + keys.join(", "));
-    out.textContent = lines.join("\n");
+    L.push("  result = " + d.result + (d.error ? "  |  error = " + d.error : ""));
+    L.push("  serverVersion = " + (d.serverVersion || "(KHÔNG có → code trên Google còn cũ)"));
+    L.push("  counts = " + JSON.stringify(d.counts || {}));
+    L.push("  số trục trả về = " + ((d.cylinders || []).length));
+    L.push("  locSource = " + (d.locSource || "(không có)") +
+           "  |  số vị trí nhận trục = " + ((d.locations || []).length));
+    paint();
   }).catch(function(e) {
-    lines.push("");
-    lines.push("LỖI khi gọi: " + e.message);
-    lines.push("Thường do URL sai, mất mạng, hoặc deployment không cho phép truy cập.");
-    out.textContent = lines.join("\n");
+    L.push("");
+    L.push("LỖI khi đo: " + e.message);
+    L.push("Thường do mất mạng, URL sai, hoặc deployment không cho phép truy cập.");
+    paint();
   });
 }
 
@@ -1321,6 +1396,64 @@ function cancelTxn() {
 }
 
 // ═══════════════ API ═══════════════
+// ═══════════════════════════════════════════════════════════
+// v4.3 — ĐỌC PHẢN HỒI: giữ lại NGUYÊN VĂN khi server không trả JSON
+// ═══════════════════════════════════════════════════════════
+//
+// Vì sao: `r.json()` gặp trang HTML thì ném "Unexpected token '<'" — câu này
+// không nói được gì cả, trong khi trang HTML của Google THƯỜNG ghi rõ nguyên nhân
+// (hết hạn đăng nhập, deployment sai, script lỗi...). Nuốt mất nó là tự bịt mắt.
+// Giờ nguyên văn được giữ trong lastRaw để nút "Kiểm tra server" hiện ra.
+
+var lastRaw = null;   // { luc, action, method, status, ctype, body }
+
+function readJson_(r, action, method) {
+  var status = r.status;
+  var ctype  = r.headers.get("content-type") || "";
+  return r.text().then(function(txt) {
+    try {
+      return JSON.parse(txt);
+    } catch (e) {
+      lastRaw = {
+        luc: fmtClock(Date.now()), action: action, method: method,
+        status: status, ctype: ctype, body: String(txt || "")
+      };
+      var err = new Error(explainRaw_(txt, status));
+      err.notJson = true;
+      throw err;
+    }
+  });
+}
+
+/** Rút thông báo có nghĩa ra khỏi trang HTML mà Google trả về. */
+function explainRaw_(txt, status) {
+  var t = String(txt || "").replace(/^\s+/, "");
+  if (t.charAt(0) !== "<") {
+    return "Server trả dữ liệu không đọc được (HTTP " + status + ")";
+  }
+  var plain = t.replace(/<script[\s\S]*?<\/script>/gi, " ")
+               .replace(/<style[\s\S]*?<\/style>/gi, " ")
+               .replace(/<[^>]+>/g, " ")
+               .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&")
+               .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+               .replace(/\s+/g, " ").trim();
+
+  var low = plain.toLowerCase();
+  if (low.indexOf("sign in") > -1 || low.indexOf("đăng nhập") > -1 || low.indexOf("accounts.google") > -1) {
+    return "Google đòi ĐĂNG NHẬP thay vì trả dữ liệu — deployment chưa mở quyền Anyone.";
+  }
+  if (low.indexOf("not found") > -1 || low.indexOf("page not found") > -1) {
+    return "Google báo KHÔNG TÌM THẤY bản deploy — URL trong app không còn đúng.";
+  }
+  if (low.indexOf("authorization") > -1 || low.indexOf("permission") > -1) {
+    return "Google đòi CẤP QUYỀN lại cho script.";
+  }
+  if (low.indexOf("exception") > -1 || low.indexOf("error") > -1) {
+    return "Script trên Google báo lỗi: " + plain.substring(0, 160);
+  }
+  return "Server trả TRANG HTML thay vì dữ liệu (HTTP " + status + "). Bấm \u{1F50D} Kiểm tra server để xem nguyên văn.";
+}
+
 function apiGet(action, params, cb, retries) {
   if (retries === undefined) retries = 1;
   var url = API + "?action=" + action + "&_t=" + Date.now();
@@ -1329,13 +1462,14 @@ function apiGet(action, params, cb, retries) {
       if (params.hasOwnProperty(k)) url += "&" + k + "=" + encodeURIComponent(params[k]);
     }
   }
-  fetch(url).then(function(r) { return r.json(); }).then(function(d) {
+  fetch(url).then(function(r) { return readJson_(r, action, "GET"); }).then(function(d) {
     if (d && d.result) cb(d);
     else if (retries > 0) setTimeout(function() { apiGet(action, params, cb, retries - 1); }, 800);
     else cb({ result: "error", error: "Dữ liệu không hợp lệ" });
   }).catch(function(e) {
-    if (retries > 0) setTimeout(function() { apiGet(action, params, cb, retries - 1); }, 1000);
-    else toast("Lỗi kết nối: " + e.message, 1);
+    if (retries > 0) { setTimeout(function() { apiGet(action, params, cb, retries - 1); }, 1000); return; }
+    toast(e.message, 1);
+    updateSyncBar(true);
   });
 }
 
@@ -1346,7 +1480,7 @@ function apiPost(data, cb, retries) {
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(data),
     redirect: "follow"
-  }).then(function(r) { return r.json(); }).then(function(d) {
+  }).then(function(r) { return readJson_(r, data.action, "POST"); }).then(function(d) {
     if (d && d.result) cb(d);
     else if (retries > 0) setTimeout(function() { apiPost(data, cb, retries - 1); }, 1000);
     else cb({ result: "error", error: "Không nhận được phản hồi" });
@@ -1355,7 +1489,14 @@ function apiPost(data, cb, retries) {
     // v4.0 — PHẢI gọi cb kể cả khi hỏng mạng, nếu không nút bấm kẹt ở
     // "Đang ghi..." vĩnh viễn và người dùng không biết phải làm gì.
     // Gửi lại an toàn: cùng batchId thì server không ghi lần hai.
-    cb({ result: "error", error: "Lỗi kết nối: " + e.message + " — bấm lại để gửi lại (không sợ ghi trùng)" });
+    // v4.3 — nói rõ đây là lỗi phía server hay lỗi mạng, và chỉ chỗ xem chi tiết.
+    cb({
+      result: "error",
+      error: e.notJson
+        ? (e.message + " — dữ liệu CHƯA được ghi. Bấm \u{1F50D} Kiểm tra server ở màn hình chính.")
+        : ("Lỗi kết nối: " + e.message + " — bấm lại để gửi lại (không sợ ghi trùng)"),
+      notJson: !!e.notJson
+    });
   });
 }
 
@@ -1376,7 +1517,7 @@ var locReject = null;          // { total, byReason, badTypeValues } — vì sao
 var locError = "";
 var locTypeColsMissing = [];   // cột bắt buộc trong LocationType_MA không nhận diện được
 var badStatusValues = {};      // giá trị current_status gõ sai trong CYL_Master
-var APP_VERSION = "4.2";       // phiên bản file HTML này
+var APP_VERSION = "4.3";       // phiên bản file HTML này
 var serverVersion = "";        // phiên bản Code_CylMgmt.gs đang chạy trên Google
 var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
