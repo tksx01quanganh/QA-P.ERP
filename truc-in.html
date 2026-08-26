@@ -243,7 +243,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.3</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.4</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -1027,7 +1027,9 @@ function checkServer() {
   paint();
 
   // ── 1. GET nhẹ nhất ──
+  var r1status = 0, r2status = 0;
   fetch(API + "?action=cylVersion&_t=" + Date.now()).then(function(r) {
+    r1status = r.status;
     L.push("── 1. GET cylVersion ──");
     L.push("  HTTP " + r.status + "  |  " + (r.headers.get("content-type") || "(không có content-type)"));
     return r.text();
@@ -1043,7 +1045,7 @@ function checkServer() {
     } else {
       L.push("  KHÔNG phải JSON. Nguyên văn 400 ký tự đầu:");
       L.push("  " + txt.substring(0, 400).replace(/\n/g, "\n  "));
-      L.push("  >>> " + explainRaw_(txt, 0));
+      L.push("  >>> " + explainRaw_(txt, r1status).msg);
     }
     L.push("");
     L.push("Đang đo... (2/3 POST cylPing)");
@@ -1057,6 +1059,7 @@ function checkServer() {
       redirect: "follow"
     });
   }).then(function(r) {
+    r2status = r.status;
     L.push("── 2. POST cylPing (không ghi gì) ──");
     L.push("  HTTP " + r.status + "  |  " + (r.headers.get("content-type") || "(không có content-type)"));
     return r.text();
@@ -1068,7 +1071,7 @@ function checkServer() {
       L.push("  KHÔNG phải JSON — ĐÂY LÀ CHỖ HỎNG. Nguyên văn 600 ký tự đầu:");
       L.push("  " + txt.substring(0, 600).replace(/\n/g, "\n  "));
       L.push("");
-      L.push("  >>> " + explainRaw_(txt, 0));
+      L.push("  >>> " + explainRaw_(txt, r1status).msg);
       L.push("  >>> Việc cần làm, theo thứ tự:");
       L.push("      1. Apps Script → Deploy → Manage deployments → biểu tượng bút chì");
       L.push("         → Version: New version → Deploy. (KHÔNG dùng New deployment)");
@@ -1084,11 +1087,14 @@ function checkServer() {
       L.push("  Cột có dữ liệu: " + d.soCotCoData + "   |  Cột tối đa của tab: " + d.soCotToiDa +
              "   |  Cần: " + d.canCot);
       L.push("  Tiêu đề thật  : " + (d.header || []).join(" | "));
-      if (d.cotThieu && d.cotThieu.length) {
-        L.push("  >>> THIẾU CỘT: " + d.cotThieu.join(", "));
-        L.push("  >>> Chạy setupCylinder() trong Apps Script để thêm.");
+      if (d.canhBaoTieuDe) {
+        L.push("  >>> " + d.canhBaoTieuDe);
+        var lech = d.tieuDeLech || [];
+        for (var z = 0; z < Math.min(lech.length, 6); z++) L.push("      - " + lech[z]);
+        if (lech.length > 6) L.push("      - ... còn " + (lech.length - 6) + " cột nữa");
+        L.push("      (Dữ liệu vẫn ghi ĐÚNG cột — chỉ hàng tiêu đề bị lệch, đọc Sheet sẽ nhầm.)");
       } else {
-        L.push("  Cột: đủ.");
+        L.push("  Tiêu đề: khớp đúng dữ liệu.");
       }
       if (d.duCotDeGhi === false) {
         L.push("  >>> " + d.canhBao);
@@ -1418,18 +1424,31 @@ function readJson_(r, action, method) {
         luc: fmtClock(Date.now()), action: action, method: method,
         status: status, ctype: ctype, body: String(txt || "")
       };
-      var err = new Error(explainRaw_(txt, status));
+      var info = explainRaw_(txt, status);
+      var err = new Error(info.msg);
       err.notJson = true;
+      err.status = status;
+      // v4.4 — lỗi hạ tầng (404/5xx chập chờn) thì thử lại có ích;
+      // lỗi quyền thì thử lại bao nhiêu cũng vô nghĩa, báo ngay cho người dùng.
+      err.retryable = info.retryable;
       throw err;
     }
   });
 }
 
-/** Rút thông báo có nghĩa ra khỏi trang HTML mà Google trả về. */
+/**
+ * Rút thông báo có nghĩa ra khỏi trang HTML mà Google trả về.
+ * Trả { msg, retryable }.
+ *
+ * v4.4 — phân biệt hai loại hỏng, vì cách xử khác hẳn nhau:
+ *   • Hạ tầng chập chờn (404/5xx rải rác của Apps Script) → THỬ LẠI là qua.
+ *     Thực tế 22/08: cùng một lúc, cylVersion trả 404 còn cylInit trả OK.
+ *   • Quyền / deployment sai → thử lại vô ích, phải sửa cấu hình.
+ */
 function explainRaw_(txt, status) {
   var t = String(txt || "").replace(/^\s+/, "");
   if (t.charAt(0) !== "<") {
-    return "Server trả dữ liệu không đọc được (HTTP " + status + ")";
+    return { msg: "Server trả dữ liệu không đọc được (HTTP " + status + ")", retryable: true };
   }
   var plain = t.replace(/<script[\s\S]*?<\/script>/gi, " ")
                .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -1440,22 +1459,33 @@ function explainRaw_(txt, status) {
 
   var low = plain.toLowerCase();
   if (low.indexOf("sign in") > -1 || low.indexOf("đăng nhập") > -1 || low.indexOf("accounts.google") > -1) {
-    return "Google đòi ĐĂNG NHẬP thay vì trả dữ liệu — deployment chưa mở quyền Anyone.";
-  }
-  if (low.indexOf("not found") > -1 || low.indexOf("page not found") > -1) {
-    return "Google báo KHÔNG TÌM THẤY bản deploy — URL trong app không còn đúng.";
+    return { msg: "Google đòi ĐĂNG NHẬP thay vì trả dữ liệu — deployment chưa mở quyền Anyone.", retryable: false };
   }
   if (low.indexOf("authorization") > -1 || low.indexOf("permission") > -1) {
-    return "Google đòi CẤP QUYỀN lại cho script.";
+    return { msg: "Google đòi CẤP QUYỀN lại cho script.", retryable: false };
   }
-  if (low.indexOf("exception") > -1 || low.indexOf("error") > -1) {
-    return "Script trên Google báo lỗi: " + plain.substring(0, 160);
+  if (status === 404) {
+    return { msg: "Google trả 404 — thường là trục trặc nhất thời của Apps Script.", retryable: true };
   }
-  return "Server trả TRANG HTML thay vì dữ liệu (HTTP " + status + "). Bấm \u{1F50D} Kiểm tra server để xem nguyên văn.";
+  if (status >= 500) {
+    return { msg: "Google báo lỗi máy chủ (HTTP " + status + ") — trục trặc nhất thời.", retryable: true };
+  }
+  if (low.indexOf("exception") > -1) {
+    return { msg: "Script trên Google báo lỗi: " + plain.substring(0, 160), retryable: false };
+  }
+  return { msg: "Server trả TRANG HTML thay vì dữ liệu (HTTP " + status + "). Bấm \u{1F50D} Kiểm tra server để xem nguyên văn.", retryable: true };
+}
+
+// v4.4 — Apps Script thỉnh thoảng trả 404/5xx rải rác. Thử lại 3 lần, giãn dần
+// (0,8s → 2s → 4s) là qua được gần hết. Gửi lại POST an toàn nhờ batchId.
+var API_RETRIES = 3;
+
+function retryDelay_(daThu) {
+  return [800, 2000, 4000][daThu] || 4000;
 }
 
 function apiGet(action, params, cb, retries) {
-  if (retries === undefined) retries = 1;
+  if (retries === undefined) retries = API_RETRIES;
   var url = API + "?action=" + action + "&_t=" + Date.now();
   if (params) {
     for (var k in params) {
@@ -1464,17 +1494,18 @@ function apiGet(action, params, cb, retries) {
   }
   fetch(url).then(function(r) { return readJson_(r, action, "GET"); }).then(function(d) {
     if (d && d.result) cb(d);
-    else if (retries > 0) setTimeout(function() { apiGet(action, params, cb, retries - 1); }, 800);
+    else if (retries > 0) setTimeout(function() { apiGet(action, params, cb, retries - 1); }, retryDelay_(API_RETRIES - retries));
     else cb({ result: "error", error: "Dữ liệu không hợp lệ" });
   }).catch(function(e) {
-    if (retries > 0) { setTimeout(function() { apiGet(action, params, cb, retries - 1); }, 1000); return; }
+    var conThu = retries > 0 && (e.retryable !== false);
+    if (conThu) { setTimeout(function() { apiGet(action, params, cb, retries - 1); }, retryDelay_(API_RETRIES - retries)); return; }
     toast(e.message, 1);
     updateSyncBar(true);
   });
 }
 
 function apiPost(data, cb, retries) {
-  if (retries === undefined) retries = 1;
+  if (retries === undefined) retries = API_RETRIES;
   fetch(API, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -1482,10 +1513,11 @@ function apiPost(data, cb, retries) {
     redirect: "follow"
   }).then(function(r) { return readJson_(r, data.action, "POST"); }).then(function(d) {
     if (d && d.result) cb(d);
-    else if (retries > 0) setTimeout(function() { apiPost(data, cb, retries - 1); }, 1000);
+    else if (retries > 0) setTimeout(function() { apiPost(data, cb, retries - 1); }, retryDelay_(API_RETRIES - retries));
     else cb({ result: "error", error: "Không nhận được phản hồi" });
   }).catch(function(e) {
-    if (retries > 0) { setTimeout(function() { apiPost(data, cb, retries - 1); }, 1000); return; }
+    var conThu = retries > 0 && (e.retryable !== false);
+    if (conThu) { setTimeout(function() { apiPost(data, cb, retries - 1); }, retryDelay_(API_RETRIES - retries)); return; }
     // v4.0 — PHẢI gọi cb kể cả khi hỏng mạng, nếu không nút bấm kẹt ở
     // "Đang ghi..." vĩnh viễn và người dùng không biết phải làm gì.
     // Gửi lại an toàn: cùng batchId thì server không ghi lần hai.
@@ -1517,7 +1549,7 @@ var locReject = null;          // { total, byReason, badTypeValues } — vì sao
 var locError = "";
 var locTypeColsMissing = [];   // cột bắt buộc trong LocationType_MA không nhận diện được
 var badStatusValues = {};      // giá trị current_status gõ sai trong CYL_Master
-var APP_VERSION = "4.3";       // phiên bản file HTML này
+var APP_VERSION = "4.4";       // phiên bản file HTML này
 var serverVersion = "";        // phiên bản Code_CylMgmt.gs đang chạy trên Google
 var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
