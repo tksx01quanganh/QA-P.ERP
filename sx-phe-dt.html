@@ -219,6 +219,12 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
       <button class="btn lg green" onclick="startScanLSX()" style="margin-bottom:10px;">📷 Scan mã LSX</button>
       <button class="btn lg blue" onclick="openManualLSX()">⌨️ Nhập thủ công</button>
     </div>
+    <!-- Debug: hiện khi máy = 0 -->
+    <div id="dashDebug" class="card" style="display:none;background:var(--red-l);border-color:var(--red);">
+      <h3 style="color:var(--red);">🔍 Debug thông tin</h3>
+      <pre id="dashDebugInfo" style="font-size:11px;overflow:auto;max-height:200px;white-space:pre-wrap;"></pre>
+      <button class="btn small red" onclick="testAPIDirectly()" style="margin-top:8px;">🧪 Test API trực tiếp</button>
+    </div>
   </div>
   <div class="nav-bottom">
     <button class="btn ghost" onclick="goHome()">🏠 Trang chủ</button>
@@ -536,11 +542,14 @@ let S = {
     }
   } catch(e) {}
 
-  // Auto-chọn CĐ nếu có query param
+  // Auto-chọn CĐ nếu có query param → bỏ qua màn hình chọn CĐ
   const params = new URLSearchParams(location.search);
   const cdParam = params.get('cd');
   if (cdParam === 'thoi' || cdParam === 'in') {
-    setTimeout(() => chonCD(cdParam), 100);
+    // Ẩn scrCD, hiện loading ngay lập tức
+    document.getElementById('scrCD').classList.remove('active');
+    loading(true);
+    setTimeout(() => chonCD(cdParam), 50);
   }
 })();
 
@@ -626,13 +635,43 @@ async function chonCD(cd) {
 
   loading(true);
   try {
-    const data = await api("pdtMasters", { cd });
+    console.log("[PDT] Đang tải pdtMasters cd=" + cd + "...");
+    const t0 = Date.now();
+    // Thêm nocache=1 để bypass cache server
+    const data = await api("pdtMasters", { cd, nocache: "1" }, 90000);
+    const elapsed = ((Date.now()-t0)/1000).toFixed(1);
+    console.log("[PDT] pdtMasters trả về sau " + elapsed + "s");
+    console.log("[PDT] data keys:", Object.keys(data));
+    console.log("[PDT] data.result=" + data.result);
+    console.log("[PDT] data.may=", data.may);
+    console.log("[PDT] data.may length=" + (data.may ? data.may.length : "UNDEFINED"));
     if (data.result !== "ok") throw new Error(data.error || "Lỗi tải master");
     S.masters = data;
+
+    // Debug: hiện thông tin nếu máy trống
+    const mayCount = (data.may || []).length;
+    const debugEl = document.getElementById('dashDebug');
+    if (mayCount === 0 && debugEl) {
+      debugEl.style.display = 'block';
+      document.getElementById('dashDebugInfo').textContent =
+        "Thời gian: " + elapsed + "s\n" +
+        "data.result: " + data.result + "\n" +
+        "data keys: " + Object.keys(data).join(", ") + "\n" +
+        "data.may: " + JSON.stringify(data.may) + "\n" +
+        "data.nhomDT count: " + (data.nhomDT||[]).length + "\n" +
+        "data.dt count: " + (data.dt||[]).length + "\n" +
+        "data.phe count: " + (data.phe||[]).length;
+    } else if (debugEl) {
+      debugEl.style.display = 'none';
+    }
+
+    console.log("[PDT] Đang tải pdtActiveLSX...");
     await loadActiveLSX();
     enterDashboard();
   } catch (e) {
+    console.error("[PDT] LỖI chonCD:", e);
     alert("Lỗi tải danh mục: " + e.message);
+    showScreen('scrCD');
   } finally {
     loading(false);
   }
@@ -983,8 +1022,10 @@ function addMorePendingManual() {
 function renderMayList() {
   const el = document.getElementById('mayList');
   const machines = S.masters.may || [];
+  console.log("[PDT] renderMayList: S.masters keys=" + Object.keys(S.masters||{}).join(","));
+  console.log("[PDT] renderMayList: machines.length=" + machines.length);
   if (!machines.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--muted);">Chưa có máy nào trong danh mục.</div>';
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);">Chưa có máy nào trong danh mục.<br><small style="color:var(--red);">Debug: masters.may=' + JSON.stringify(S.masters?.may) + '</small></div>';
     return;
   }
   let html = '';
@@ -1666,6 +1707,59 @@ function updateActiveLocal() {
       S.activeLSXs[idx].trang_thai = ml.trang_thai;
     }
   });
+}
+
+/* ══════════════════════════════════════════════════
+   DEBUG — Test API trực tiếp từ app
+══════════════════════════════════════════════════ */
+async function testAPIDirectly() {
+  const el = document.getElementById('dashDebugInfo');
+  el.textContent = "Đang gọi API trực tiếp...\n";
+
+  try {
+    // Test 1: JSONP (giống flow bình thường)
+    el.textContent += "\n=== Test 1: JSONP call ===\n";
+    const t1 = Date.now();
+    const data1 = await api("pdtMasters", { cd: S.cd, nocache: "1" }, 90000);
+    el.textContent += "Thời gian: " + ((Date.now()-t1)/1000).toFixed(1) + "s\n";
+    el.textContent += "result: " + data1.result + "\n";
+    el.textContent += "Keys: " + Object.keys(data1).join(", ") + "\n";
+    el.textContent += "may type: " + typeof data1.may + "\n";
+    el.textContent += "may isArray: " + Array.isArray(data1.may) + "\n";
+    el.textContent += "may length: " + (data1.may ? data1.may.length : "NULL") + "\n";
+    if (data1.may && data1.may.length > 0) {
+      el.textContent += "may[0]: " + JSON.stringify(data1.may[0]) + "\n";
+    }
+
+    // Test 2: fetch JSON (bypass JSONP)
+    el.textContent += "\n=== Test 2: fetch JSON ===\n";
+    const t2 = Date.now();
+    const url = CONFIG.API_URL + "?action=pdtMasters&cd=" + S.cd + "&nocache=1&t=" + Date.now();
+    const resp = await fetch(url, { redirect: "follow" });
+    const text = await resp.text();
+    el.textContent += "Thời gian: " + ((Date.now()-t2)/1000).toFixed(1) + "s\n";
+    el.textContent += "Status: " + resp.status + "\n";
+    el.textContent += "Content length: " + text.length + "\n";
+    el.textContent += "First 500 chars: " + text.substring(0, 500) + "\n";
+
+    try {
+      const data2 = JSON.parse(text);
+      el.textContent += "\nParsed OK. may length: " + (data2.may ? data2.may.length : "NULL") + "\n";
+    } catch(pe) {
+      el.textContent += "\nJSON parse error: " + pe.message + "\n";
+      el.textContent += "→ Response is JSONP, not JSON (expected cho /exec URL)\n";
+    }
+
+    // Cập nhật S.masters nếu test thành công
+    if (data1.result === "ok" && data1.may && data1.may.length > 0) {
+      S.masters = data1;
+      el.textContent += "\n✅ ĐÃ CẬP NHẬT S.masters với " + data1.may.length + " máy!\n";
+      el.textContent += "→ Bấm Scan hoặc Nhập thủ công để thử lại.\n";
+    }
+
+  } catch(e) {
+    el.textContent += "\n❌ LỖI: " + e.message + "\n" + e.stack + "\n";
+  }
 }
 
 </script>
