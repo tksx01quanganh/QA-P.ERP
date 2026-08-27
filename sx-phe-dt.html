@@ -192,6 +192,14 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 /* status buttons */
 .status-btn-row{display:flex;gap:8px;margin-top:14px;}
 .status-btn-row .btn{flex:1;}
+
+/* phế items — mỗi loại phế kèm ô KL */
+.phe-item{display:flex;align-items:center;gap:8px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;}
+.phe-item .pi-name{flex:1;font-size:14px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.phe-item .pi-sub{font-size:11px;color:var(--muted);font-weight:400;}
+.phe-item input[type="number"]{width:90px;padding:8px;font-size:15px;border:2px solid var(--border);border-radius:10px;text-align:center;flex-shrink:0;}
+.phe-item input:focus{border-color:var(--teal);outline:none;}
+.phe-item .pi-unit{font-size:12px;color:var(--muted);flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -283,7 +291,6 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
     <div class="card">
       <h3>📋 LSX trong cuộn (<span id="sxLSXCount">0</span>)</h3>
       <div id="sxLSXList"></div>
-      <button class="btn small ghost" onclick="openAddLSXToRoll()" style="margin-top:10px;">➕ Thêm LSX</button>
     </div>
 
     <!-- Thống kê nhanh -->
@@ -391,21 +398,12 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 <div id="modalPhe" class="modal-overlay hidden">
   <div class="modal-sheet">
     <h3>🗑️ Ghi phế (cuộn)</h3>
-    <div class="fm-grp">
-      <label class="fm-lbl">Chọn loại phế</label>
-      <div id="pheList" class="pick-list"></div>
+    <div id="pheItemsContainer"></div>
+    <div class="fm-grp" style="margin-top:10px;">
+      <label class="fm-lbl">Ghi chú (tùy chọn)</label>
+      <input type="text" id="pheNote" class="fm-input" placeholder="Ghi chú...">
     </div>
-    <div id="pheForm" style="display:none">
-      <div class="fm-grp">
-        <label class="fm-lbl">Khối lượng (kg)</label>
-        <input type="number" id="pheKL" class="fm-input" placeholder="Nhập KL phế..." step="0.1" min="0" inputmode="decimal">
-      </div>
-      <div class="fm-grp">
-        <label class="fm-lbl">Ghi chú (tùy chọn)</label>
-        <input type="text" id="pheNote" class="fm-input" placeholder="Ghi chú...">
-      </div>
-      <button class="btn red" id="btnSubmitPhe" onclick="submitPhe()">💾 Lưu phế</button>
-    </div>
+    <button class="btn red" id="btnSubmitPhe" onclick="submitPhe()">💾 Lưu phế</button>
     <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalPhe')">Hủy</button>
   </div>
 </div>
@@ -499,7 +497,6 @@ const _debounceLocks = {};
 function debounce(key, fn) {
   if (_debounceLocks[key]) return;
   _debounceLocks[key] = true;
-  // Disable nút tương ứng
   const btnMap = {
     createRoll: 'btnCreateRoll', themLSX: 'btnThemLSX',
     submitCuon: 'btnSubmitCuon', submitPhe: 'btnSubmitPhe',
@@ -510,10 +507,18 @@ function debounce(key, fn) {
   const btn = btnId ? document.getElementById(btnId) : null;
   if (btn) btn.disabled = true;
 
-  fn().finally(() => {
-    _debounceLocks[key] = false;
-    if (btn) btn.disabled = false;
-  });
+  function unlock() { _debounceLocks[key] = false; if (btn) btn.disabled = false; }
+  try {
+    const p = fn();
+    if (p && typeof p.finally === 'function') {
+      p.finally(unlock);
+    } else {
+      unlock();
+    }
+  } catch(e) {
+    unlock();
+    throw e;
+  }
 }
 
 /* ══════════════════════════════════════════════════
@@ -812,7 +817,17 @@ function pickMay(maMay, may) {
 
 function updateCreateRollBtn() {
   const btn = document.getElementById('btnCreateRoll');
-  btn.disabled = !(S.pendingLSX.length > 0 && S.selectedMay);
+  const ok = S.pendingLSX.length > 0 && S.selectedMay;
+  btn.disabled = !ok;
+  // Highlight card máy nếu đã có LSX nhưng chưa chọn máy
+  const mayCard = document.getElementById('newRollMayCard');
+  if (mayCard) {
+    if (S.pendingLSX.length > 0 && !S.selectedMay) {
+      mayCard.style.border = '2px solid var(--red)';
+    } else {
+      mayCard.style.border = '';
+    }
+  }
 }
 
 // Mở scan cho tạo cuộn mới
@@ -827,20 +842,10 @@ function openManualForNewRoll() {
   document.getElementById('themLSXTitle').textContent = '⌨️ Thêm LSX vào cuộn';
   document.getElementById('themLSXCode').value = '';
   document.getElementById('themLSXKLYC').value = '';
-  S._themLSXMode = 'newroll';
   document.getElementById('modalThemLSX').classList.remove('hidden');
   setTimeout(() => document.getElementById('themLSXCode').focus(), 200);
 }
 
-// Mở thêm LSX vào cuộn đang chạy
-function openAddLSXToRoll() {
-  document.getElementById('themLSXTitle').textContent = '➕ Thêm LSX vào cuộn';
-  document.getElementById('themLSXCode').value = '';
-  document.getElementById('themLSXKLYC').value = '';
-  S._themLSXMode = 'addtoroll';
-  document.getElementById('modalThemLSX').classList.remove('hidden');
-  setTimeout(() => document.getElementById('themLSXCode').focus(), 200);
-}
 
 function submitThemLSX() {
   debounce('themLSX', async () => {
@@ -848,44 +853,21 @@ function submitThemLSX() {
     const klyc = parseFloat(document.getElementById('themLSXKLYC').value) || 0;
     if (!lsx) return toast("Nhập mã LSX");
 
-    if (S._themLSXMode === 'addtoroll' && S.curRoll) {
-      // Thêm LSX vào cuộn đang chạy qua API
-      loading(true);
-      try {
-        const res = await apiPost({
-          action: "pdtAddLSXToRoll",
-          cd: S.cd,
-          cuon_id: S.curRoll.cuon_id,
-          lsx: lsx,
-          kl_yc: klyc,
-          cn: S.user,
-          ma_cn: S.maCn,
-          ts: new Date().toISOString()
-        });
-        if (res.result !== "ok") throw new Error(res.error || "Lỗi thêm LSX");
-        toast(res.msg || "Đã thêm LSX");
-        closeModal('modalThemLSX');
-        // Reload cuộn
-        await reloadCurrentRoll();
-      } catch(e) {
-        alert("Lỗi: " + e.message);
-      } finally { loading(false); }
-    } else {
-      // Mode newroll: thêm vào pending list
-      const dup = S.pendingLSX.find(p => p.lsx === lsx);
-      if (dup) return toast("LSX " + lsx + " đã có trong danh sách");
-      S.pendingLSX.push({ lsx, kl_yc: klyc });
-      renderPendingLSX();
-      updateCreateRollBtn();
-      closeModal('modalThemLSX');
-      toast("Đã thêm " + lsx);
-    }
+    // Thêm vào pending list (tạo cuộn mới)
+    const dup = S.pendingLSX.find(p => p.lsx === lsx);
+    if (dup) return toast("LSX " + lsx + " đã có trong danh sách");
+    S.pendingLSX.push({ lsx, kl_yc: klyc });
+    renderPendingLSX();
+    updateCreateRollBtn();
+    closeModal('modalThemLSX');
+    toast("Đã thêm " + lsx);
   });
 }
 
 async function submitCreateRoll() {
   debounce('createRoll', async () => {
-    if (!S.pendingLSX.length || !S.selectedMay) return;
+    if (!S.pendingLSX.length) return toast("Chưa có LSX nào");
+    if (!S.selectedMay) return toast("⚠️ Vui lòng chọn máy sản xuất");
     loading(true);
     try {
       const res = await apiPost({
@@ -984,39 +966,16 @@ function onScanResult(lsx) {
   stopScan();
   closeModal('modalScan');
 
-  if (_scanMode === 'addtoroll' && S.curRoll) {
-    // Thêm vào cuộn đang chạy
-    addLSXToRollDirect(lsx, klyc);
+  // Thêm vào pending list (tạo cuộn mới)
+  const dup = S.pendingLSX.find(p => p.lsx === lsx);
+  if (dup) {
+    toast("LSX " + lsx + " đã có");
   } else {
-    // Thêm vào pending
-    const dup = S.pendingLSX.find(p => p.lsx === lsx);
-    if (dup) {
-      toast("LSX " + lsx + " đã có");
-    } else {
-      S.pendingLSX.push({ lsx, kl_yc: klyc });
-      renderPendingLSX();
-      updateCreateRollBtn();
-    }
-    // Hiện scan success overlay
-    showScanSuccess(lsx);
+    S.pendingLSX.push({ lsx, kl_yc: klyc });
+    renderPendingLSX();
+    updateCreateRollBtn();
   }
-}
-
-async function addLSXToRollDirect(lsx, klyc) {
-  loading(true);
-  try {
-    const res = await apiPost({
-      action: "pdtAddLSXToRoll",
-      cd: S.cd, cuon_id: S.curRoll.cuon_id,
-      lsx: lsx, kl_yc: klyc,
-      cn: S.user, ma_cn: S.maCn,
-      ts: new Date().toISOString()
-    });
-    if (res.result !== "ok") throw new Error(res.error);
-    toast(res.msg);
-    await reloadCurrentRoll();
-  } catch(e) { alert("Lỗi: " + e.message); }
-  finally { loading(false); }
+  showScanSuccess(lsx);
 }
 
 function showScanSuccess(lsx) {
@@ -1270,69 +1229,73 @@ function submitCuon() {
 ══════════════════════════════════════════════════ */
 function openPhe() {
   if (!S.curRoll) return;
-  S.selectedPhe = null;
   const pheData = (S.masters && S.masters.phe) || [];
   const nhomData = (S.masters && S.masters.nhomPhe) || [];
 
   let html = '';
+  function renderItem(p) {
+    html += '<div class="phe-item">'
+         + '<div class="pi-name">' + esc(p.ten_phe) + '<div class="pi-sub">' + esc(p.ma_phe) + '</div></div>'
+         + '<input type="number" inputmode="decimal" step="0.1" min="0" placeholder="0" '
+         + 'data-phe-ma="' + esc(p.ma_phe) + '" data-phe-ten="' + esc(p.ten_phe) + '" data-phe-nhom="' + esc(p.ma_nhom||"") + '">'
+         + '<span class="pi-unit">kg</span>'
+         + '</div>';
+  }
   if (nhomData.length > 0) {
     nhomData.forEach(nhom => {
       html += '<div class="group-heading">' + esc(nhom.ten_nhom || nhom.ma_nhom) + '</div>';
-      pheData.filter(p => p.ma_nhom === nhom.ma_nhom).forEach(p => {
-        html += '<button class="pick-btn" onclick="pickPhe(\'' + esc(p.ma_phe) + '\',\'' + esc(p.ten_phe) + '\',\'' + esc(p.ma_nhom||"") + '\')">'
-             + '<div class="pb-name">' + esc(p.ten_phe) + '</div>'
-             + '<div class="pb-sub">' + esc(p.ma_phe) + '</div>'
-             + '</button>';
-      });
+      pheData.filter(p => p.ma_nhom === nhom.ma_nhom).forEach(renderItem);
     });
   } else {
-    pheData.forEach(p => {
-      html += '<button class="pick-btn" onclick="pickPhe(\'' + esc(p.ma_phe) + '\',\'' + esc(p.ten_phe) + '\',\'\')">'
-           + '<div class="pb-name">' + esc(p.ten_phe) + '</div>'
-           + '</button>';
-    });
+    pheData.forEach(renderItem);
   }
-  document.getElementById('pheList').innerHTML = html;
-  document.getElementById('pheForm').style.display = 'none';
-  document.getElementById('pheKL').value = '';
+  document.getElementById('pheItemsContainer').innerHTML = html;
   document.getElementById('pheNote').value = '';
   document.getElementById('modalPhe').classList.remove('hidden');
 }
 
-function pickPhe(ma, ten, nhom) {
-  S.selectedPhe = { ma_phe: ma, ten_phe: ten, ma_nhom: nhom };
-  document.querySelectorAll('#pheList .pick-btn').forEach(b => b.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
-  document.getElementById('pheForm').style.display = 'block';
-  setTimeout(() => document.getElementById('pheKL').focus(), 150);
-}
-
 function submitPhe() {
   debounce('submitPhe', async () => {
-    if (!S.curRoll || !S.selectedPhe) return;
-    const kl = parseFloat(document.getElementById('pheKL').value);
-    if (!kl || kl <= 0) return toast("Nhập khối lượng phế");
+    if (!S.curRoll) return;
+    // Thu thập tất cả loại phế có KL > 0
+    const inputs = document.querySelectorAll('#pheItemsContainer input[data-phe-ma]');
+    const items = [];
+    inputs.forEach(inp => {
+      const kl = parseFloat(inp.value);
+      if (kl > 0) {
+        items.push({
+          ma_phe: inp.dataset.pheMa,
+          ten_phe: inp.dataset.pheTen,
+          ma_nhom: inp.dataset.pheNhom || '',
+          kl: kl
+        });
+      }
+    });
+    if (items.length === 0) return toast("Nhập khối lượng ít nhất 1 loại phế");
 
     loading(true);
     try {
-      const res = await apiPost({
-        action: "pdtSubmitPhe",
-        cd: S.cd,
-        cuon_id: S.curRoll.cuon_id,
-        // Không truyền lsx → backend phân bổ roll-level
-        kl: kl,
-        ma_phe: S.selectedPhe.ma_phe,
-        ten_phe: S.selectedPhe.ten_phe,
-        ma_nhom: S.selectedPhe.ma_nhom,
-        may: S.curRoll.may,
-        ma_may: S.curRoll.ma_may,
-        cn: S.user,
-        ma_cn: S.maCn,
-        ghi_chu: document.getElementById('pheNote').value.trim(),
-        ts: new Date().toISOString()
-      });
-      if (res.result !== "ok") throw new Error(res.error);
-      toast(res.msg);
+      // Gửi từng loại phế (backend xử lý phân bổ roll-level)
+      const ghiChu = document.getElementById('pheNote').value.trim();
+      for (const item of items) {
+        const res = await apiPost({
+          action: "pdtSubmitPhe",
+          cd: S.cd,
+          cuon_id: S.curRoll.cuon_id,
+          kl: item.kl,
+          ma_phe: item.ma_phe,
+          ten_phe: item.ten_phe,
+          ma_nhom: item.ma_nhom,
+          may: S.curRoll.may,
+          ma_may: S.curRoll.ma_may,
+          cn: S.user,
+          ma_cn: S.maCn,
+          ghi_chu: ghiChu,
+          ts: new Date().toISOString()
+        });
+        if (res.result !== "ok") throw new Error(res.error || "Lỗi ghi phế " + item.ten_phe);
+      }
+      toast("Đã ghi " + items.length + " loại phế");
       closeModal('modalPhe');
       await reloadCurrentRoll();
     } catch(e) { alert("Lỗi: " + e.message); }
@@ -1533,6 +1496,7 @@ function openCheck() {
     html += '<div class="ci-name">' + esc(c.ten_check || ma) + '</div>';
 
     if (type === 'number' || type === 'so') {
+      /* --- Nhập con số (vd: khổ màng, độ dày, khối lượng) --- */
       html += '<div class="ci-unit">' + esc(c.don_vi || "") + '</div>';
       if (c.gia_tri_min != null || c.gia_tri_max != null) {
         html += '<div class="ci-range">Khoảng: '
@@ -1546,16 +1510,14 @@ function openCheck() {
            + 'data-max="' + (c.gia_tri_max!=null?c.gia_tri_max:"") + '" '
            + 'oninput="onCheckInput(this)" placeholder="Nhập giá trị...">';
       html += '<div class="warn-range" id="warn_' + esc(ma) + '" style="display:none;"></div>';
-    } else if (type === 'yn' || type === 'yesno' || type === 'dat') {
+    } else {
+      /* --- OK / NG (mặc định cho tất cả hạng mục không phải số) --- */
       html += '<div class="yn-row">'
-           + '<button class="yn-btn" data-ck="' + esc(ma) + '" data-val="OK" onclick="onCheckYN(this)">✅ Đạt</button>'
-           + '<button class="yn-btn" data-ck="' + esc(ma) + '" data-val="NG" onclick="onCheckYN(this)">❌ Không đạt</button>'
+           + '<button class="yn-btn" data-ck="' + esc(ma) + '" data-val="OK" onclick="onCheckYN(this)">✅ OK</button>'
+           + '<button class="yn-btn" data-ck="' + esc(ma) + '" data-val="NG" onclick="onCheckYN(this)">❌ NG</button>'
            + '</div>';
       html += '<div class="yn-ng-note" id="ng_' + esc(ma) + '" style="display:none;">'
-           + '<textarea data-ck-note="' + esc(ma) + '" placeholder="Ghi chú lý do..." oninput="onCheckInput(this)"></textarea></div>';
-    } else {
-      // text
-      html += '<textarea data-ck="' + esc(ma) + '" data-type="text" oninput="onCheckInput(this)" placeholder="Nhập..."></textarea>';
+           + '<textarea data-ck-note="' + esc(ma) + '" placeholder="Ghi chú (không bắt buộc)..." oninput="onCheckInput(this)"></textarea></div>';
     }
     html += '</div>';
   });
