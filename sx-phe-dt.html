@@ -635,7 +635,13 @@ async function apiPost(body) {
     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(body), redirect: "follow"
   });
-  return r.json();
+  const txt = await r.text();
+  try {
+    return JSON.parse(txt);
+  } catch(e) {
+    console.error("apiPost response không phải JSON:", txt.substring(0, 500));
+    throw new Error("Server trả lỗi (không phải JSON). Kiểm tra lại deploy GAS.");
+  }
 }
 
 function loading(show) { document.getElementById('loadingOverlay').classList.toggle('hidden', !show); }
@@ -795,15 +801,18 @@ function renderNewRollMay() {
   const el = document.getElementById('newRollMayList');
   const may = (S.masters && S.masters.may) || [];
   if (!may.length) {
-    el.innerHTML = '<div style="color:var(--muted);text-align:center;">Không có máy nào.</div>';
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;">Không có máy nào. Kiểm tra tab MA_MAY trên Sheet.</div>';
     return;
   }
   let html = '';
   may.forEach(m => {
-    const sel = S.selectedMay && S.selectedMay.ma_may === m.ma_may;
-    html += '<button class="pick-btn' + (sel ? ' selected' : '') + '" onclick="pickMay(\'' + esc(m.ma_may) + '\',\'' + esc(m.may) + '\')">'
-         + '<div class="pb-name">' + esc(m.may) + '</div>'
-         + '<div class="pb-sub">' + esc(m.ma_may) + '</div>'
+    // getMachines_ trả {ma, ten, ghiChu, ws} — mapping sang ma_may/may
+    const maMay = m.ma_may || m.ma || '';
+    const tenMay = m.may || m.ten || maMay;
+    const sel = S.selectedMay && S.selectedMay.ma_may === maMay;
+    html += '<button class="pick-btn' + (sel ? ' selected' : '') + '" onclick="pickMay(\'' + esc(maMay) + '\',\'' + esc(tenMay) + '\')">'
+         + '<div class="pb-name">' + esc(tenMay) + '</div>'
+         + '<div class="pb-sub">' + esc(maMay) + '</div>'
          + '</button>';
   });
   el.innerHTML = html;
@@ -1489,7 +1498,7 @@ function openCheck() {
 
   let html = '';
   checkData.forEach((c, idx) => {
-    const type = String(c.loai_check || "").toLowerCase();
+    const type = String(c.kieu_nhap || c.loai_check || "").toLowerCase();
     const ma = c.ma_check || ("ck_" + idx);
 
     html += '<div class="ck-item">';
