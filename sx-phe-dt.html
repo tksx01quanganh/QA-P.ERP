@@ -108,7 +108,7 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 .lsx-card .lc-info{font-size:13px;color:var(--muted);}
 
 /* LSX chip on SX screen */
-.lsx-chip{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+.lsx-chip{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;position:relative;}
 .lsx-chip.active-lsx{border-color:var(--teal);background:var(--teal-l);}
 .lsx-chip .lc-main{flex:1;min-width:0;}
 .lsx-chip .lc-lsx{font-size:16px;font-weight:800;color:var(--teal-d);}
@@ -375,20 +375,14 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
       </div>
     </div>
     <div class="fm-grp">
-      <label class="fm-lbl">Chọn loại phế</label>
-      <div id="pheList" class="pick-list"></div>
+      <label class="fm-lbl">Nhập KL (kg) bên cạnh loại phế cần ghi</label>
+      <div id="pheList"></div>
     </div>
-    <div id="pheForm" style="display:none">
-      <div class="fm-grp">
-        <label class="fm-lbl">Khối lượng (kg)</label>
-        <input type="number" id="pheKL" class="fm-input" placeholder="Nhập KL phế..." step="0.1" min="0" inputmode="decimal">
-      </div>
-      <div class="fm-grp">
-        <label class="fm-lbl">Ghi chú (tùy chọn)</label>
-        <input type="text" id="pheNote" class="fm-input" placeholder="Ghi chú...">
-      </div>
-      <button class="btn red" onclick="submitPhe()">💾 Lưu phế</button>
+    <div class="fm-grp">
+      <label class="fm-lbl">Ghi chú (tùy chọn)</label>
+      <input type="text" id="pheNote" class="fm-input" placeholder="Ghi chú...">
     </div>
+    <button class="btn red" onclick="submitPheAll()">💾 Lưu phế</button>
     <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalPhe')">Hủy</button>
   </div>
 </div>
@@ -445,7 +439,7 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
       </div>
     </div>
     <div id="checkItems"></div>
-    <button class="btn green" onclick="submitCheck()" id="btnSubmitCheck" disabled>💾 Lưu kiểm tra</button>
+    <button class="btn green" onclick="submitCheck()" id="btnSubmitCheck">💾 Lưu kiểm tra</button>
     <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalCheck')">Hủy</button>
   </div>
 </div>
@@ -567,6 +561,8 @@ function goHome() {
 
 function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
+  // DT timer: giữ chạy ngầm khi đóng modal (persist)
+  // Chỉ dừng UI interval, S.dtRunning và S.dtStartTime vẫn giữ
   if (id === 'modalDT' && S.dtTimerInterval) {
     clearInterval(S.dtTimerInterval);
     S.dtTimerInterval = null;
@@ -648,21 +644,21 @@ async function chonCD(cd) {
     if (data.result !== "ok") throw new Error(data.error || "Lỗi tải master");
     S.masters = data;
 
-    // Debug: hiện thông tin nếu máy trống
+    // Debug: LUÔN hiện thông tin để xác minh
     const mayCount = (data.may || []).length;
     const debugEl = document.getElementById('dashDebug');
-    if (mayCount === 0 && debugEl) {
+    if (debugEl) {
       debugEl.style.display = 'block';
+      debugEl.style.background = mayCount > 0 ? 'var(--green-l)' : 'var(--red-l)';
+      debugEl.style.borderColor = mayCount > 0 ? 'var(--green)' : 'var(--red)';
       document.getElementById('dashDebugInfo').textContent =
-        "Thời gian: " + elapsed + "s\n" +
-        "data.result: " + data.result + "\n" +
-        "data keys: " + Object.keys(data).join(", ") + "\n" +
-        "data.may: " + JSON.stringify(data.may) + "\n" +
-        "data.nhomDT count: " + (data.nhomDT||[]).length + "\n" +
-        "data.dt count: " + (data.dt||[]).length + "\n" +
-        "data.phe count: " + (data.phe||[]).length;
-    } else if (debugEl) {
-      debugEl.style.display = 'none';
+        "⏱ Thời gian tải: " + elapsed + "s\n" +
+        "📦 Backend version: " + (data._v || "KHÔNG CÓ — CHƯA DEPLOY PHIÊN BẢN MỚI!") + "\n" +
+        "📋 data.result: " + data.result + "\n" +
+        "🔑 data keys: " + Object.keys(data).join(", ") + "\n" +
+        "🏭 data.may: " + (data.may ? data.may.length + " máy" : "❌ UNDEFINED") + "\n" +
+        "📊 nhomDT: " + (data.nhomDT||[]).length + " | dt: " + (data.dt||[]).length +
+        " | phe: " + (data.phe||[]).length + " | check: " + (data.check||[]).length;
     }
 
     console.log("[PDT] Đang tải pdtActiveLSX...");
@@ -1125,11 +1121,11 @@ function renderSXLSXList() {
          + '<div class="lc-actions">';
 
     if (tt === 'DANG_CHAY') {
-      html += '<button class="chip-btn" style="background:var(--amber)" onclick="doStatusFor(' + idx + ',\'TAM_DUNG\')">⏸</button>';
+      html += '<button class="chip-btn" style="background:var(--amber);padding:6px 10px;font-size:11px;" onclick="doStatusFor(' + idx + ',\'TAM_DUNG\')">Tạm dừng</button>';
     } else if (tt === 'TAM_DUNG') {
-      html += '<button class="chip-btn" style="background:var(--green)" onclick="doStatusFor(' + idx + ',\'DANG_CHAY\')">▶</button>';
+      html += '<button class="chip-btn" style="background:var(--green);padding:6px 10px;font-size:11px;" onclick="doStatusFor(' + idx + ',\'DANG_CHAY\')">Tiếp tục</button>';
     }
-    html += '<button class="chip-btn" style="background:var(--blue)" onclick="doStatusFor(' + idx + ',\'HOAN_THANH\')">✅</button>';
+    html += '<button class="chip-btn" style="background:var(--blue);padding:6px 10px;font-size:11px;" onclick="doStatusFor(' + idx + ',\'HOAN_THANH\')">Hoàn thành LSX</button>';
     html += '</div>'
          + '<div style="position:absolute;top:8px;right:8px;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;color:#fff;background:' + (ttColors[tt]||'var(--gray)') + '">'
          + (ttLabels[tt]||tt) + '</div>'
@@ -1325,9 +1321,6 @@ function getSelectedLSX(selectId, containerId) {
 }
 
 function openPhe() {
-  S.selectedPhe = null;
-  document.getElementById('pheForm').style.display = 'none';
-  document.getElementById('pheKL').value = '';
   document.getElementById('pheNote').value = '';
   buildLSXSelect('pheLSXChoice', 'pheLSXSelect');
   renderPheList();
@@ -1346,58 +1339,75 @@ function renderPheList() {
   let html = '';
   for (const gKey in groups) {
     const nhom = nhomMap[gKey] || { ten_nhom: gKey };
-    const badge = nhom.tai_su_dung === 'Y' ? '<span class="pb-badge tsd">Tái SD</span>' : '<span class="pb-badge bo">Bỏ</span>';
+    const badge = nhom.tai_su_dung === 'Y' ? '<span class="pb-badge tsd" style="position:static;display:inline-block;transform:none;">Tái SD</span>' : '<span class="pb-badge bo" style="position:static;display:inline-block;transform:none;">Bỏ</span>';
     html += '<div class="group-heading">' + esc(nhom.ten_nhom) + ' ' + badge + '</div>';
     groups[gKey].forEach(p => {
-      html += '<button class="pick-btn" data-ma="' + p.ma_phe + '" onclick="selectPhe(this)">'
-           + '<div class="pb-name">' + esc(p.ten_phe) + '</div>'
-           + '<div class="pb-sub">' + esc(p.don_vi||'kg') + '</div></button>';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">'
+           + '<div style="flex:1;min-width:0;">'
+           + '<div style="font-weight:700;font-size:14px;">' + esc(p.ten_phe) + '</div>'
+           + '<div style="font-size:11px;color:var(--muted);">' + esc(p.don_vi||'kg') + '</div>'
+           + '</div>'
+           + '<input type="number" class="fm-input phe-kl-input" data-ma="' + esc(p.ma_phe) + '" '
+           + 'style="width:100px;padding:8px;font-size:15px;text-align:right;" '
+           + 'placeholder="KL" step="0.1" min="0" inputmode="decimal">'
+           + '<span style="font-size:13px;color:var(--muted);flex-shrink:0;">kg</span>'
+           + '</div>';
     });
   }
   el.innerHTML = html || '<div style="text-align:center;color:var(--muted);">Chưa có danh mục phế.</div>';
 }
 
-function selectPhe(btn) {
-  document.querySelectorAll('#pheList .pick-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  S.selectedPhe = (S.masters.phe||[]).find(p => p.ma_phe === btn.dataset.ma);
-  document.getElementById('pheForm').style.display = 'block';
-  document.getElementById('pheKL').focus();
-}
+async function submitPheAll() {
+  // Thu thập tất cả loại phế có KL > 0
+  const inputs = document.querySelectorAll('#pheList .phe-kl-input');
+  const toSubmit = [];
+  inputs.forEach(inp => {
+    const kl = parseFloat(inp.value);
+    if (kl > 0) {
+      const ma = inp.dataset.ma;
+      const pheItem = (S.masters.phe||[]).find(p => p.ma_phe === ma);
+      if (pheItem) toSubmit.push({ pheItem, kl });
+    }
+  });
 
-async function submitPhe() {
-  if (!S.selectedPhe) return toast("Chưa chọn loại phế");
-  const kl = parseFloat(document.getElementById('pheKL').value);
-  if (!kl || kl <= 0) return toast("Nhập KL > 0");
+  if (!toSubmit.length) return toast("Nhập KL > 0 cho ít nhất 1 loại phế");
 
   const target = getSelectedLSX('pheLSXChoice', 'pheLSXSelect');
   if (!target) return toast("Không có LSX nào");
 
   loading(true);
   try {
-    const res = await apiPost({
-      action: "pdtSubmitPhe",
-      cd: S.cd,
-      lsx: target.lsx,
-      may: S.curMay.may, ma_may: S.curMay.ma_may,
-      cn: S.user, ma_cn: S.maCn,
-      ma_phe: S.selectedPhe.ma_phe,
-      ten_phe: S.selectedPhe.ten_phe,
-      ma_nhom: S.selectedPhe.ma_nhom,
-      kl: kl,
-      ghi_chu: document.getElementById('pheNote').value.trim(),
-      ts: new Date().toISOString()
-    });
-    if (res.result !== "ok") throw new Error(res.error || "Lỗi ghi phế");
+    const note = document.getElementById('pheNote').value.trim();
+    let totalPhe = 0;
+    const tenList = [];
+
+    for (const item of toSubmit) {
+      const res = await apiPost({
+        action: "pdtSubmitPhe",
+        cd: S.cd,
+        lsx: target.lsx,
+        may: S.curMay.may, ma_may: S.curMay.ma_may,
+        cn: S.user, ma_cn: S.maCn,
+        ma_phe: item.pheItem.ma_phe,
+        ten_phe: item.pheItem.ten_phe,
+        ma_nhom: item.pheItem.ma_nhom,
+        kl: item.kl,
+        ghi_chu: note,
+        ts: new Date().toISOString()
+      });
+      if (res.result !== "ok") throw new Error(res.error || "Lỗi ghi phế " + item.pheItem.ten_phe);
+      totalPhe += item.kl;
+      tenList.push(item.pheItem.ten_phe + ' ' + item.kl + 'kg');
+    }
 
     const ml = S.machineLSXs.find(m => m.lsx === target.lsx);
-    if (ml) ml.tong_kl_phe = Math.round(((ml.tong_kl_phe||0) + kl)*100)/100;
+    if (ml) ml.tong_kl_phe = Math.round(((ml.tong_kl_phe||0) + totalPhe)*100)/100;
 
     renderSXLSXList();
     updateSXInfo();
     updateActiveLocal();
     closeModal('modalPhe');
-    toast("✅ Phế " + S.selectedPhe.ten_phe + " — " + kl + "kg → " + target.lsx);
+    toast("✅ Phế: " + tenList.join(', ') + " → " + target.lsx);
   } catch(e) { alert("Lỗi: " + e.message); }
   finally { loading(false); }
 }
@@ -1406,6 +1416,24 @@ async function submitPhe() {
    DOWNTIME
 ══════════════════════════════════════════════════ */
 function openDT() {
+  buildLSXSelect('dtLSXChoice', 'dtLSXSelect');
+  renderDTList();
+
+  // Nếu timer đang chạy ngầm → khôi phục giao diện, không reset
+  if (S.dtRunning && S.dtStartTime) {
+    document.getElementById('dtTimerBox').classList.add('running');
+    document.getElementById('dtTimerLabel').textContent = 'Đang dừng máy...';
+    document.getElementById('btnDTToggle').textContent = '⏹ Kết thúc dừng';
+    document.getElementById('btnDTToggle').className = 'btn green';
+    document.getElementById('dtStart').value = fmtTime(S.dtStartTime);
+    document.getElementById('dtEnd').value = '';
+    updateDTTimer(); // cập nhật đồng hồ ngay
+    S.dtTimerInterval = setInterval(updateDTTimer, 1000);
+    document.getElementById('modalDT').classList.remove('hidden');
+    return;
+  }
+
+  // Reset hoàn toàn khi không có timer đang chạy
   S.selectedDT = null;
   S.dtRunning = false;
   S.dtStartTime = null;
@@ -1419,8 +1447,6 @@ function openDT() {
   document.getElementById('dtEnd').value = '';
   document.getElementById('dtNote').value = '';
   document.getElementById('dtSubmitArea').style.display = 'none';
-  buildLSXSelect('dtLSXChoice', 'dtLSXSelect');
-  renderDTList();
   document.getElementById('modalDT').classList.remove('hidden');
 }
 
@@ -1453,14 +1479,17 @@ function selectDT(btn) {
 
 function dtToggle() {
   if (!S.dtRunning) {
+    // BẮT ĐẦU dừng máy — ghi nhận thời gian bắt đầu
     S.dtRunning = true;
     S.dtStartTime = new Date();
     document.getElementById('dtTimerBox').classList.add('running');
-    document.getElementById('dtTimerLabel').textContent = 'Đang dừng máy...';
-    document.getElementById('btnDTToggle').textContent = '▶ Chạy lại';
+    document.getElementById('dtTimerLabel').textContent = 'Đang dừng máy... (có thể thoát ra làm việc khác)';
+    document.getElementById('btnDTToggle').textContent = '⏹ Kết thúc dừng';
     document.getElementById('btnDTToggle').className = 'btn green';
+    document.getElementById('dtStart').value = fmtTime(S.dtStartTime);
     S.dtTimerInterval = setInterval(updateDTTimer, 1000);
   } else {
+    // KẾT THÚC dừng máy — ghi nhận thời gian kết thúc
     S.dtRunning = false;
     clearInterval(S.dtTimerInterval); S.dtTimerInterval = null;
     const elapsed = Math.round((new Date() - S.dtStartTime) / 1000);
@@ -1495,7 +1524,7 @@ async function submitDT() {
   const [sh,sm] = sv.split(':').map(Number);
   const [eh,em] = ev.split(':').map(Number);
   let soPhut = (eh*60+em) - (sh*60+sm);
-  if (soPhut <= 0) return toast("Giờ kết thúc phải sau giờ bắt đầu");
+  if (soPhut < 0) soPhut = 0; // cho phép bắt đầu = kết thúc
 
   const target = getSelectedLSX('dtLSXChoice', 'dtLSXSelect');
   if (!target) return toast("Không có LSX nào");
@@ -1594,14 +1623,10 @@ function ckYN(btn, ma, val) {
 }
 function ckNGNote(ta, ma) { if(S.checkValues[ma]) S.checkValues[ma].note = ta.value.trim(); }
 function ckTextChange(ta, ma) { S.checkValues[ma] = { type:'TEXT', value:ta.value.trim() }; updateCheckBtn(); }
-function updateCheckBtn() { document.getElementById('btnSubmitCheck').disabled = Object.keys(S.checkValues).length === 0; }
+function updateCheckBtn() { /* Nút Lưu luôn bật — không bắt buộc nhập đủ */ }
 
 async function submitCheck() {
-  for (const ma in S.checkValues) {
-    const v = S.checkValues[ma];
-    if (v.type==='YN' && v.value==='NG' && !v.note) return toast("Mục NG phải có ghi chú!");
-  }
-
+  // Không bắt buộc nhập đầy đủ — ghi những gì đã nhập
   const target = getSelectedLSX('checkLSXChoice', 'checkLSXSelect');
   if (!target) return toast("Không có LSX nào");
 
