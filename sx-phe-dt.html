@@ -505,18 +505,38 @@ function debounce(key, fn) {
   };
   const btnId = btnMap[key];
   const btn = btnId ? document.getElementById(btnId) : null;
-  if (btn) btn.disabled = true;
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Đang xử lý...'; }
 
-  function unlock() { _debounceLocks[key] = false; if (btn) btn.disabled = false; }
+  function unlock() {
+    _debounceLocks[key] = false;
+    // Lấy lại btn từ DOM (phòng trường hợp re-render)
+    const b = btnId ? document.getElementById(btnId) : null;
+    if (b) { b.disabled = false; b.textContent = origText; }
+  }
+
+  // Safety timeout: tối đa 20s — tự mở khóa nếu promise bị treo
+  const safetyTimer = setTimeout(() => {
+    if (_debounceLocks[key]) {
+      console.warn('debounce safety unlock:', key);
+      unlock();
+    }
+  }, 20000);
+
+  function done() {
+    clearTimeout(safetyTimer);
+    unlock();
+  }
+
   try {
     const p = fn();
     if (p && typeof p.finally === 'function') {
-      p.finally(unlock);
+      p.finally(done);
     } else {
-      unlock();
+      done();
     }
   } catch(e) {
-    unlock();
+    done();
     throw e;
   }
 }
@@ -631,16 +651,28 @@ function api(action, params, timeoutMs) {
 }
 
 async function apiPost(body) {
-  const r = await fetch(CONFIG.API_URL, {
-    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(body), redirect: "follow"
-  });
-  const txt = await r.text();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
   try {
-    return JSON.parse(txt);
+    const r = await fetch(CONFIG.API_URL, {
+      method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(body), redirect: "follow",
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const txt = await r.text();
+    try {
+      return JSON.parse(txt);
+    } catch(e) {
+      console.error("apiPost response không phải JSON:", txt.substring(0, 500));
+      throw new Error("Server trả về HTML thay vì JSON. Hãy vào GAS → Triển khai → Quản lý triển khai → chọn Phiên bản mới → Triển khai.");
+    }
   } catch(e) {
-    console.error("apiPost response không phải JSON:", txt.substring(0, 500));
-    throw new Error("Server trả lỗi (không phải JSON). Kiểm tra lại deploy GAS.");
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      throw new Error("Hết thời gian chờ (15s). Kiểm tra kết nối mạng và thử lại.");
+    }
+    throw e;
   }
 }
 
@@ -686,7 +718,7 @@ async function chonCD(cd) {
     await loadActiveRolls();
     enterDashboard();
   } catch (e) {
-    alert("Lỗi tải danh mục: " + e.message);
+    toast("❌ Lỗi tải danh mục: " + e.message, 5000);
     showScreen('scrCD');
   } finally {
     loading(false);
@@ -890,7 +922,7 @@ async function submitCreateRoll() {
         ts: new Date().toISOString()
       });
       if (res.result !== "ok") throw new Error(res.error || "Lỗi tạo cuộn");
-      toast(res.msg || "Đã tạo cuộn");
+      toast(res.msg || "✅ Đã tạo cuộn", 4000);
 
       // Load cuộn mới và vào SX screen
       await loadActiveRolls();
@@ -902,7 +934,7 @@ async function submitCreateRoll() {
         enterDashboard();
       }
     } catch(e) {
-      alert("Lỗi: " + e.message);
+      toast("❌ " + e.message, 6000);
     } finally { loading(false); }
   });
 }
@@ -1118,7 +1150,7 @@ function confirmRollStatus() {
       toast(res.msg);
       closeModal('modalRollStatus');
       await reloadCurrentRoll();
-    } catch(e) { alert("Lỗi: " + e.message); }
+    } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
   });
 }
@@ -1228,7 +1260,7 @@ function submitCuon() {
       closeModal('modalCuon');
       // Cuộn vừa ghi xong → HOAN_THANH → reload sẽ quay về dashboard
       await reloadCurrentRoll();
-    } catch(e) { alert("Lỗi: " + e.message); }
+    } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
   });
 }
@@ -1307,7 +1339,7 @@ function submitPhe() {
       toast("Đã ghi " + items.length + " loại phế");
       closeModal('modalPhe');
       await reloadCurrentRoll();
-    } catch(e) { alert("Lỗi: " + e.message); }
+    } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
   });
 }
@@ -1475,7 +1507,7 @@ function submitDT() {
       S.dtStartTime = null;
       closeModal('modalDT');
       await reloadCurrentRoll();
-    } catch(e) { alert("Lỗi: " + e.message); }
+    } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
   });
 }
@@ -1600,7 +1632,7 @@ function submitCheck() {
       if (res.result !== "ok") throw new Error(res.error);
       toast(res.msg);
       closeModal('modalCheck');
-    } catch(e) { alert("Lỗi: " + e.message); }
+    } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
   });
 }
