@@ -125,6 +125,28 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 .timer-time{font-size:42px;font-weight:800;font-variant-numeric:tabular-nums;}
 .timer-label{font-size:13px;color:var(--muted);margin-top:2px;}
 
+/* v6 — dòng bối cảnh + chọn phạm vi */
+.ctx-line{font-size:13px;color:var(--muted);text-align:center;margin:-6px 0 12px;}
+.ctx-line b{color:var(--text,#111);}
+.pv-row{display:flex;gap:8px;}
+.pv-btn{flex:1;background:var(--card);border:2px solid var(--border);border-radius:14px;
+  padding:10px 8px;text-align:center;cursor:pointer;font-family:inherit;}
+.pv-btn .pv-name{font-size:14px;font-weight:700;}
+.pv-btn .pv-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.pv-btn.sel[data-pv="MAY"]{border-color:var(--amber);background:var(--amber-l);}
+.pv-btn.sel[data-pv="LSX"]{border-color:var(--blue);background:var(--blue-l);}
+.pv-btn:disabled{opacity:.45;cursor:not-allowed;}
+.pv-hint{font-size:12px;color:var(--muted);margin-top:6px;text-align:center;line-height:1.45;}
+.pv-hint.warn{color:var(--amber);font-weight:600;}
+.pv-tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;}
+.pv-tag.MAY{background:var(--amber-l);color:var(--amber);}
+.pv-tag.LSX{background:var(--blue-l);color:var(--blue);}
+.pv-tag.HOI{background:var(--red-l);color:var(--red);}
+.may-stop{background:var(--red);color:#fff;border-radius:14px;padding:12px;margin-bottom:10px;cursor:pointer;}
+.may-stop .ms-top{font-size:12px;opacity:.9;}
+.may-stop .ms-name{font-size:17px;font-weight:800;margin:2px 0;}
+.may-stop .ms-sub{font-size:12px;opacity:.9;}
+
 /* check items */
 .ck-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;}
 .ck-item .ci-name{font-size:15px;font-weight:700;margin-bottom:6px;}
@@ -234,9 +256,26 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
     <span style="margin-left:auto;font-size:12px;" id="dashShift">—</span>
   </div>
   <div class="content">
+    <!-- Máy đang dừng (mọi phạm vi) -->
+    <div id="dashOpenDT"></div>
+
     <div id="dashRollList"></div>
+
     <div class="card" style="text-align:center;">
       <button class="btn lg green" onclick="openNewRoll()">🎬 Tạo cuộn mới</button>
+    </div>
+
+    <!-- Ghi theo MÁY — không cần cuộn -->
+    <div class="card">
+      <h3>🏭 Ghi theo MÁY (không cần cuộn)</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+        Dùng cho việc không thuộc lệnh nào: khởi động đầu ca, bảo dưỡng định kỳ,
+        vệ sinh máy, mất điện — kể cả khi máy đang trống.
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn amber" onclick="openMayPicker('dt')">⏱ Dừng máy</button>
+        <button class="btn red" onclick="openMayPicker('phe')">🗑️ Ghi phế</button>
+      </div>
     </div>
   </div>
   <div class="nav-bottom">
@@ -397,10 +436,20 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
   </div>
 </div>
 
+<!-- ═══════ MODAL: CHỌN MÁY (ghi theo máy) ═══════ -->
+<div id="modalMay" class="modal-overlay hidden">
+  <div class="modal-sheet">
+    <h3 id="mayPickTitle">Chọn máy</h3>
+    <div id="mayPickList" class="pick-list"></div>
+    <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalMay')">Đóng</button>
+  </div>
+</div>
+
 <!-- ═══════ MODAL: GHI PHẾ ═══════ -->
 <div id="modalPhe" class="modal-overlay hidden">
   <div class="modal-sheet">
-    <h3>🗑️ Ghi phế (cuộn)</h3>
+    <h3 id="pheModalTitle">🗑️ Ghi phế</h3>
+    <div id="pheCtxLine" class="ctx-line">—</div>
     <div id="pheItemsContainer"></div>
     <div class="fm-grp" style="margin-top:10px;">
       <label class="fm-lbl">Ghi chú (tùy chọn)</label>
@@ -415,6 +464,7 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 <div id="modalDT" class="modal-overlay hidden">
   <div class="modal-sheet">
     <h3 id="dtModalTitle">⏱️ Dừng máy</h3>
+    <div id="dtCtxLine" class="ctx-line">—</div>
 
     <!-- A. ĐANG DỪNG — chỉ còn việc bấm Chạy lại -->
     <div id="dtRunningArea" style="display:none;">
@@ -440,6 +490,21 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
         <div id="dtList" class="pick-list"></div>
       </div>
       <div id="dtOpenArea" style="display:none">
+        <!-- Phạm vi: chung cho máy hay tính cho lệnh đang chạy -->
+        <div class="fm-grp">
+          <label class="fm-lbl">2. Tính vào đâu?</label>
+          <div class="pv-row">
+            <button class="pv-btn" data-pv="MAY" onclick="pickPV('dt','MAY')">
+              <div class="pv-name">🏭 Chung cho máy</div>
+              <div class="pv-sub">Không tính vào lệnh nào</div>
+            </button>
+            <button class="pv-btn" data-pv="LSX" onclick="pickPV('dt','LSX')">
+              <div class="pv-name">📋 Tính cho lệnh</div>
+              <div class="pv-sub" id="dtPVLsxSub">Lệnh đang chạy trên máy</div>
+            </button>
+          </div>
+          <div class="pv-hint" id="dtPVHint"></div>
+        </div>
         <div class="fm-grp">
           <label class="fm-lbl">Giờ bắt đầu dừng (bỏ trống = bây giờ)</label>
           <input type="time" id="dtStart" class="fm-input">
@@ -600,6 +665,14 @@ let S = {
   // DT
   selectedDT: null,
   dtTimerInterval: null,   // ticker hiển thị, không phải nguồn dữ liệu
+  // v6 — ghi theo MÁY + phạm vi
+  openDTs: [],        // các lần dừng đang mở (từ server)
+  dtCtx: null,        // { ma_may, may, cuon_id, ds_lsx } — bối cảnh modal DT
+  dtOpen: null,       // dòng dừng đang mở của máy trong dtCtx
+  dtPV: null,         // phạm vi người ghi đã chọn cho DT
+  pheCtx: null,       // bối cảnh modal phế
+  phePV: {},          // ma_phe → phạm vi người ghi chọn
+  mayPickMode: null,  // 'dt' | 'phe'
   // Check
   checkValues: {},
   checkHist: [],
@@ -758,12 +831,24 @@ async function loadActiveRolls() {
   } catch(e) {
     console.error("loadActiveRolls error:", e);
   }
+  await loadOpenDTs();
+}
+
+/** v6: các lần dừng đang mở — nguồn sự thật cho cờ "máy đang dừng" */
+async function loadOpenDTs() {
+  try {
+    const data = await api("pdtOpenDTs", { cd: S.cd }, 20000);
+    if (data.result === "ok") S.openDTs = data.items || [];
+  } catch(e) {
+    console.error("loadOpenDTs error:", e);
+  }
 }
 
 async function refreshDash() {
   loading(true);
   try {
     await loadActiveRolls();
+    renderOpenDTs();
     renderDashRolls();
   } catch(e) {} finally { loading(false); }
 }
@@ -777,6 +862,7 @@ function enterDashboard() {
   document.getElementById('dashUser').textContent = S.user || "(chưa đăng nhập)";
   document.getElementById('dashShift').textContent = "Ca " + shift.ca + " — " + shift.ngaySX;
 
+  renderOpenDTs();
   renderDashRolls();
   showScreen('scrDash');
 }
@@ -795,7 +881,7 @@ function renderDashRolls() {
     const lsxList = roll.ds_lsx || [];
     const lsxNames = lsxList.map(l => l.lsx).join(", ");
     const typeLabel = roll.loai_sx === "GOP" ? "Gộp" : "Đơn";
-    const dtOpen = String(roll.dt_id || "").trim();
+    const dtOpen = openDTOfMachine(roll.ma_may);   // v6: trạng thái dừng thuộc về MÁY
 
     html += '<div class="roll-card" onclick="selectRoll(\'' + esc(roll.cuon_id) + '\')">'
          + '<div class="rc-top">'
@@ -804,8 +890,9 @@ function renderDashRolls() {
          + '</div>'
          + (dtOpen
              ? '<div style="background:var(--red);color:#fff;border-radius:10px;padding:6px 10px;'
-               + 'font-size:13px;font-weight:700;margin-bottom:6px;">⏸ ĐANG DỪNG: '
-               + esc(roll.dt_ten || roll.dt_ma || '—') + ' · từ ' + dtHHmm(roll.dt_bat_dau) + '</div>'
+               + 'font-size:13px;font-weight:700;margin-bottom:6px;">⏸ MÁY ĐANG DỪNG: '
+               + esc(dtOpen.ten_dt || dtOpen.ma_dt || '—') + ' · từ ' + dtHHmm(dtOpen.bat_dau)
+               + (normPV(dtOpen.pham_vi) === 'MAY' ? ' · chung cho máy' : '') + '</div>'
              : '')
          + '<div class="rc-may">' + esc(roll.may || "—") + '</div>'
          + '<div class="rc-lsx"><span class="rc-type ' + esc(roll.loai_sx) + '">' + typeLabel + '</span>' + esc(lsxNames) + '</div>'
@@ -1301,98 +1388,230 @@ function submitCuon() {
 }
 
 /* ══════════════════════════════════════════════════
-   GHI PHẾ — Roll-level
+   v6 — PHẠM VI GHI NHẬN: chung cho MÁY hay tính cho LỆNH
+
+   Master (Phe_*_MA / DT_*_MA, cột pham_vi) quyết định mặc định:
+     MAY → chi phí chung của máy, không gán lệnh nào
+     LSX → tính cho các LSX trong cuộn đang chạy trên máy đó
+     HOI → app hỏi người ghi tại chỗ
+   Người ghi vẫn được đổi khác mặc định; server lưu cả 2 giá trị để sau này
+   lọc ra những mã master đang khai chưa đúng.
 ══════════════════════════════════════════════════ */
-function openPhe() {
-  if (!S.curRoll) return;
+
+const PV_LABEL = { MAY: 'Chung cho máy', LSX: 'Tính cho lệnh' };
+
+/** Bối cảnh đang thao tác: từ màn hình cuộn hay từ dashboard chọn máy */
+function ctxFromRoll() {
+  if (!S.curRoll) return null;
+  return { ma_may: S.curRoll.ma_may, may: S.curRoll.may, cuon_id: S.curRoll.cuon_id,
+           ds_lsx: (S.curRoll.ds_lsx || []).map(l => l.lsx) };
+}
+
+/** Cuộn đang chạy trên 1 máy (tra từ danh sách cuộn dashboard) */
+function rollOnMachine(maMay) {
+  return S.activeRolls.find(r => String(r.ma_may).trim() === String(maMay).trim()) || null;
+}
+
+/** Lần dừng đang mở của 1 máy */
+function openDTOfMachine(maMay) {
+  return (S.openDTs || []).find(d => String(d.ma_may).trim() === String(maMay).trim()) || null;
+}
+
+function pvOfPhe(maPhe) {
+  const it = ((S.masters && S.masters.phe) || []).find(p => String(p.ma_phe).trim() === String(maPhe).trim());
+  return normPV(it && it.pham_vi);
+}
+function pvOfDT(maDT) {
+  const it = ((S.masters && S.masters.dt) || []).find(d => String(d.ma_dt).trim() === String(maDT).trim());
+  return normPV(it && it.pham_vi);
+}
+function normPV(v) {
+  const s = String(v || '').trim().toUpperCase();
+  return (s === 'LSX' || s === 'MAY') ? s : 'HOI';
+}
+
+/* ══════════════════════════════════════════════════
+   CHỌN MÁY — vào từ dashboard, không cần cuộn
+══════════════════════════════════════════════════ */
+function openMayPicker(mode) {
+  S.mayPickMode = mode;
+  document.getElementById('mayPickTitle').textContent =
+    mode === 'dt' ? '⏱ Chọn máy để ghi dừng' : '🗑️ Chọn máy để ghi phế';
+
+  const mayList = (S.masters && S.masters.may) || [];
+  if (!mayList.length) return toast("Chưa có danh sách máy cho công đoạn này");
+
+  let html = '';
+  mayList.forEach(m => {
+    const maMay = m.ma_may || m.ma;
+    const ten = m.may || m.ten || maMay;
+    const stop = openDTOfMachine(maMay);
+    const roll = rollOnMachine(maMay);
+    html += '<button class="pick-btn" onclick="pickMay(\'' + esc(maMay) + '\',\'' + esc(ten) + '\')">'
+         + '<div class="pb-name">' + esc(ten)
+         + (stop ? ' <span class="pv-tag HOI">⏸ đang dừng</span>' : '') + '</div>'
+         + '<div class="pb-sub">' + esc(maMay)
+         + (roll ? ' · đang chạy ' + esc((roll.ds_lsx || []).map(l => l.lsx).join(', ')) : ' · máy trống')
+         + '</div></button>';
+  });
+  document.getElementById('mayPickList').innerHTML = html;
+  document.getElementById('modalMay').classList.remove('hidden');
+}
+
+function pickMay(maMay, ten) {
+  closeModal('modalMay');
+  const roll = rollOnMachine(maMay);
+  const ctx = { ma_may: maMay, may: ten, cuon_id: roll ? roll.cuon_id : '',
+                ds_lsx: roll ? (roll.ds_lsx || []).map(l => l.lsx) : [] };
+  if (S.mayPickMode === 'dt') openDT(ctx); else openPhe(ctx);
+}
+
+/* ══════════════════════════════════════════════════
+   GHI PHẾ v6
+══════════════════════════════════════════════════ */
+function openPhe(ctx) {
+  const c = ctx || ctxFromRoll();
+  if (!c) return toast("Chọn máy trước");
+  S.pheCtx = c;
+  S.phePV = {};   // ma_phe → phạm vi người ghi chọn
+
   const pheData = (S.masters && S.masters.phe) || [];
   const nhomData = (S.masters && S.masters.nhomPhe) || [];
+  const coCuon = !!c.cuon_id;
+
+  document.getElementById('pheCtxLine').innerHTML =
+      'Máy <b>' + esc(c.may || c.ma_may) + '</b> · '
+    + (coCuon ? 'đang chạy <b>' + esc((c.ds_lsx || []).join(', ')) + '</b>' : '<b>máy trống</b>');
 
   let html = '';
   function renderItem(p) {
+    const pv = pvOfPhe(p.ma_phe);
     html += '<div class="phe-item">'
-         + '<div class="pi-name">' + esc(p.ten_phe) + '<div class="pi-sub">' + esc(p.ma_phe) + '</div></div>'
+         + '<div class="pi-name">' + esc(p.ten_phe)
+         + '<div class="pi-sub">' + esc(p.ma_phe) + ' '
+         + (pv === 'HOI' ? '<span class="pv-tag HOI">cần chọn</span>'
+                         : '<span class="pv-tag ' + pv + '">' + PV_LABEL[pv] + '</span>')
+         + '</div></div>'
          + '<input type="number" inputmode="decimal" step="0.1" min="0" placeholder="0" '
-         + 'data-phe-ma="' + esc(p.ma_phe) + '" data-phe-ten="' + esc(p.ten_phe) + '" data-phe-nhom="' + esc(p.ma_nhom||"") + '">'
+         + 'data-phe-ma="' + esc(p.ma_phe) + '" data-phe-ten="' + esc(p.ten_phe) + '" '
+         + 'data-phe-nhom="' + esc(p.ma_nhom || "") + '" data-phe-pv="' + pv + '" '
+         + 'oninput="onPheKL(this)">'
          + '<span class="pi-unit">kg</span>'
          + '</div>';
+    // Hàng chọn phạm vi — hiện khi master để HOI, hoặc khi người ghi bấm "Đổi"
+    html += '<div class="pv-row" id="pvrow_' + esc(p.ma_phe) + '" style="display:none;margin:-4px 0 10px;">'
+         + '<button class="pv-btn" data-pv="MAY" onclick="pickPhePV(\'' + esc(p.ma_phe) + '\',\'MAY\')">'
+         + '<div class="pv-name">🏭 Chung cho máy</div></button>'
+         + '<button class="pv-btn" data-pv="LSX" ' + (coCuon ? '' : 'disabled ')
+         + 'onclick="pickPhePV(\'' + esc(p.ma_phe) + '\',\'LSX\')">'
+         + '<div class="pv-name">📋 Tính cho lệnh</div>'
+         + '<div class="pv-sub">' + (coCuon ? esc((c.ds_lsx || []).join(', ')) : 'máy đang trống') + '</div>'
+         + '</button></div>';
   }
   if (nhomData.length > 0) {
     nhomData.forEach(nhom => {
+      const items = pheData.filter(p => p.ma_nhom === nhom.ma_nhom);
+      if (!items.length) return;
       html += '<div class="group-heading">' + esc(nhom.ten_nhom || nhom.ma_nhom) + '</div>';
-      pheData.filter(p => p.ma_nhom === nhom.ma_nhom).forEach(renderItem);
+      items.forEach(renderItem);
     });
   } else {
     pheData.forEach(renderItem);
   }
-  document.getElementById('pheItemsContainer').innerHTML = html;
+
+  document.getElementById('pheItemsContainer').innerHTML = html
+    || '<div style="color:var(--muted);text-align:center;padding:12px;">Chưa khai loại phế trong master.</div>';
   document.getElementById('pheNote').value = '';
   document.getElementById('modalPhe').classList.remove('hidden');
 }
 
+/** Nhập KL > 0 cho loại phế master để HOI → bung hàng chọn phạm vi */
+function onPheKL(inp) {
+  const ma = inp.dataset.pheMa;
+  const row = document.getElementById('pvrow_' + ma);
+  if (!row) return;
+  const can = parseFloat(inp.value) > 0 && inp.dataset.phePv === 'HOI';
+  row.style.display = can ? 'flex' : 'none';
+}
+
+function pickPhePV(ma, pv) {
+  S.phePV[ma] = pv;
+  const row = document.getElementById('pvrow_' + ma);
+  if (row) row.querySelectorAll('.pv-btn').forEach(b => {
+    b.classList.toggle('sel', b.dataset.pv === pv);
+  });
+}
+
 function submitPhe() {
   debounce('submitPhe', async () => {
-    if (!S.curRoll) return;
-    // Thu thập tất cả loại phế có KL > 0
+    const c = S.pheCtx;
+    if (!c) return;
+
     const inputs = document.querySelectorAll('#pheItemsContainer input[data-phe-ma]');
     const items = [];
+    let thieuPV = null;
     inputs.forEach(inp => {
       const kl = parseFloat(inp.value);
-      if (kl > 0) {
-        items.push({
-          ma_phe: inp.dataset.pheMa,
-          ten_phe: inp.dataset.pheTen,
-          ma_nhom: inp.dataset.pheNhom || '',
-          kl: kl
-        });
+      if (!(kl > 0)) return;
+      const ma = inp.dataset.pheMa;
+      let pv = inp.dataset.phePv;
+      if (pv === 'HOI') {
+        pv = S.phePV[ma] || '';
+        if (!pv) { thieuPV = thieuPV || inp.dataset.pheTen; return; }
       }
+      if (pv === 'LSX' && !c.cuon_id) { thieuPV = thieuPV || inp.dataset.pheTen; return; }
+      items.push({ ma_phe: ma, ten_phe: inp.dataset.pheTen,
+                   ma_nhom: inp.dataset.pheNhom || '', kl: kl, pham_vi: pv });
     });
+
+    if (thieuPV) return toast("Chọn \"" + thieuPV + "\" tính chung cho máy hay tính cho lệnh", 5000);
     if (items.length === 0) return toast("Nhập khối lượng ít nhất 1 loại phế");
 
     loading(true);
     try {
-      // Gửi từng loại phế (backend xử lý phân bổ roll-level)
       const ghiChu = document.getElementById('pheNote').value.trim();
+      let nMay = 0, nLsx = 0;
       for (const item of items) {
         const res = await apiPost({
           action: "pdtSubmitPhe",
           cd: S.cd,
-          cuon_id: S.curRoll.cuon_id,
-          kl: item.kl,
-          ma_phe: item.ma_phe,
-          ten_phe: item.ten_phe,
-          ma_nhom: item.ma_nhom,
-          may: S.curRoll.may,
-          ma_may: S.curRoll.ma_may,
-          cn: S.user,
-          ma_cn: S.maCn,
-          ghi_chu: ghiChu,
+          ma_may: c.ma_may, may: c.may,
+          cuon_id: item.pham_vi === 'LSX' ? c.cuon_id : '',
+          pham_vi: item.pham_vi,
+          kl: item.kl, ma_phe: item.ma_phe, ten_phe: item.ten_phe, ma_nhom: item.ma_nhom,
+          cn: S.user, ma_cn: S.maCn, ghi_chu: ghiChu,
           ts: new Date().toISOString()
         });
         if (res.result !== "ok") throw new Error(res.error || "Lỗi ghi phế " + item.ten_phe);
+        if (res.pham_vi === 'MAY') nMay++; else nLsx++;
       }
-      toast("Đã ghi " + items.length + " loại phế");
+      toast("Đã ghi " + items.length + " loại phế"
+            + (nMay ? " · " + nMay + " chung máy" : "")
+            + (nLsx ? " · " + nLsx + " tính cho lệnh" : ""), 4000);
       closeModal('modalPhe');
-      await reloadCurrentRoll();
+      await reloadAfterWrite();
     } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
   });
 }
 
 /* ══════════════════════════════════════════════════
-   DOWNTIME v5 — Mở phiên / Đóng phiên (không phải giữ màn hình)
+   DOWNTIME v6 — mức MÁY, mở phiên / đóng phiên
 
-   Bấm "Bắt đầu dừng"  → server ghi giờ bắt đầu, gắn cờ lên cuộn.
+   Bấm "Bắt đầu dừng"  → server ghi giờ bắt đầu vào tab DT_.
    Công nhân thoát ra làm việc khác thoải mái.
-   Bấm "Chạy lại"      → server chốt giờ kết thúc + tính số phút.
+   Bấm "Chạy lại"      → server chốt giờ kết thúc + tính số phút,
+                         và chỉ phân bổ xuống LSX khi phạm vi = LSX.
 
-   Nguồn sự thật là SERVER (cột dt_id/dt_bat_dau trên CUON_), không phải
-   localStorage — nên đổi máy / đổi điện thoại / F5 vẫn thấy đúng.
+   Nguồn sự thật là SERVER (tab DT_Thoi/DT_In), không phải localStorage.
+   Ghi được cả khi MÁY TRỐNG — đó là lý do tách khỏi màn hình cuộn.
 ══════════════════════════════════════════════════ */
 
-/** Cuộn hiện tại có đang dừng không? */
-function dtIsOpen() {
-  return !!(S.curRoll && String(S.curRoll.dt_id || "").trim());
+function dtHHmm(ts) {
+  const d = dtParseTs(ts);
+  if (d) return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const m = String(ts || "").match(/(\d{1,2}):(\d{2})/);
+  return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : '—';
 }
 
 /**
@@ -1408,13 +1627,6 @@ function dtParseTs(ts) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function dtHHmm(ts) {
-  const d = dtParseTs(ts);
-  if (d) return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-  const m = String(ts || "").match(/(\d{1,2}):(\d{2})/);
-  return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : '—';
-}
-
 function dtElapsedText(startTs) {
   const d = dtParseTs(startTs);
   if (!d) return '00:00:00';
@@ -1425,6 +1637,34 @@ function dtElapsedText(startTs) {
        + String(s % 60).padStart(2, '0');
 }
 
+/** Danh sách máy đang dừng — hiện đầu dashboard */
+function renderOpenDTs() {
+  const el = document.getElementById('dashOpenDT');
+  if (!el) return;
+  const list = S.openDTs || [];
+  if (!list.length) { el.innerHTML = ''; return; }
+  let html = '';
+  list.forEach(d => {
+    html += '<div class="may-stop" onclick="openDTByMachine(\'' + esc(d.ma_may) + '\')">'
+         + '<div class="ms-top">⏸ MÁY ĐANG DỪNG — chạm để bấm Chạy lại</div>'
+         + '<div class="ms-name">' + esc(d.may || d.ma_may) + ' · ' + esc(d.ten_dt || d.ma_dt) + '</div>'
+         + '<div class="ms-sub">Từ ' + dtHHmm(d.bat_dau) + ' · '
+         + (normPV(d.pham_vi) === 'MAY' ? 'chung cho máy' : 'tính cho ' + esc(d.ds_lsx || 'lệnh'))
+         + ' · <span id="msTimer_' + esc(d.ma_may) + '">' + dtElapsedText(d.bat_dau) + '</span></div>'
+         + '</div>';
+  });
+  el.innerHTML = html;
+  dtStartTicker();
+}
+
+function openDTByMachine(maMay) {
+  const roll = rollOnMachine(maMay);
+  const d = openDTOfMachine(maMay);
+  openDT({ ma_may: maMay, may: (d && d.may) || (roll && roll.may) || maMay,
+           cuon_id: roll ? roll.cuon_id : '',
+           ds_lsx: roll ? (roll.ds_lsx || []).map(l => l.lsx) : [] });
+}
+
 /** Banner đỏ trên màn hình SX + đổi nhãn nút hành động */
 function renderDTBanner() {
   const el = document.getElementById('dtBanner');
@@ -1433,26 +1673,27 @@ function renderDTBanner() {
   const btn = document.getElementById('actBtnDT');
   if (!el) return;
 
-  if (!dtIsOpen()) {
+  const d = S.curRoll ? openDTOfMachine(S.curRoll.ma_may) : null;
+  if (!d) {
     el.style.display = 'none';
     el.innerHTML = '';
     if (icon) icon.textContent = '⏱️';
     if (name) name.textContent = 'Dừng máy';
     if (btn) btn.className = 'act-btn c-amber';
-    dtStopTicker();
     return;
   }
 
-  const r = S.curRoll;
+  const chung = normPV(d.pham_vi) === 'MAY';
   el.style.display = 'block';
   el.style.cssText = 'display:block;background:var(--red);color:#fff;border-radius:16px;'
                    + 'padding:14px;margin-bottom:14px;cursor:pointer;text-align:center;';
   el.innerHTML =
-      '<div style="font-size:13px;opacity:.9;">⏸ MÁY ĐANG DỪNG</div>'
-    + '<div style="font-size:18px;font-weight:800;margin:4px 0;">' + esc(r.dt_ten || r.dt_ma || '—') + '</div>'
+      '<div style="font-size:13px;opacity:.9;">⏸ MÁY ĐANG DỪNG'
+    + (chung ? ' · chung cho máy' : ' · tính cho lệnh') + '</div>'
+    + '<div style="font-size:18px;font-weight:800;margin:4px 0;">' + esc(d.ten_dt || d.ma_dt || '—') + '</div>'
     + '<div style="font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;" id="dtBannerTimer">'
-    + dtElapsedText(r.dt_bat_dau) + '</div>'
-    + '<div style="font-size:12px;opacity:.9;margin-top:4px;">Từ ' + dtHHmm(r.dt_bat_dau)
+    + dtElapsedText(d.bat_dau) + '</div>'
+    + '<div style="font-size:12px;opacity:.9;margin-top:4px;">Từ ' + dtHHmm(d.bat_dau)
     + ' · Chạm để bấm <b>Chạy lại</b></div>';
 
   if (icon) icon.textContent = '▶';
@@ -1464,12 +1705,20 @@ function renderDTBanner() {
 function dtStartTicker() {
   if (S.dtTimerInterval) return;
   S.dtTimerInterval = setInterval(() => {
-    if (!dtIsOpen()) { dtStopTicker(); return; }
-    const t = dtElapsedText(S.curRoll.dt_bat_dau);
-    const a = document.getElementById('dtBannerTimer');
-    const b = document.getElementById('dtTimerText');
-    if (a) a.textContent = t;
-    if (b) b.textContent = t;
+    if (!(S.openDTs || []).length) { dtStopTicker(); return; }
+    S.openDTs.forEach(d => {
+      const t = dtElapsedText(d.bat_dau);
+      const a = document.getElementById('msTimer_' + d.ma_may);
+      if (a) a.textContent = t;
+    });
+    const cur = S.curRoll ? openDTOfMachine(S.curRoll.ma_may) : null;
+    if (cur) {
+      const t = dtElapsedText(cur.bat_dau);
+      const b = document.getElementById('dtBannerTimer');
+      const c = document.getElementById('dtTimerText');
+      if (b) b.textContent = t;
+      if (c) c.textContent = t;
+    }
   }, 1000);
 }
 
@@ -1477,50 +1726,61 @@ function dtStopTicker() {
   if (S.dtTimerInterval) { clearInterval(S.dtTimerInterval); S.dtTimerInterval = null; }
 }
 
-function openDT() {
-  if (!S.curRoll) return;
+function openDT(ctx) {
+  const c = ctx || ctxFromRoll();
+  if (!c) return toast("Chọn máy trước");
+  S.dtCtx = c;
   S.selectedDT = null;
+  S.dtPV = null;
 
-  const running = dtIsOpen();
+  const d = openDTOfMachine(c.ma_may);
+  const running = !!d;
+  const coCuon = !!c.cuon_id;
+
+  document.getElementById('dtCtxLine').innerHTML =
+      'Máy <b>' + esc(c.may || c.ma_may) + '</b> · '
+    + (coCuon ? 'đang chạy <b>' + esc((c.ds_lsx || []).join(', ')) + '</b>' : '<b>máy trống</b>');
   document.getElementById('dtRunningArea').style.display = running ? 'block' : 'none';
   document.getElementById('dtIdleArea').style.display    = running ? 'none'  : 'block';
   document.getElementById('dtModalTitle').textContent    = running ? '▶ Chạy lại máy' : '⏱️ Dừng máy';
 
   if (running) {
-    const r = S.curRoll;
-    document.getElementById('dtOpenReason').textContent = r.dt_ten || r.dt_ma || '—';
-    document.getElementById('dtOpenSince').textContent  = 'Bắt đầu dừng lúc ' + dtHHmm(r.dt_bat_dau);
-    document.getElementById('dtTimerText').textContent  = dtElapsedText(r.dt_bat_dau);
+    S.dtOpen = d;
+    document.getElementById('dtOpenReason').textContent = d.ten_dt || d.ma_dt || '—';
+    document.getElementById('dtOpenSince').textContent =
+      'Bắt đầu dừng lúc ' + dtHHmm(d.bat_dau) + ' · '
+      + (normPV(d.pham_vi) === 'MAY' ? 'chung cho máy' : 'tính cho ' + (d.ds_lsx || 'lệnh'));
+    document.getElementById('dtTimerText').textContent = dtElapsedText(d.bat_dau);
     document.getElementById('dtCloseTime').value = '';
     dtStartTicker();
     document.getElementById('modalDT').classList.remove('hidden');
     return;
   }
 
-  // Danh sách nguyên nhân — nhóm theo Nhom_DT_MA
+  // Danh sách nguyên nhân — nhóm theo Nhom_DT_MA, kèm nhãn phạm vi mặc định
   const dtData = (S.masters && S.masters.dt) || [];
   const nhomData = (S.masters && S.masters.nhomDT) || [];
+  function btnDT(d2) {
+    const pv = normPV(d2.pham_vi);
+    return '<button class="pick-btn" onclick="pickDT(\'' + esc(d2.ma_dt) + '\',\'' + esc(d2.ten_dt) + '\',\''
+         + esc(d2.ma_nhom || "") + '\')">'
+         + '<div class="pb-name">' + esc(d2.ten_dt) + '</div>'
+         + '<div class="pb-sub">' + esc(d2.ma_dt) + ' '
+         + (pv === 'HOI' ? '<span class="pv-tag HOI">cần chọn</span>'
+                         : '<span class="pv-tag ' + pv + '">' + PV_LABEL[pv] + '</span>')
+         + '</div></button>';
+  }
   let html = '';
   if (nhomData.length) {
     nhomData.forEach(nhom => {
-      const items = dtData.filter(d => d.ma_nhom === nhom.ma_nhom);
+      const items = dtData.filter(x => x.ma_nhom === nhom.ma_nhom);
       if (!items.length) return;
-      html += '<div class="group-heading">' + esc(nhom.ten_nhom) + '</div>';
-      items.forEach(d => {
-        html += '<button class="pick-btn" onclick="pickDT(\'' + esc(d.ma_dt) + '\',\'' + esc(d.ten_dt) + '\',\'' + esc(d.ma_nhom || "") + '\')">'
-             + '<div class="pb-name">' + esc(d.ten_dt) + '</div>'
-             + '<div class="pb-sub">' + esc(d.ma_dt) + '</div>'
-             + '</button>';
-      });
+      html += '<div class="group-heading">' + esc(nhom.ten_nhom || nhom.ma_nhom) + '</div>';
+      items.forEach(x => { html += btnDT(x); });
     });
   }
-  if (!html) {
-    dtData.forEach(d => {
-      html += '<button class="pick-btn" onclick="pickDT(\'' + esc(d.ma_dt) + '\',\'' + esc(d.ten_dt) + '\',\'\')">'
-           + '<div class="pb-name">' + esc(d.ten_dt) + '</div>'
-           + '</button>';
-    });
-  }
+  if (!html) dtData.forEach(x => { html += btnDT(x); });
+
   document.getElementById('dtList').innerHTML = html
     || '<div style="color:var(--muted);text-align:center;padding:12px;">Chưa khai nguyên nhân dừng trong master.</div>';
 
@@ -1529,6 +1789,7 @@ function openDT() {
   document.getElementById('dtMStart').value = '';
   document.getElementById('dtMEnd').value = '';
   document.getElementById('dtOpenArea').style.display = 'none';
+  document.getElementById('dtPVLsxSub').textContent = coCuon ? (c.ds_lsx || []).join(', ') : 'máy đang trống';
 
   document.getElementById('modalDT').classList.remove('hidden');
 }
@@ -1536,22 +1797,66 @@ function openDT() {
 function pickDT(ma, ten, nhom) {
   S.selectedDT = { ma_dt: ma, ten_dt: ten, ma_nhom: nhom };
   document.querySelectorAll('#dtList .pick-btn').forEach(b => b.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
+  if (typeof event !== 'undefined' && event.currentTarget) event.currentTarget.classList.add('selected');
   document.getElementById('dtOpenArea').style.display = 'block';
+
+  // Áp phạm vi mặc định từ master
+  const pv = pvOfDT(ma);
+  S.dtPV = (pv === 'HOI') ? null : pv;
+  renderDTPV();
+}
+
+function pickPV(which, pv) {
+  if (which !== 'dt') return;
+  const coCuon = !!(S.dtCtx && S.dtCtx.cuon_id);
+  if (pv === 'LSX' && !coCuon) return toast("Máy đang trống — không có lệnh nào để tính vào");
+  S.dtPV = pv;
+  renderDTPV();
+}
+
+function renderDTPV() {
+  const coCuon = !!(S.dtCtx && S.dtCtx.cuon_id);
+  const macDinh = S.selectedDT ? pvOfDT(S.selectedDT.ma_dt) : 'HOI';
+  const hint = document.getElementById('dtPVHint');
+
+  document.querySelectorAll('#dtOpenArea .pv-btn').forEach(b => {
+    b.classList.toggle('sel', b.dataset.pv === S.dtPV);
+    if (b.dataset.pv === 'LSX') b.disabled = !coCuon;
+  });
+
+  if (!hint) return;
+  if (!S.dtPV) {
+    hint.className = 'pv-hint warn';
+    hint.textContent = macDinh === 'HOI'
+      ? 'Nguyên nhân này chưa khai sẵn trong master — chọn giúp một bên.'
+      : 'Chọn phạm vi để tiếp tục.';
+  } else if (S.dtPV !== macDinh && macDinh !== 'HOI') {
+    hint.className = 'pv-hint warn';
+    hint.textContent = 'Khác mặc định của master (' + PV_LABEL[macDinh] + ') — vẫn ghi được, hệ thống lưu lại để rà master.';
+  } else {
+    hint.className = 'pv-hint';
+    hint.textContent = S.dtPV === 'MAY'
+      ? 'Thời gian dừng này KHÔNG tính vào lệnh nào.'
+      : 'Thời gian dừng tính cho: ' + ((S.dtCtx.ds_lsx || []).join(', ') || 'lệnh đang chạy');
+  }
 }
 
 /* ─── MỞ phiên dừng ─── */
 function openDTSession() {
   debounce('openDT', async () => {
-    if (!S.curRoll) return;
+    const c = S.dtCtx;
+    if (!c) return;
     if (!S.selectedDT) return toast("Chọn nguyên nhân dừng trước");
+    if (!S.dtPV) return toast("Chọn: dừng này tính chung cho máy hay tính cho lệnh", 5000);
 
     loading(true);
     try {
       const res = await apiPost({
         action: "pdtOpenDT",
         cd: S.cd,
-        cuon_id: S.curRoll.cuon_id,
+        ma_may: c.ma_may, may: c.may,
+        cuon_id: S.dtPV === 'LSX' ? c.cuon_id : '',
+        pham_vi: S.dtPV,
         ma_dt: S.selectedDT.ma_dt,
         ten_dt: S.selectedDT.ten_dt,
         ma_nhom: S.selectedDT.ma_nhom,
@@ -1563,7 +1868,7 @@ function openDTSession() {
       if (res.result !== "ok") throw new Error(res.error);
       toast(res.msg, 4000);
       closeModal('modalDT');
-      await reloadCurrentRoll();
+      await reloadAfterWrite();
     } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
   });
@@ -1572,23 +1877,24 @@ function openDTSession() {
 /* ─── ĐÓNG phiên dừng (Chạy lại) ─── */
 function closeDTSession() {
   debounce('closeDT', async () => {
-    if (!S.curRoll) return;
+    const c = S.dtCtx;
+    if (!c) return;
     loading(true);
     try {
       const res = await apiPost({
         action: "pdtCloseDT",
         cd: S.cd,
-        cuon_id: S.curRoll.cuon_id,
-        dt_id: S.curRoll.dt_id,
+        ma_may: c.ma_may,
+        dt_id: S.dtOpen ? S.dtOpen.dt_id : '',
         ket_thuc: document.getElementById('dtCloseTime').value || '',
         cn: S.user, ma_cn: S.maCn,
         ts: new Date().toISOString()
       });
       if (res.result !== "ok") throw new Error(res.error);
       toast(res.msg, 4000);
-      dtStopTicker();
+      S.dtOpen = null;
       closeModal('modalDT');
-      await reloadCurrentRoll();
+      await reloadAfterWrite();
     } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
   });
@@ -1597,8 +1903,10 @@ function closeDTSession() {
 /* ─── NHẬP TAY lần dừng đã xong ─── */
 function submitDT() {
   debounce('submitDT', async () => {
-    if (!S.curRoll) return;
+    const c = S.dtCtx;
+    if (!c) return;
     if (!S.selectedDT) return toast("Chọn nguyên nhân dừng trước");
+    if (!S.dtPV) return toast("Chọn: dừng này tính chung cho máy hay tính cho lệnh", 5000);
 
     const s = document.getElementById('dtMStart').value;
     const e2 = document.getElementById('dtMEnd').value;
@@ -1615,24 +1923,31 @@ function submitDT() {
       const res = await apiPost({
         action: "pdtSubmitDT",
         cd: S.cd,
-        cuon_id: S.curRoll.cuon_id,
+        ma_may: c.ma_may, may: c.may,
+        cuon_id: S.dtPV === 'LSX' ? c.cuon_id : '',
+        pham_vi: S.dtPV,
         so_phut: soPhut,
         ma_dt: S.selectedDT.ma_dt,
         ten_dt: S.selectedDT.ten_dt,
         ma_nhom: S.selectedDT.ma_nhom,
-        bat_dau: s, ket_thuc: e2, nguon: "MANUAL",
-        may: S.curRoll.may, ma_may: S.curRoll.ma_may,
+        bat_dau: s, ket_thuc: e2,
         cn: S.user, ma_cn: S.maCn,
         ghi_chu: document.getElementById('dtNote').value.trim(),
         ts: new Date().toISOString()
       });
       if (res.result !== "ok") throw new Error(res.error);
-      toast(res.msg);
+      toast(res.msg, 4000);
       closeModal('modalDT');
-      await reloadCurrentRoll();
+      await reloadAfterWrite();
     } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
   });
+}
+
+/** Sau mỗi lần ghi: nạp lại cuộn + danh sách máy đang dừng, vẽ lại màn đang xem */
+async function reloadAfterWrite() {
+  if (S.curRoll) { await reloadCurrentRoll(); }
+  else { await refreshDash(); }
 }
 
 /* ══════════════════════════════════════════════════
