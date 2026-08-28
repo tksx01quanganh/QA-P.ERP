@@ -287,6 +287,9 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
     <span style="margin-left:auto;font-size:12px;" id="sxMayLabel">—</span>
   </div>
   <div class="content">
+    <!-- Banner ĐANG DỪNG MÁY (v5) -->
+    <div id="dtBanner" style="display:none;" onclick="openDT()"></div>
+
     <!-- Danh sách LSX trong cuộn -->
     <div class="card">
       <h3>📋 LSX trong cuộn (<span id="sxLSXCount">0</span>)</h3>
@@ -311,13 +314,13 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
         <div class="ab-icon">🗑️</div>
         <div class="ab-name">Ghi phế</div>
       </div>
-      <div class="act-btn c-amber" onclick="openDT()">
-        <div class="ab-icon">⏱️</div>
-        <div class="ab-name">Downtime</div>
+      <div class="act-btn c-amber" id="actBtnDT" onclick="openDT()">
+        <div class="ab-icon" id="actDTIcon">⏱️</div>
+        <div class="ab-name" id="actDTName">Dừng máy</div>
       </div>
       <div class="act-btn c-blue" onclick="openCheck()">
         <div class="ab-icon">✅</div>
-        <div class="ab-name">Check đầu ca</div>
+        <div class="ab-name">Kiểm tra</div>
       </div>
     </div>
 
@@ -408,43 +411,73 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
   </div>
 </div>
 
-<!-- ═══════ MODAL: DOWNTIME ═══════ -->
+<!-- ═══════ MODAL: DOWNTIME (v5 — mở phiên / đóng phiên) ═══════ -->
 <div id="modalDT" class="modal-overlay hidden">
   <div class="modal-sheet">
-    <h3>⏱️ Downtime (cuộn)</h3>
-    <div class="timer-box" id="dtTimerBox">
-      <div class="timer-time" id="dtTimerText">00:00:00</div>
-      <div class="timer-label" id="dtTimerLabel">Chưa bắt đầu</div>
-    </div>
-    <div style="display:flex;gap:10px;margin-bottom:14px;">
-      <button class="btn red" id="btnDTToggle" onclick="dtToggle()">⏱ Bắt đầu dừng</button>
-    </div>
-    <div class="card">
-      <h3>Hoặc nhập tay</h3>
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <div style="flex:1"><label class="fm-lbl">Bắt đầu</label><input type="time" id="dtStart" class="fm-input"></div>
-        <div style="flex:1"><label class="fm-lbl">Kết thúc</label><input type="time" id="dtEnd" class="fm-input"></div>
+    <h3 id="dtModalTitle">⏱️ Dừng máy</h3>
+
+    <!-- A. ĐANG DỪNG — chỉ còn việc bấm Chạy lại -->
+    <div id="dtRunningArea" style="display:none;">
+      <div class="timer-box running">
+        <div class="timer-time" id="dtTimerText">00:00:00</div>
+        <div class="timer-label">Máy đang dừng</div>
       </div>
-    </div>
-    <div class="fm-grp">
-      <label class="fm-lbl">Nguyên nhân dừng</label>
-      <div id="dtList" class="pick-list"></div>
-    </div>
-    <div id="dtSubmitArea" style="display:none">
+      <div class="card" style="background:var(--red-l);border-color:var(--red);">
+        <div style="font-size:16px;font-weight:800;color:var(--red);" id="dtOpenReason">—</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px;" id="dtOpenSince">—</div>
+      </div>
       <div class="fm-grp">
-        <label class="fm-lbl">Ghi chú (tùy chọn)</label>
-        <input type="text" id="dtNote" class="fm-input" placeholder="Ghi chú...">
+        <label class="fm-lbl">Giờ chạy lại (bỏ trống = bây giờ)</label>
+        <input type="time" id="dtCloseTime" class="fm-input">
       </div>
-      <button class="btn amber" id="btnSubmitDT" onclick="submitDT()">💾 Lưu Downtime</button>
+      <button class="btn green" id="btnCloseDT" onclick="closeDTSession()">▶ Chạy lại — kết thúc dừng</button>
     </div>
-    <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalDT')">Hủy</button>
+
+    <!-- B. ĐANG CHẠY — chọn nguyên nhân rồi bấm Bắt đầu dừng -->
+    <div id="dtIdleArea">
+      <div class="fm-grp">
+        <label class="fm-lbl">1. Chọn nguyên nhân dừng</label>
+        <div id="dtList" class="pick-list"></div>
+      </div>
+      <div id="dtOpenArea" style="display:none">
+        <div class="fm-grp">
+          <label class="fm-lbl">Giờ bắt đầu dừng (bỏ trống = bây giờ)</label>
+          <input type="time" id="dtStart" class="fm-input">
+        </div>
+        <div class="fm-grp">
+          <label class="fm-lbl">Ghi chú (tùy chọn)</label>
+          <input type="text" id="dtNote" class="fm-input" placeholder="Ghi chú...">
+        </div>
+        <button class="btn red" id="btnOpenDT" onclick="openDTSession()">⏸ Bắt đầu dừng</button>
+        <div style="font-size:12px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.5;">
+          Ghi xong có thể <b>thoát ra làm việc khác</b>.<br>
+          Khi máy chạy lại, vào lại đây bấm <b>Chạy lại</b> để chốt giờ kết thúc.
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h3>Hoặc nhập tay lần dừng ĐÃ XONG</h3>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Dùng khi quên bấm lúc máy dừng.</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <div style="flex:1"><label class="fm-lbl">Bắt đầu</label><input type="time" id="dtMStart" class="fm-input"></div>
+          <div style="flex:1"><label class="fm-lbl">Kết thúc</label><input type="time" id="dtMEnd" class="fm-input"></div>
+        </div>
+        <button class="btn amber" id="btnSubmitDT" onclick="submitDT()">💾 Lưu lần dừng đã xong</button>
+      </div>
+    </div>
+
+    <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalDT')">Đóng</button>
   </div>
 </div>
 
-<!-- ═══════ MODAL: CHECK ĐẦU CA ═══════ -->
+<!-- ═══════ MODAL: KIỂM TRA ═══════ -->
 <div id="modalCheck" class="modal-overlay hidden">
   <div class="modal-sheet">
-    <h3>✅ Kiểm tra đầu ca (cuộn)</h3>
+    <h3>✅ Kiểm tra cuộn</h3>
+    <div id="checkHistBox" style="display:none;" class="card">
+      <h3 style="margin-bottom:6px;">🕘 Đã kiểm tra <span id="checkHistCount">0</span> lần</h3>
+      <div id="checkHistList" style="font-size:13px;"></div>
+    </div>
     <div id="checkItems"></div>
     <button class="btn green" id="btnSubmitCheck" onclick="submitCheck()" disabled>💾 Lưu kiểm tra</button>
     <button class="btn ghost" style="margin-top:8px" onclick="closeModal('modalCheck')">Hủy</button>
@@ -501,6 +534,7 @@ function debounce(key, fn) {
     createRoll: 'btnCreateRoll', themLSX: 'btnThemLSX',
     submitCuon: 'btnSubmitCuon', submitPhe: 'btnSubmitPhe',
     submitDT: 'btnSubmitDT', submitCheck: 'btnSubmitCheck',
+    openDT: 'btnOpenDT', closeDT: 'btnCloseDT',
     rollStatus: 'btnRollStatusConfirm'
   };
   const btnId = btnMap[key];
@@ -565,11 +599,10 @@ let S = {
   selectedPhe: null,
   // DT
   selectedDT: null,
-  dtRunning: false,
-  dtStartTime: null,
-  dtTimerInterval: null,
+  dtTimerInterval: null,   // ticker hiển thị, không phải nguồn dữ liệu
   // Check
   checkValues: {},
+  checkHist: [],
   // Roll status
   pendingRollStatus: null,
 };
@@ -595,14 +628,9 @@ let S = {
     setTimeout(() => chonCD(cdParam), 50);
   }
 
-  // Khôi phục DT timer nếu còn
-  try {
-    const dtSaved = JSON.parse(localStorage.getItem("pdt_dt_timer") || "null");
-    if (dtSaved && dtSaved.startTime) {
-      S.dtRunning = true;
-      S.dtStartTime = dtSaved.startTime;
-    }
-  } catch(e) {}
+  // v5: trạng thái downtime lấy từ SERVER (cột dt_id trên CUON_),
+  // không còn phụ thuộc localStorage → dọn key cũ nếu còn sót.
+  try { localStorage.removeItem("pdt_dt_timer"); } catch(e) {}
 })();
 
 /* ══════════════════════════════════════════════════
@@ -619,13 +647,11 @@ function goHome() {
 
 function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
-  if (id === 'modalDT' && S.dtTimerInterval) {
-    // Không clear timer — timer chạy nền
-  }
   if (id === 'modalScan') stopScan();
 }
 
 function backToDash() {
+  if (typeof dtStopTicker === 'function') dtStopTicker();
   S.curRoll = null;
   refreshDash();
   showScreen('scrDash');
@@ -769,12 +795,18 @@ function renderDashRolls() {
     const lsxList = roll.ds_lsx || [];
     const lsxNames = lsxList.map(l => l.lsx).join(", ");
     const typeLabel = roll.loai_sx === "GOP" ? "Gộp" : "Đơn";
+    const dtOpen = String(roll.dt_id || "").trim();
 
     html += '<div class="roll-card" onclick="selectRoll(\'' + esc(roll.cuon_id) + '\')">'
          + '<div class="rc-top">'
          + '<span class="rc-id">' + esc(roll.cuon_id.substring(0,8)) + '...</span>'
          + '<span class="rc-status ' + tt + '">' + ttLabel + '</span>'
          + '</div>'
+         + (dtOpen
+             ? '<div style="background:var(--red);color:#fff;border-radius:10px;padding:6px 10px;'
+               + 'font-size:13px;font-weight:700;margin-bottom:6px;">⏸ ĐANG DỪNG: '
+               + esc(roll.dt_ten || roll.dt_ma || '—') + ' · từ ' + dtHHmm(roll.dt_bat_dau) + '</div>'
+             : '')
          + '<div class="rc-may">' + esc(roll.may || "—") + '</div>'
          + '<div class="rc-lsx"><span class="rc-type ' + esc(roll.loai_sx) + '">' + typeLabel + '</span>' + esc(lsxNames) + '</div>'
          + '<div class="rc-info">'
@@ -1076,6 +1108,9 @@ function enterSXScreen() {
   document.getElementById('sxPheTotal').textContent = roll.tong_kl_phe || 0;
   document.getElementById('sxDTTotal').textContent = roll.tong_dt_phut || 0;
 
+  // Banner "đang dừng máy" + đổi nhãn nút DT
+  renderDTBanner();
+
   // Status buttons
   renderStatusBtns();
 
@@ -1345,42 +1380,155 @@ function submitPhe() {
 }
 
 /* ══════════════════════════════════════════════════
-   DOWNTIME — Roll-level + Timer
+   DOWNTIME v5 — Mở phiên / Đóng phiên (không phải giữ màn hình)
+
+   Bấm "Bắt đầu dừng"  → server ghi giờ bắt đầu, gắn cờ lên cuộn.
+   Công nhân thoát ra làm việc khác thoải mái.
+   Bấm "Chạy lại"      → server chốt giờ kết thúc + tính số phút.
+
+   Nguồn sự thật là SERVER (cột dt_id/dt_bat_dau trên CUON_), không phải
+   localStorage — nên đổi máy / đổi điện thoại / F5 vẫn thấy đúng.
 ══════════════════════════════════════════════════ */
+
+/** Cuộn hiện tại có đang dừng không? */
+function dtIsOpen() {
+  return !!(S.curRoll && String(S.curRoll.dt_id || "").trim());
+}
+
+/**
+ * Chuẩn hoá thời gian về Date — nhận cả "dd/MM/yyyy HH:mm:ss" lẫn ISO
+ * (Sheets có thể trả về kiểu Date → JSON thành ISO).
+ */
+function dtParseTs(ts) {
+  if (!ts) return null;
+  const s = String(ts);
+  const m = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +(m[6] || 0));
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function dtHHmm(ts) {
+  const d = dtParseTs(ts);
+  if (d) return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const m = String(ts || "").match(/(\d{1,2}):(\d{2})/);
+  return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : '—';
+}
+
+function dtElapsedText(startTs) {
+  const d = dtParseTs(startTs);
+  if (!d) return '00:00:00';
+  let s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 0) s = 0;
+  return String(Math.floor(s / 3600)).padStart(2, '0') + ':'
+       + String(Math.floor((s % 3600) / 60)).padStart(2, '0') + ':'
+       + String(s % 60).padStart(2, '0');
+}
+
+/** Banner đỏ trên màn hình SX + đổi nhãn nút hành động */
+function renderDTBanner() {
+  const el = document.getElementById('dtBanner');
+  const icon = document.getElementById('actDTIcon');
+  const name = document.getElementById('actDTName');
+  const btn = document.getElementById('actBtnDT');
+  if (!el) return;
+
+  if (!dtIsOpen()) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    if (icon) icon.textContent = '⏱️';
+    if (name) name.textContent = 'Dừng máy';
+    if (btn) btn.className = 'act-btn c-amber';
+    dtStopTicker();
+    return;
+  }
+
+  const r = S.curRoll;
+  el.style.display = 'block';
+  el.style.cssText = 'display:block;background:var(--red);color:#fff;border-radius:16px;'
+                   + 'padding:14px;margin-bottom:14px;cursor:pointer;text-align:center;';
+  el.innerHTML =
+      '<div style="font-size:13px;opacity:.9;">⏸ MÁY ĐANG DỪNG</div>'
+    + '<div style="font-size:18px;font-weight:800;margin:4px 0;">' + esc(r.dt_ten || r.dt_ma || '—') + '</div>'
+    + '<div style="font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;" id="dtBannerTimer">'
+    + dtElapsedText(r.dt_bat_dau) + '</div>'
+    + '<div style="font-size:12px;opacity:.9;margin-top:4px;">Từ ' + dtHHmm(r.dt_bat_dau)
+    + ' · Chạm để bấm <b>Chạy lại</b></div>';
+
+  if (icon) icon.textContent = '▶';
+  if (name) name.textContent = 'Chạy lại';
+  if (btn) btn.className = 'act-btn c-red';
+  dtStartTicker();
+}
+
+function dtStartTicker() {
+  if (S.dtTimerInterval) return;
+  S.dtTimerInterval = setInterval(() => {
+    if (!dtIsOpen()) { dtStopTicker(); return; }
+    const t = dtElapsedText(S.curRoll.dt_bat_dau);
+    const a = document.getElementById('dtBannerTimer');
+    const b = document.getElementById('dtTimerText');
+    if (a) a.textContent = t;
+    if (b) b.textContent = t;
+  }, 1000);
+}
+
+function dtStopTicker() {
+  if (S.dtTimerInterval) { clearInterval(S.dtTimerInterval); S.dtTimerInterval = null; }
+}
+
 function openDT() {
   if (!S.curRoll) return;
   S.selectedDT = null;
+
+  const running = dtIsOpen();
+  document.getElementById('dtRunningArea').style.display = running ? 'block' : 'none';
+  document.getElementById('dtIdleArea').style.display    = running ? 'none'  : 'block';
+  document.getElementById('dtModalTitle').textContent    = running ? '▶ Chạy lại máy' : '⏱️ Dừng máy';
+
+  if (running) {
+    const r = S.curRoll;
+    document.getElementById('dtOpenReason').textContent = r.dt_ten || r.dt_ma || '—';
+    document.getElementById('dtOpenSince').textContent  = 'Bắt đầu dừng lúc ' + dtHHmm(r.dt_bat_dau);
+    document.getElementById('dtTimerText').textContent  = dtElapsedText(r.dt_bat_dau);
+    document.getElementById('dtCloseTime').value = '';
+    dtStartTicker();
+    document.getElementById('modalDT').classList.remove('hidden');
+    return;
+  }
+
+  // Danh sách nguyên nhân — nhóm theo Nhom_DT_MA
   const dtData = (S.masters && S.masters.dt) || [];
   const nhomData = (S.masters && S.masters.nhomDT) || [];
-
   let html = '';
-  if (nhomData.length > 0) {
+  if (nhomData.length) {
     nhomData.forEach(nhom => {
-      html += '<div class="group-heading">' + esc(nhom.ten_nhom || nhom.ma_nhom) + '</div>';
-      dtData.filter(d => d.ma_nhom === nhom.ma_nhom).forEach(d => {
-        html += '<button class="pick-btn" onclick="pickDT(\'' + esc(d.ma_dt) + '\',\'' + esc(d.ten_dt) + '\',\'' + esc(d.ma_nhom||"") + '\')">'
+      const items = dtData.filter(d => d.ma_nhom === nhom.ma_nhom);
+      if (!items.length) return;
+      html += '<div class="group-heading">' + esc(nhom.ten_nhom) + '</div>';
+      items.forEach(d => {
+        html += '<button class="pick-btn" onclick="pickDT(\'' + esc(d.ma_dt) + '\',\'' + esc(d.ten_dt) + '\',\'' + esc(d.ma_nhom || "") + '\')">'
              + '<div class="pb-name">' + esc(d.ten_dt) + '</div>'
              + '<div class="pb-sub">' + esc(d.ma_dt) + '</div>'
              + '</button>';
       });
     });
-  } else {
+  }
+  if (!html) {
     dtData.forEach(d => {
       html += '<button class="pick-btn" onclick="pickDT(\'' + esc(d.ma_dt) + '\',\'' + esc(d.ten_dt) + '\',\'\')">'
            + '<div class="pb-name">' + esc(d.ten_dt) + '</div>'
            + '</button>';
     });
   }
-  document.getElementById('dtList').innerHTML = html;
+  document.getElementById('dtList').innerHTML = html
+    || '<div style="color:var(--muted);text-align:center;padding:12px;">Chưa khai nguyên nhân dừng trong master.</div>';
 
-  // Reset manual inputs
   document.getElementById('dtStart').value = '';
-  document.getElementById('dtEnd').value = '';
   document.getElementById('dtNote').value = '';
-  document.getElementById('dtSubmitArea').style.display = 'none';
-
-  // Timer state
-  updateDTTimerUI();
+  document.getElementById('dtMStart').value = '';
+  document.getElementById('dtMEnd').value = '';
+  document.getElementById('dtOpenArea').style.display = 'none';
 
   document.getElementById('modalDT').classList.remove('hidden');
 }
@@ -1389,97 +1537,78 @@ function pickDT(ma, ten, nhom) {
   S.selectedDT = { ma_dt: ma, ten_dt: ten, ma_nhom: nhom };
   document.querySelectorAll('#dtList .pick-btn').forEach(b => b.classList.remove('selected'));
   event.currentTarget.classList.add('selected');
-  document.getElementById('dtSubmitArea').style.display = 'block';
+  document.getElementById('dtOpenArea').style.display = 'block';
 }
 
-function dtToggle() {
-  if (S.dtRunning) {
-    // Stop timer
-    S.dtRunning = false;
-    if (S.dtTimerInterval) { clearInterval(S.dtTimerInterval); S.dtTimerInterval = null; }
-    localStorage.removeItem("pdt_dt_timer");
-    updateDTTimerUI();
-  } else {
-    // Start timer
-    S.dtRunning = true;
-    S.dtStartTime = Date.now();
-    try { localStorage.setItem("pdt_dt_timer", JSON.stringify({ startTime: S.dtStartTime })); } catch(e) {}
-    S.dtTimerInterval = setInterval(updateDTTimerUI, 1000);
-    updateDTTimerUI();
-  }
+/* ─── MỞ phiên dừng ─── */
+function openDTSession() {
+  debounce('openDT', async () => {
+    if (!S.curRoll) return;
+    if (!S.selectedDT) return toast("Chọn nguyên nhân dừng trước");
+
+    loading(true);
+    try {
+      const res = await apiPost({
+        action: "pdtOpenDT",
+        cd: S.cd,
+        cuon_id: S.curRoll.cuon_id,
+        ma_dt: S.selectedDT.ma_dt,
+        ten_dt: S.selectedDT.ten_dt,
+        ma_nhom: S.selectedDT.ma_nhom,
+        bat_dau: document.getElementById('dtStart').value || '',
+        ghi_chu: document.getElementById('dtNote').value.trim(),
+        cn: S.user, ma_cn: S.maCn,
+        ts: new Date().toISOString()
+      });
+      if (res.result !== "ok") throw new Error(res.error);
+      toast(res.msg, 4000);
+      closeModal('modalDT');
+      await reloadCurrentRoll();
+    } catch(e) { toast("❌ " + e.message, 5000); }
+    finally { loading(false); }
+  });
 }
 
-function updateDTTimerUI() {
-  const box = document.getElementById('dtTimerBox');
-  const text = document.getElementById('dtTimerText');
-  const label = document.getElementById('dtTimerLabel');
-  const btn = document.getElementById('btnDTToggle');
-
-  if (S.dtRunning && S.dtStartTime) {
-    box.classList.add('running');
-    const elapsed = Math.floor((Date.now() - S.dtStartTime) / 1000);
-    const hh = String(Math.floor(elapsed/3600)).padStart(2,'0');
-    const mm = String(Math.floor((elapsed%3600)/60)).padStart(2,'0');
-    const ss = String(elapsed%60).padStart(2,'0');
-    text.textContent = hh + ':' + mm + ':' + ss;
-    label.textContent = 'Đang dừng máy...';
-    btn.textContent = '⏹ Kết thúc dừng';
-    btn.className = 'btn green';
-    if (!S.dtTimerInterval) {
-      S.dtTimerInterval = setInterval(updateDTTimerUI, 1000);
-    }
-  } else {
-    box.classList.remove('running');
-    if (!S.dtStartTime) {
-      text.textContent = '00:00:00';
-    }
-    label.textContent = 'Chưa bắt đầu';
-    btn.textContent = '⏱ Bắt đầu dừng';
-    btn.className = 'btn red';
-  }
+/* ─── ĐÓNG phiên dừng (Chạy lại) ─── */
+function closeDTSession() {
+  debounce('closeDT', async () => {
+    if (!S.curRoll) return;
+    loading(true);
+    try {
+      const res = await apiPost({
+        action: "pdtCloseDT",
+        cd: S.cd,
+        cuon_id: S.curRoll.cuon_id,
+        dt_id: S.curRoll.dt_id,
+        ket_thuc: document.getElementById('dtCloseTime').value || '',
+        cn: S.user, ma_cn: S.maCn,
+        ts: new Date().toISOString()
+      });
+      if (res.result !== "ok") throw new Error(res.error);
+      toast(res.msg, 4000);
+      dtStopTicker();
+      closeModal('modalDT');
+      await reloadCurrentRoll();
+    } catch(e) { toast("❌ " + e.message, 5000); }
+    finally { loading(false); }
+  });
 }
 
+/* ─── NHẬP TAY lần dừng đã xong ─── */
 function submitDT() {
   debounce('submitDT', async () => {
-    if (!S.curRoll || !S.selectedDT) return;
+    if (!S.curRoll) return;
+    if (!S.selectedDT) return toast("Chọn nguyên nhân dừng trước");
 
-    let soPhut = 0;
-    let batDau = '', ketThuc = '', nguon = 'MANUAL';
-    const dtStartInput = document.getElementById('dtStart').value;
-    const dtEndInput = document.getElementById('dtEnd').value;
+    const s = document.getElementById('dtMStart').value;
+    const e2 = document.getElementById('dtMEnd').value;
+    if (!s || !e2) return toast("Nhập đủ giờ bắt đầu và kết thúc");
 
-    if (S.dtStartTime && !S.dtRunning) {
-      // Timer mode — đã stop
-      soPhut = Math.round((Date.now() - S.dtStartTime) / 60000 * 10) / 10;
-      const start = new Date(S.dtStartTime);
-      batDau = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
-      const end = new Date();
-      ketThuc = String(end.getHours()).padStart(2,'0') + ':' + String(end.getMinutes()).padStart(2,'0');
-      nguon = 'TIMER';
-    } else if (dtStartInput && dtEndInput) {
-      // Manual time
-      const [h1,m1] = dtStartInput.split(':').map(Number);
-      const [h2,m2] = dtEndInput.split(':').map(Number);
-      soPhut = (h2*60+m2) - (h1*60+m1);
-      if (soPhut < 0) soPhut += 1440;
-      batDau = dtStartInput;
-      ketThuc = dtEndInput;
-    } else if (S.dtRunning) {
-      // Timer đang chạy → stop trước
-      soPhut = Math.round((Date.now() - S.dtStartTime) / 60000 * 10) / 10;
-      const start = new Date(S.dtStartTime);
-      batDau = String(start.getHours()).padStart(2,'0') + ':' + String(start.getMinutes()).padStart(2,'0');
-      const end = new Date();
-      ketThuc = String(end.getHours()).padStart(2,'0') + ':' + String(end.getMinutes()).padStart(2,'0');
-      nguon = 'TIMER';
-      S.dtRunning = false;
-      if (S.dtTimerInterval) { clearInterval(S.dtTimerInterval); S.dtTimerInterval = null; }
-      localStorage.removeItem("pdt_dt_timer");
-    } else {
-      return toast("Bấm timer hoặc nhập thời gian bắt đầu/kết thúc");
-    }
-
-    if (soPhut < 0) return toast("Thời gian DT không hợp lệ");
+    const [h1, m1] = s.split(':').map(Number);
+    const [h2, m2] = e2.split(':').map(Number);
+    let soPhut = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (soPhut < 0) soPhut += 1440;
+    if (soPhut <= 0) return toast("Thời gian dừng phải > 0");
 
     loading(true);
     try {
@@ -1487,24 +1616,18 @@ function submitDT() {
         action: "pdtSubmitDT",
         cd: S.cd,
         cuon_id: S.curRoll.cuon_id,
-        // Không truyền lsx → backend ghi roll-level
         so_phut: soPhut,
         ma_dt: S.selectedDT.ma_dt,
         ten_dt: S.selectedDT.ten_dt,
         ma_nhom: S.selectedDT.ma_nhom,
-        bat_dau: batDau,
-        ket_thuc: ketThuc,
-        nguon: nguon,
-        may: S.curRoll.may,
-        ma_may: S.curRoll.ma_may,
-        cn: S.user,
-        ma_cn: S.maCn,
+        bat_dau: s, ket_thuc: e2, nguon: "MANUAL",
+        may: S.curRoll.may, ma_may: S.curRoll.ma_may,
+        cn: S.user, ma_cn: S.maCn,
         ghi_chu: document.getElementById('dtNote').value.trim(),
         ts: new Date().toISOString()
       });
       if (res.result !== "ok") throw new Error(res.error);
       toast(res.msg);
-      S.dtStartTime = null;
       closeModal('modalDT');
       await reloadCurrentRoll();
     } catch(e) { toast("❌ " + e.message, 5000); }
@@ -1513,11 +1636,50 @@ function submitDT() {
 }
 
 /* ══════════════════════════════════════════════════
-   CHECK ĐẦU CA — Roll-level
+   KIỂM TRA v5 — ghi vào tab CHECK_ riêng
+   1 lần bấm Lưu = 1 DÒNG trong CHECK_Thoi / CHECK_In.
+   1 cuộn có thể check nhiều lần (lan_check 1, 2, 3...).
 ══════════════════════════════════════════════════ */
+
+/** Nạp lịch sử các lần check của cuộn hiện tại (hiện trong modal) */
+async function loadCheckHist() {
+  const box = document.getElementById('checkHistBox');
+  S.checkHist = [];
+  if (box) box.style.display = 'none';
+  if (!S.curRoll) return;
+  try {
+    const res = await api("pdtCheckHistory", { cd: S.cd, cuon_id: S.curRoll.cuon_id }, 12000);
+    if (res && res.result === "ok") S.checkHist = res.items || [];
+  } catch(e) { /* không chặn luồng check */ }
+  renderCheckHist();
+}
+
+function renderCheckHist() {
+  const box = document.getElementById('checkHistBox');
+  const list = document.getElementById('checkHistList');
+  const cnt = document.getElementById('checkHistCount');
+  if (!box || !list) return;
+  if (!S.checkHist.length) { box.style.display = 'none'; return; }
+
+  cnt.textContent = S.checkHist.length;
+  let html = '';
+  S.checkHist.slice(-5).forEach(h => {
+    const ng = String(h.ket_qua || '').toUpperCase() === 'NG';
+    html += '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--border);">'
+         + '<span style="font-weight:700;">Lần ' + esc(h.lan_check || '?') + '</span>'
+         + '<span style="color:var(--muted);">' + esc(dtHHmm(h.thoi_gian)) + '</span>'
+         + '<span style="margin-left:auto;font-weight:700;color:' + (ng ? 'var(--red)' : 'var(--green)') + ';">'
+         + (ng ? '⚠ NG ' + esc(h.so_ng || '') : '✅ OK') + '</span>'
+         + '</div>';
+  });
+  list.innerHTML = html;
+  box.style.display = 'block';
+}
+
 function openCheck() {
   if (!S.curRoll) return;
   S.checkValues = {};
+  loadCheckHist();
   const checkData = (S.masters && S.masters.check) || [];
   const el = document.getElementById('checkItems');
 
@@ -1620,7 +1782,6 @@ function submitCheck() {
         action: "pdtSubmitCheck",
         cd: S.cd,
         cuon_id: S.curRoll.cuon_id,
-        // Không truyền lsx → backend ghi roll-level
         items: S.checkValues,
         may: S.curRoll.may,
         ma_may: S.curRoll.ma_may,
@@ -1630,7 +1791,7 @@ function submitCheck() {
         ts: new Date().toISOString()
       });
       if (res.result !== "ok") throw new Error(res.error);
-      toast(res.msg);
+      toast(res.msg, res.ket_qua === 'NG' ? 6000 : 3000);
       closeModal('modalCheck');
     } catch(e) { toast("❌ " + e.message, 5000); }
     finally { loading(false); }
