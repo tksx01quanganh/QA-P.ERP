@@ -452,6 +452,7 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
     <h3 id="pheModalTitle">🗑️ Ghi phế</h3>
     <div id="pheCtxLine" class="ctx-line">—</div>
     <div id="pheItemsContainer"></div>
+    <div class="pv-hint" id="pheListNote"></div>
     <div class="fm-grp" style="margin-top:10px;">
       <label class="fm-lbl">Ghi chú (tùy chọn)</label>
       <input type="text" id="pheNote" class="fm-input" placeholder="Ghi chú...">
@@ -487,25 +488,11 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
     <!-- B. ĐANG CHẠY — chọn nguyên nhân rồi bấm Bắt đầu dừng -->
     <div id="dtIdleArea">
       <div class="fm-grp">
-        <label class="fm-lbl">1. Chọn nguyên nhân dừng</label>
+        <label class="fm-lbl">Chọn nguyên nhân dừng</label>
         <div id="dtList" class="pick-list"></div>
+        <div class="pv-hint" id="dtListNote"></div>
       </div>
       <div id="dtOpenArea" style="display:none">
-        <!-- Phạm vi: chung cho máy hay tính cho lệnh đang chạy -->
-        <div class="fm-grp">
-          <label class="fm-lbl">2. Tính vào đâu?</label>
-          <div class="pv-row">
-            <button class="pv-btn" data-pv="MAY" onclick="pickPV('dt','MAY')">
-              <div class="pv-name">🏭 Chung cho máy</div>
-              <div class="pv-sub">Không tính vào lệnh nào</div>
-            </button>
-            <button class="pv-btn" data-pv="LSX" onclick="pickPV('dt','LSX')">
-              <div class="pv-name">📋 Tính cho lệnh</div>
-              <div class="pv-sub" id="dtPVLsxSub">Lệnh đang chạy trên máy</div>
-            </button>
-          </div>
-          <div class="pv-hint" id="dtPVHint"></div>
-        </div>
         <div class="fm-grp">
           <label class="fm-lbl">Giờ bắt đầu dừng (bỏ trống = bây giờ)</label>
           <input type="time" id="dtStart" class="fm-input">
@@ -670,9 +657,9 @@ let S = {
   openDTs: [],        // các lần dừng đang mở (từ server)
   dtCtx: null,        // { ma_may, may, cuon_id, ds_lsx } — bối cảnh modal DT
   dtOpen: null,       // dòng dừng đang mở của máy trong dtCtx
-  dtPV: null,         // phạm vi người ghi đã chọn cho DT
+  dtScope: null,      // 'MAY' | 'LSX' — do MÀN HÌNH quyết định, không hỏi người ghi
   pheCtx: null,       // bối cảnh modal phế
-  phePV: {},          // ma_phe → phạm vi người ghi chọn
+  pheScope: null,     // 'MAY' | 'LSX'
   mayPickMode: null,  // 'dt' | 'phe'
   // Check
   checkValues: {},
@@ -1469,53 +1456,61 @@ function pickMayGhi(maMay, ten) {
   const roll = rollOnMachine(maMay);
   const ctx = { ma_may: maMay, may: ten, cuon_id: roll ? roll.cuon_id : '',
                 ds_lsx: roll ? (roll.ds_lsx || []).map(l => l.lsx) : [] };
-  if (S.mayPickMode === 'phe') openPhe(ctx);
-  else if (S.mayPickMode === 'dt') openDT(ctx);
+  // Vào từ dashboard = ghi CHUNG CHO MÁY
+  if (S.mayPickMode === 'phe') openPhe(ctx, 'MAY');
+  else if (S.mayPickMode === 'dt') openDT(ctx, 'MAY');
   else toast("Chưa rõ thao tác — chọn lại Dừng máy hoặc Ghi phế");
   S.mayPickMode = null;
 }
 
+/**
+ * Lọc danh mục theo màn hình đang đứng.
+ *   scope 'MAY' (vào từ dashboard) → hiện mã master khai MAY, và HOI
+ *   scope 'LSX' (vào từ màn cuộn)  → hiện mã master khai LSX, và HOI
+ * Mã khai HOI (nước đôi, vd "Chờ nguyên liệu") xuất hiện ở CẢ HAI chỗ —
+ * ghi ở đâu thì tính theo chỗ đó. Không hỏi thêm câu nào.
+ */
+function locTheoScope(arr, key, scope) {
+  return (arr || []).filter(it => {
+    const pv = normPV(it[key]);
+    return pv === scope || pv === 'HOI';
+  });
+}
+
 /* ══════════════════════════════════════════════════
-   GHI PHẾ v6
+   GHI PHẾ v7 — danh mục lọc sẵn theo màn hình, KHÔNG hỏi phạm vi
 ══════════════════════════════════════════════════ */
-function openPhe(ctx) {
+function openPhe(ctx, scope) {
   const c = ctx || ctxFromRoll();
   if (!c) return toast("Chọn máy trước");
+  const sc = scope || 'LSX';          // không truyền = vào từ màn cuộn
+  if (sc === 'LSX' && !c.cuon_id) return toast("Máy đang trống — ghi phế chung ở ngoài Dashboard", 5000);
+
   S.pheCtx = c;
-  S.phePV = {};   // ma_phe → phạm vi người ghi chọn
+  S.pheScope = sc;
 
-  const pheData = (S.masters && S.masters.phe) || [];
+  const pheAll = (S.masters && S.masters.phe) || [];
+  const pheData = locTheoScope(pheAll, 'pham_vi', sc);
   const nhomData = (S.masters && S.masters.nhomPhe) || [];
-  const coCuon = !!c.cuon_id;
+  const soAnDi = pheAll.length - pheData.length;
 
+  document.getElementById('pheModalTitle').textContent =
+    sc === 'MAY' ? '🏭 Ghi phế chung cho máy' : '📋 Ghi phế cho lệnh';
   document.getElementById('pheCtxLine').innerHTML =
-      'Máy <b>' + esc(c.may || c.ma_may) + '</b> · '
-    + (coCuon ? 'đang chạy <b>' + esc((c.ds_lsx || []).join(', ')) + '</b>' : '<b>máy trống</b>');
+    sc === 'MAY'
+      ? 'Máy <b>' + esc(c.may || c.ma_may) + '</b> · <b>không tính vào lệnh nào</b>'
+      : 'Máy <b>' + esc(c.may || c.ma_may) + '</b> · tính cho <b>' + esc((c.ds_lsx || []).join(', ')) + '</b>';
 
   let html = '';
   function renderItem(p) {
-    const pv = pvOfPhe(p.ma_phe);
     html += '<div class="phe-item">'
          + '<div class="pi-name">' + esc(p.ten_phe)
-         + '<div class="pi-sub">' + esc(p.ma_phe) + ' '
-         + (pv === 'HOI' ? '<span class="pv-tag HOI">cần chọn</span>'
-                         : '<span class="pv-tag ' + pv + '">' + PV_LABEL[pv] + '</span>')
-         + '</div></div>'
+         + '<div class="pi-sub">' + esc(p.ma_phe) + '</div></div>'
          + '<input type="number" inputmode="decimal" step="0.1" min="0" placeholder="0" '
          + 'data-phe-ma="' + esc(p.ma_phe) + '" data-phe-ten="' + esc(p.ten_phe) + '" '
-         + 'data-phe-nhom="' + esc(p.ma_nhom || "") + '" data-phe-pv="' + pv + '" '
-         + 'oninput="onPheKL(this)">'
+         + 'data-phe-nhom="' + esc(p.ma_nhom || "") + '">'
          + '<span class="pi-unit">kg</span>'
          + '</div>';
-    // Hàng chọn phạm vi — hiện khi master để HOI, hoặc khi người ghi bấm "Đổi"
-    html += '<div class="pv-row" id="pvrow_' + esc(p.ma_phe) + '" style="display:none;margin:-4px 0 10px;">'
-         + '<button class="pv-btn" data-pv="MAY" onclick="pickPhePV(\'' + esc(p.ma_phe) + '\',\'MAY\')">'
-         + '<div class="pv-name">🏭 Chung cho máy</div></button>'
-         + '<button class="pv-btn" data-pv="LSX" ' + (coCuon ? '' : 'disabled ')
-         + 'onclick="pickPhePV(\'' + esc(p.ma_phe) + '\',\'LSX\')">'
-         + '<div class="pv-name">📋 Tính cho lệnh</div>'
-         + '<div class="pv-sub">' + (coCuon ? esc((c.ds_lsx || []).join(', ')) : 'máy đang trống') + '</div>'
-         + '</button></div>';
   }
   if (nhomData.length > 0) {
     nhomData.forEach(nhom => {
@@ -1524,79 +1519,58 @@ function openPhe(ctx) {
       html += '<div class="group-heading">' + esc(nhom.ten_nhom || nhom.ma_nhom) + '</div>';
       items.forEach(renderItem);
     });
-  } else {
-    pheData.forEach(renderItem);
   }
+  if (!html) pheData.forEach(renderItem);
 
   document.getElementById('pheItemsContainer').innerHTML = html
-    || '<div style="color:var(--muted);text-align:center;padding:12px;">Chưa khai loại phế trong master.</div>';
+    || '<div style="color:var(--muted);text-align:center;padding:12px;">'
+       + (pheAll.length ? 'Không có loại phế nào khai cho màn hình này.<br>Kiểm tra cột <b>pham_vi</b> trong master.'
+                        : 'Chưa khai loại phế trong master.') + '</div>';
+
+  document.getElementById('pheListNote').textContent = soAnDi > 0
+    ? (sc === 'MAY'
+        ? 'Còn ' + soAnDi + ' loại phế thuộc về lệnh — ghi trong màn hình cuộn.'
+        : 'Còn ' + soAnDi + ' loại phế chung của máy — ghi ở ngoài Dashboard.')
+    : '';
+
   document.getElementById('pheNote').value = '';
   document.getElementById('modalPhe').classList.remove('hidden');
-}
-
-/** Nhập KL > 0 cho loại phế master để HOI → bung hàng chọn phạm vi */
-function onPheKL(inp) {
-  const ma = inp.dataset.pheMa;
-  const row = document.getElementById('pvrow_' + ma);
-  if (!row) return;
-  const can = parseFloat(inp.value) > 0 && inp.dataset.phePv === 'HOI';
-  row.style.display = can ? 'flex' : 'none';
-}
-
-function pickPhePV(ma, pv) {
-  S.phePV[ma] = pv;
-  const row = document.getElementById('pvrow_' + ma);
-  if (row) row.querySelectorAll('.pv-btn').forEach(b => {
-    b.classList.toggle('sel', b.dataset.pv === pv);
-  });
 }
 
 function submitPhe() {
   debounce('submitPhe', async () => {
     const c = S.pheCtx;
     if (!c) return;
+    const sc = S.pheScope || 'LSX';
 
     const inputs = document.querySelectorAll('#pheItemsContainer input[data-phe-ma]');
     const items = [];
-    let thieuPV = null;
     inputs.forEach(inp => {
       const kl = parseFloat(inp.value);
       if (!(kl > 0)) return;
-      const ma = inp.dataset.pheMa;
-      let pv = inp.dataset.phePv;
-      if (pv === 'HOI') {
-        pv = S.phePV[ma] || '';
-        if (!pv) { thieuPV = thieuPV || inp.dataset.pheTen; return; }
-      }
-      if (pv === 'LSX' && !c.cuon_id) { thieuPV = thieuPV || inp.dataset.pheTen; return; }
-      items.push({ ma_phe: ma, ten_phe: inp.dataset.pheTen,
-                   ma_nhom: inp.dataset.pheNhom || '', kl: kl, pham_vi: pv });
+      items.push({ ma_phe: inp.dataset.pheMa, ten_phe: inp.dataset.pheTen,
+                   ma_nhom: inp.dataset.pheNhom || '', kl: kl });
     });
-
-    if (thieuPV) return toast("Chọn \"" + thieuPV + "\" tính chung cho máy hay tính cho lệnh", 5000);
     if (items.length === 0) return toast("Nhập khối lượng ít nhất 1 loại phế");
 
     loading(true);
     try {
       const ghiChu = document.getElementById('pheNote').value.trim();
-      let nMay = 0, nLsx = 0;
       for (const item of items) {
         const res = await apiPost({
           action: "pdtSubmitPhe",
           cd: S.cd,
           ma_may: c.ma_may, may: c.may,
-          cuon_id: item.pham_vi === 'LSX' ? c.cuon_id : '',
-          pham_vi: item.pham_vi,
+          cuon_id: sc === 'LSX' ? c.cuon_id : '',
+          pham_vi: sc,
           kl: item.kl, ma_phe: item.ma_phe, ten_phe: item.ten_phe, ma_nhom: item.ma_nhom,
           cn: S.user, ma_cn: S.maCn, ghi_chu: ghiChu,
           ts: new Date().toISOString()
         });
         if (res.result !== "ok") throw new Error(res.error || "Lỗi ghi phế " + item.ten_phe);
-        if (res.pham_vi === 'MAY') nMay++; else nLsx++;
       }
-      toast("Đã ghi " + items.length + " loại phế"
-            + (nMay ? " · " + nMay + " chung máy" : "")
-            + (nLsx ? " · " + nLsx + " tính cho lệnh" : ""), 4000);
+      toast("Đã ghi " + items.length + " loại phế · "
+            + (sc === 'MAY' ? 'chung cho máy' : 'tính cho lệnh'), 4000);
       closeModal('modalPhe');
       await reloadAfterWrite();
     } catch(e) { toast("❌ " + e.message, 5000); }
@@ -1735,23 +1709,27 @@ function dtStopTicker() {
   if (S.dtTimerInterval) { clearInterval(S.dtTimerInterval); S.dtTimerInterval = null; }
 }
 
-function openDT(ctx) {
+function openDT(ctx, scope) {
   const c = ctx || ctxFromRoll();
   if (!c) return toast("Chọn máy trước");
+  const sc = scope || 'LSX';          // không truyền = vào từ màn cuộn
   S.dtCtx = c;
+  S.dtScope = sc;
   S.selectedDT = null;
-  S.dtPV = null;
 
   const d = openDTOfMachine(c.ma_may);
   const running = !!d;
-  const coCuon = !!c.cuon_id;
 
-  document.getElementById('dtCtxLine').innerHTML =
-      'Máy <b>' + esc(c.may || c.ma_may) + '</b> · '
-    + (coCuon ? 'đang chạy <b>' + esc((c.ds_lsx || []).join(', ')) + '</b>' : '<b>máy trống</b>');
+  document.getElementById('dtCtxLine').innerHTML = running
+    ? 'Máy <b>' + esc(c.may || c.ma_may) + '</b>'
+    : (sc === 'MAY'
+        ? 'Máy <b>' + esc(c.may || c.ma_may) + '</b> · <b>không tính vào lệnh nào</b>'
+        : 'Máy <b>' + esc(c.may || c.ma_may) + '</b> · tính cho <b>' + esc((c.ds_lsx || []).join(', ')) + '</b>');
   document.getElementById('dtRunningArea').style.display = running ? 'block' : 'none';
   document.getElementById('dtIdleArea').style.display    = running ? 'none'  : 'block';
-  document.getElementById('dtModalTitle').textContent    = running ? '▶ Chạy lại máy' : '⏱️ Dừng máy';
+  document.getElementById('dtModalTitle').textContent    = running
+    ? '▶ Chạy lại máy'
+    : (sc === 'MAY' ? '🏭 Dừng máy — chung cho máy' : '📋 Dừng máy — tính cho lệnh');
 
   if (running) {
     S.dtOpen = d;
@@ -1766,18 +1744,23 @@ function openDT(ctx) {
     return;
   }
 
-  // Danh sách nguyên nhân — nhóm theo Nhom_DT_MA, kèm nhãn phạm vi mặc định
-  const dtData = (S.masters && S.masters.dt) || [];
+  if (sc === 'LSX' && !c.cuon_id) {
+    closeModal('modalDT');
+    return toast("Máy đang trống — ghi dừng máy ở ngoài Dashboard", 5000);
+  }
+
+  // Danh sách nguyên nhân — đã LỌC theo màn hình, không hỏi phạm vi nữa
+  const dtAll = (S.masters && S.masters.dt) || [];
+  const dtData = locTheoScope(dtAll, 'pham_vi', sc);
   const nhomData = (S.masters && S.masters.nhomDT) || [];
+  const soAnDi = dtAll.length - dtData.length;
+
   function btnDT(d2) {
-    const pv = normPV(d2.pham_vi);
     return '<button class="pick-btn" onclick="pickDT(\'' + esc(d2.ma_dt) + '\',\'' + esc(d2.ten_dt) + '\',\''
          + esc(d2.ma_nhom || "") + '\')">'
          + '<div class="pb-name">' + esc(d2.ten_dt) + '</div>'
-         + '<div class="pb-sub">' + esc(d2.ma_dt) + ' '
-         + (pv === 'HOI' ? '<span class="pv-tag HOI">cần chọn</span>'
-                         : '<span class="pv-tag ' + pv + '">' + PV_LABEL[pv] + '</span>')
-         + '</div></button>';
+         + '<div class="pb-sub">' + esc(d2.ma_dt) + '</div>'
+         + '</button>';
   }
   let html = '';
   if (nhomData.length) {
@@ -1791,14 +1774,21 @@ function openDT(ctx) {
   if (!html) dtData.forEach(x => { html += btnDT(x); });
 
   document.getElementById('dtList').innerHTML = html
-    || '<div style="color:var(--muted);text-align:center;padding:12px;">Chưa khai nguyên nhân dừng trong master.</div>';
+    || '<div style="color:var(--muted);text-align:center;padding:12px;">'
+       + (dtAll.length ? 'Không có nguyên nhân nào khai cho màn hình này.<br>Kiểm tra cột <b>pham_vi</b> trong master.'
+                       : 'Chưa khai nguyên nhân dừng trong master.') + '</div>';
+
+  document.getElementById('dtListNote').textContent = soAnDi > 0
+    ? (sc === 'MAY'
+        ? 'Còn ' + soAnDi + ' nguyên nhân thuộc về lệnh — ghi trong màn hình cuộn.'
+        : 'Còn ' + soAnDi + ' nguyên nhân chung của máy — ghi ở ngoài Dashboard.')
+    : '';
 
   document.getElementById('dtStart').value = '';
   document.getElementById('dtNote').value = '';
   document.getElementById('dtMStart').value = '';
   document.getElementById('dtMEnd').value = '';
   document.getElementById('dtOpenArea').style.display = 'none';
-  document.getElementById('dtPVLsxSub').textContent = coCuon ? (c.ds_lsx || []).join(', ') : 'máy đang trống';
 
   document.getElementById('modalDT').classList.remove('hidden');
 }
@@ -1808,46 +1798,6 @@ function pickDT(ma, ten, nhom) {
   document.querySelectorAll('#dtList .pick-btn').forEach(b => b.classList.remove('selected'));
   if (typeof event !== 'undefined' && event.currentTarget) event.currentTarget.classList.add('selected');
   document.getElementById('dtOpenArea').style.display = 'block';
-
-  // Áp phạm vi mặc định từ master
-  const pv = pvOfDT(ma);
-  S.dtPV = (pv === 'HOI') ? null : pv;
-  renderDTPV();
-}
-
-function pickPV(which, pv) {
-  if (which !== 'dt') return;
-  const coCuon = !!(S.dtCtx && S.dtCtx.cuon_id);
-  if (pv === 'LSX' && !coCuon) return toast("Máy đang trống — không có lệnh nào để tính vào");
-  S.dtPV = pv;
-  renderDTPV();
-}
-
-function renderDTPV() {
-  const coCuon = !!(S.dtCtx && S.dtCtx.cuon_id);
-  const macDinh = S.selectedDT ? pvOfDT(S.selectedDT.ma_dt) : 'HOI';
-  const hint = document.getElementById('dtPVHint');
-
-  document.querySelectorAll('#dtOpenArea .pv-btn').forEach(b => {
-    b.classList.toggle('sel', b.dataset.pv === S.dtPV);
-    if (b.dataset.pv === 'LSX') b.disabled = !coCuon;
-  });
-
-  if (!hint) return;
-  if (!S.dtPV) {
-    hint.className = 'pv-hint warn';
-    hint.textContent = macDinh === 'HOI'
-      ? 'Nguyên nhân này chưa khai sẵn trong master — chọn giúp một bên.'
-      : 'Chọn phạm vi để tiếp tục.';
-  } else if (S.dtPV !== macDinh && macDinh !== 'HOI') {
-    hint.className = 'pv-hint warn';
-    hint.textContent = 'Khác mặc định của master (' + PV_LABEL[macDinh] + ') — vẫn ghi được, hệ thống lưu lại để rà master.';
-  } else {
-    hint.className = 'pv-hint';
-    hint.textContent = S.dtPV === 'MAY'
-      ? 'Thời gian dừng này KHÔNG tính vào lệnh nào.'
-      : 'Thời gian dừng tính cho: ' + ((S.dtCtx.ds_lsx || []).join(', ') || 'lệnh đang chạy');
-  }
 }
 
 /* ─── MỞ phiên dừng ─── */
@@ -1856,7 +1806,7 @@ function openDTSession() {
     const c = S.dtCtx;
     if (!c) return;
     if (!S.selectedDT) return toast("Chọn nguyên nhân dừng trước");
-    if (!S.dtPV) return toast("Chọn: dừng này tính chung cho máy hay tính cho lệnh", 5000);
+    const sc = S.dtScope || 'LSX';
 
     loading(true);
     try {
@@ -1864,8 +1814,8 @@ function openDTSession() {
         action: "pdtOpenDT",
         cd: S.cd,
         ma_may: c.ma_may, may: c.may,
-        cuon_id: S.dtPV === 'LSX' ? c.cuon_id : '',
-        pham_vi: S.dtPV,
+        cuon_id: sc === 'LSX' ? c.cuon_id : '',
+        pham_vi: sc,
         ma_dt: S.selectedDT.ma_dt,
         ten_dt: S.selectedDT.ten_dt,
         ma_nhom: S.selectedDT.ma_nhom,
@@ -1915,7 +1865,7 @@ function submitDT() {
     const c = S.dtCtx;
     if (!c) return;
     if (!S.selectedDT) return toast("Chọn nguyên nhân dừng trước");
-    if (!S.dtPV) return toast("Chọn: dừng này tính chung cho máy hay tính cho lệnh", 5000);
+    const sc = S.dtScope || 'LSX';
 
     const s = document.getElementById('dtMStart').value;
     const e2 = document.getElementById('dtMEnd').value;
@@ -1933,8 +1883,8 @@ function submitDT() {
         action: "pdtSubmitDT",
         cd: S.cd,
         ma_may: c.ma_may, may: c.may,
-        cuon_id: S.dtPV === 'LSX' ? c.cuon_id : '',
-        pham_vi: S.dtPV,
+        cuon_id: sc === 'LSX' ? c.cuon_id : '',
+        pham_vi: sc,
         so_phut: soPhut,
         ma_dt: S.selectedDT.ma_dt,
         ten_dt: S.selectedDT.ten_dt,
