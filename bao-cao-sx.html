@@ -114,6 +114,13 @@ tr.zero td{color:var(--muted);}
 .b-empty{background:#e2e8f0;flex:1;border-radius:4px;}
 
 .linkish{color:var(--teal);font-weight:700;text-decoration:underline dotted;}
+/* Mô tả sản phẩm là ô duy nhất được xuống dòng — các ô còn lại giữ nowrap để bảng đọc theo cột */
+td.wrap-mota{white-space:normal;min-width:190px;max-width:290px;}
+/* Bảng LSX rộng hơn màn hình — ghim cột mã LSX lại để kéo ngang vẫn biết đang xem lệnh nào */
+#tbLSX th:first-child,#tbLSX td:first-child{position:sticky;left:0;background:var(--card);
+  box-shadow:1px 0 0 var(--border);}
+#tbLSX th:first-child{background:#f8fafc;z-index:3;}
+#tbLSX tbody tr:hover td:first-child{background:var(--teal-l);}
 
 /* ── modal ──────────────────────────────── */
 .mask{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:40;display:flex;
@@ -274,7 +281,7 @@ tr.zero td{color:var(--muted);}
 ══════════════════════════════════════════════════ */
 const CONFIG = {
   API_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
-  APP_VERSION: "bcsx_v1_28aug"
+  APP_VERSION: "bcsx_v2_28aug"
 };
 
 const S = { cd: "ca", ky: "homnay", tu: "", den: "", data: null, dangTai: false };
@@ -539,15 +546,20 @@ function veMay(ds){
 
 /* ── Bảng theo LSX ──────────────────────── */
 function veLSX(ds){
-  let h = '<thead><tr><th>LSX</th><th>Máy</th><th class="num">KL yêu cầu</th>' +
+  let h = '<thead><tr><th>LSX</th><th>Khách hàng</th><th>Mã hàng</th><th>Mô tả sản phẩm</th>' +
+          '<th class="num">SL yêu cầu</th><th>Máy</th><th class="num">KL yêu cầu</th>' +
           '<th class="num">Đã SX (kg)</th><th class="num">%</th><th class="num">Cuộn</th>' +
           '<th class="num">Phế thuộc lệnh</th><th class="num">Dừng thuộc lệnh</th>' +
           '<th>Trạng thái</th><th>Công nhân</th></tr></thead><tbody>';
-  if (!ds.length) h += '<tr><td colspan="10" class="empty">Kỳ này chưa có LSX nào chạy</td></tr>';
+  if (!ds.length) h += '<tr><td colspan="14" class="empty">Kỳ này chưa có LSX nào chạy</td></tr>';
   ds.forEach(x => {
     h += '<tr class="' + ((x.kl_sx||0) === 0 ? 'zero' : '') + '" onclick="moLSX(' +
         JSON.stringify(x.lsx).replace(/"/g,'&quot;') + ')">' +
       '<td><span class="linkish">' + esc(x.lsx) + '</span></td>' +
+      '<td>' + esc(x.kh || "–") + '</td>' +
+      '<td>' + esc(x.masp || "–") + '</td>' +
+      '<td class="wrap-mota" title="' + esc(x.mota) + '">' + esc(x.mota || "–") + '</td>' +
+      '<td class="num">' + (x.sl_yc ? so(x.sl_yc, 0) + " " + esc(x.dvt) : "–") + '</td>' +
       '<td>' + esc(x.may) + '</td>' +
       '<td class="num">' + so(x.kl_yc) + '</td>' +
       '<td class="num">' + so(x.kl_sx) + '</td>' +
@@ -718,7 +730,12 @@ async function moCuon(cuonId){
     let h = '<div style="margin-bottom:12px;font-size:13.5px">' +
       '<b>' + esc(c.may) + '</b> · ' + esc(c.cn) + ' · ' + esc(c.ngay_sx) + ' ca ' + esc(c.ca_sx) +
       ' · ' + tagTT(c.trang_thai) + '<br>' +
-      (c.ds_lsx||[]).map(x => esc(x.lsx) + " (" + so(x.kl_yc) + " kg YC)").join(" · ") +
+      (c.ds_lsx||[]).map(x =>
+        '<div style="margin-top:4px"><b>' + esc(x.lsx) + '</b> · ' + so(x.kl_yc) + ' kg YC' +
+        (x.kh ? ' · ' + esc(x.kh) : '') + (x.masp ? ' · ' + esc(x.masp) : '') +
+        (x.sl_yc ? ' · ' + so(x.sl_yc, 0) + ' ' + esc(x.dvt) : '') +
+        (x.mota ? '<br><span style="color:var(--muted)">' + esc(x.mota) + '</span>' : '') +
+        '</div>').join("") +
       (c.kl_tong ? ' → <b>' + so(c.kl_tong) + ' kg</b>' : '') +
       '</div><div class="tl">';
     (r.items||[]).forEach(x => {
