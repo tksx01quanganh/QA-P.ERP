@@ -38,6 +38,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
 .pane{display:none;} .pane.on{display:block;}
 
 .card{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:14px;margin-bottom:13px;}
+
+/* ô gợi ý LSX — gõ tới đâu khoanh vùng tới đó */
+.rel{position:relative;flex:1;}
+.gg{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#fff;border:2px solid var(--teal);
+  border-radius:12px;box-shadow:0 10px 26px rgba(15,23,42,.16);z-index:30;max-height:330px;overflow:auto;}
+.gg.hidden{display:none;}
+.gg-i{padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;}
+.gg-i:last-child{border-bottom:0;}
+.gg-i.on,.gg-i:hover{background:var(--teal-l);}
+.gg-i .g1{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;}
+.gg-i .g1 .pc{margin-left:auto;font-size:12.5px;color:var(--muted);font-weight:700;}
+.gg-i .g2{font-size:13px;color:var(--txt);margin-top:2px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.gg-i .g3{font-size:12px;color:var(--muted);margin-top:1px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.gg-i mark{background:#fde68a;color:inherit;padding:0 1px;border-radius:3px;}
+.gg-ft{padding:9px 12px;font-size:12.5px;color:var(--muted);background:#f8fafc;text-align:center;}
+.gg-lsx{font-size:12.5px;color:var(--muted);margin-top:7px;}
 .row{display:flex;gap:9px;}
 .fm-input{width:100%;padding:13px;font-size:17px;border:2px solid var(--border);border-radius:12px;background:#fff;}
 .fm-input:focus{border-color:var(--teal);outline:none;}
@@ -46,6 +64,8 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
   color:#fff;background:var(--teal);display:flex;align-items:center;justify-content:center;gap:7px;}
 .btn:active{transform:scale(.98);}
 .btn.w{width:100%;}
+/* Nút vuông cạnh ô nhập — để bảng gợi ý xổ xuống không đè lên nút nào */
+.btn.sq{padding:13px 15px;font-size:19px;flex:0 0 auto;}
 .btn.ghost{background:#fff;color:var(--teal);border:2px solid var(--teal);}
 .btn:disabled{opacity:.5;pointer-events:none;}
 
@@ -53,6 +73,7 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 .hero{background:linear-gradient(135deg,var(--teal),var(--teal-d));color:#fff;border-radius:15px;
   padding:16px;margin-bottom:13px;}
 .hero .h-lsx{font-size:22px;font-weight:800;letter-spacing:.4px;}
+.hero .h-kh{font-size:15px;font-weight:700;opacity:.97;margin-top:1px;}
 .hero .h-sub{font-size:13px;opacity:.9;margin-top:2px;}
 .hero .h-num{font-size:34px;font-weight:800;line-height:1.1;margin-top:10px;font-variant-numeric:tabular-nums;}
 .hero .h-num small{font-size:15px;font-weight:600;opacity:.85;}
@@ -75,6 +96,14 @@ details[open]>summary::after{content:"▴";}
 details>summary .cnt{background:var(--gray-l);color:var(--muted);border-radius:8px;padding:1px 8px;
   font-size:12px;font-weight:700;}
 .dbody{border-top:1px solid var(--border);}
+
+/* thẻ thông tin đơn hàng */
+.card.dh{padding:4px 14px;}
+.dh-r{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
+.dh-r:last-child{border-bottom:0;}
+.dh-l{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.5px;min-width:132px;padding-top:2px;}
+.dh-v{flex:1;font-weight:600;}
 
 .tw{overflow-x:auto;}
 table{width:100%;border-collapse:collapse;font-size:13.5px;}
@@ -149,11 +178,15 @@ tr:last-child td{border-bottom:0;}
   <div class="pane on" id="paneLSX">
     <div class="card">
       <div class="row">
-        <input class="fm-input" id="inLsx" placeholder="Nhập hoặc quét mã LSX"
-               autocomplete="off" onkeydown="if(event.key==='Enter')traLSX()" />
-        <button class="btn" style="padding:13px 15px" onclick="moScan()">📷</button>
+        <div class="rel">
+          <input class="fm-input" id="inLsx" placeholder="Gõ mã LSX hoặc tên khách hàng"
+                 autocomplete="off" oninput="goiY()" onfocus="goiY()" onkeydown="phimGoiY(event)" />
+          <div class="gg hidden" id="ggList"></div>
+        </div>
+        <button class="btn sq" id="btnTra" onclick="traLSX()" title="Tra cứu">🔍</button>
+        <button class="btn sq" onclick="moScan()" title="Quét mã">📷</button>
       </div>
-      <button class="btn w" style="margin-top:9px" onclick="traLSX()">Tra cứu</button>
+      <div class="gg-lsx" id="ggInfo">Gõ vài ký tự để lọc dần danh sách lệnh đã ghi nhận.</div>
     </div>
     <div id="kqLSX"></div>
   </div>
@@ -189,9 +222,15 @@ tr:last-child td{border-bottom:0;}
 ══════════════════════════════════════════════════ */
 const CONFIG = {
   API_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
-  APP_VERSION: "bcsx_v1_28aug"
+  APP_VERSION: "bcsx_v2_28aug"
 };
-const T = { cd: "ca", may: [], scanStream: null, scanTimer: null };
+const T = {
+  cd: "ca", may: [], scanStream: null, scanTimer: null,
+  idx: null,       // danh sách LSX nạp 1 lần rồi lọc tại chỗ
+  idxDangNap: false,
+  ggHien: [],      // kết quả đang hiện
+  ggChon: -1       // dòng đang được chọn bằng phím mũi tên
+};
 
 /* ══════════════════════════════════════════════════
    API — JSONP
@@ -280,12 +319,132 @@ function doiTab(t){
 }
 
 /* ══════════════════════════════════════════════════
+   Ô GỢI Ý LSX — nạp danh sách MỘT LẦN rồi lọc tại chỗ
+   Lọc trên máy người dùng nên gõ tới đâu hiện tới đó, không chờ mạng.
+══════════════════════════════════════════════════ */
+
+/** Bỏ dấu tiếng Việt để gõ "nha be" vẫn ra "Nhà Bè" */
+function khongDau(s){
+  return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g,"d").replace(/Đ/g,"D").toUpperCase();
+}
+
+async function napIdx(){
+  if (T.idx || T.idxDangNap) return;
+  T.idxDangNap = true;
+  document.getElementById('ggInfo').textContent = "Đang nạp danh sách lệnh…";
+  try {
+    const r = await api("pdtRpDsLsx", { cd: T.cd });
+    if (!r || r.result !== "ok") throw new Error((r && r.error) || "Không nạp được danh sách");
+    const c = r.cot;
+    T.idx = (r.items || []).map(a => {
+      const o = {};
+      c.forEach((ten, i) => { o[ten] = a[i]; });
+      o._tim = khongDau(o.lsx + " " + o.kh + " " + o.masp + " " + o.mota);
+      return o;
+    });
+    document.getElementById('ggInfo').textContent =
+      T.idx.length + " lệnh đã ghi nhận" + (r.con_nua ? " (mới nhất — lệnh cũ hơn vẫn tra được bằng cách gõ đủ mã)" : "")
+      + ". Gõ mã LSX, tên khách hàng hoặc mã hàng.";
+    // Chỉ mở bảng gợi ý khi người dùng ĐANG ở trong ô nhập. Nếu không, mở link
+    // ?lsx=... sẽ bị bảng gợi ý xổ ra che mất kết quả vừa tra.
+    if (document.activeElement === document.getElementById('inLsx')) goiY();
+  } catch(e){
+    document.getElementById('ggInfo').textContent =
+      "Không nạp được danh sách gợi ý (" + e.message + "). Vẫn gõ đủ mã rồi bấm Tra cứu được.";
+  } finally { T.idxDangNap = false; }
+}
+
+function goiY(){
+  const oInfo = document.getElementById('inLsx');
+  const q = khongDau(oInfo.value).trim();
+  if (!T.idx){ napIdx(); return; }
+
+  const ds = q ? T.idx.filter(x => x._tim.indexOf(q) >= 0) : T.idx;
+  T.ggHien = ds.slice(0, 30);
+  T.ggChon = -1;
+  const el = document.getElementById('ggList');
+
+  if (!q && T.idx.length > 30){ el.classList.add('hidden'); return; }   // chưa gõ thì không đổ cả nghìn dòng
+  if (!ds.length){
+    // KHÔNG mở bảng rỗng đè lên màn hình — chỉ báo bằng dòng chữ ngay dưới ô nhập.
+    el.classList.add('hidden');
+    document.getElementById('ggInfo').innerHTML =
+      'Không có lệnh nào khớp “<b>' + esc(oInfo.value) + '</b>”. ' +
+      'Vẫn bấm 🔍 để tra thẳng mã này.';
+    return;
+  }
+  document.getElementById('ggInfo').textContent =
+    ds.length + " lệnh khớp" + (ds.length > 30 ? " — đang hiện 30 lệnh đầu" : "");
+
+  el.innerHTML = T.ggHien.map((x, i) =>
+    '<div class="gg-i" data-i="' + i + '" onmousedown="chonGoiY(' + i + ')">' +
+      '<div class="g1">' + toDam(x.lsx, q) + tagTT(x.tt) +
+        '<span class="pc">' + so(x.pct) + '%</span></div>' +
+      '<div class="g2">' + toDam(x.kh || "— chưa tra được khách hàng", q) +
+        (x.masp ? " · " + toDam(x.masp, q) : "") + '</div>' +
+      '<div class="g3">' + (x.may ? esc(x.may) : "") +
+        (x.mota ? (x.may ? " · " : "") + toDam(x.mota, q) : "") + '</div>' +
+    '</div>').join("") +
+    (ds.length > T.ggHien.length
+      ? '<div class="gg-ft">còn ' + (ds.length - T.ggHien.length) + ' lệnh nữa — gõ thêm để thu hẹp</div>'
+      : '');
+  el.classList.remove('hidden');
+}
+
+/** Tô vàng phần khớp để mắt bắt ngay chỗ trùng */
+function toDam(chuoi, q){
+  const goc = String(chuoi || "");
+  if (!q) return esc(goc);
+  const i = khongDau(goc).indexOf(q);
+  if (i < 0) return esc(goc);
+  return esc(goc.slice(0, i)) + "<mark>" + esc(goc.slice(i, i + q.length)) + "</mark>" +
+         esc(goc.slice(i + q.length));
+}
+
+function dongGoiY(){ document.getElementById('ggList').classList.add('hidden'); T.ggChon = -1; }
+
+function chonGoiY(i){
+  const x = T.ggHien[i];
+  if (!x) return;
+  document.getElementById('inLsx').value = x.lsx;
+  dongGoiY();
+  traLSX(x.lsx);
+}
+
+function phimGoiY(e){
+  const el = document.getElementById('ggList');
+  const dangMo = !el.classList.contains('hidden') && T.ggHien.length;
+  if (e.key === "Escape"){ dongGoiY(); return; }
+  if (e.key === "Enter"){
+    if (dangMo && T.ggChon >= 0){ e.preventDefault(); chonGoiY(T.ggChon); }
+    else { dongGoiY(); traLSX(); }
+    return;
+  }
+  if (!dangMo) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    T.ggChon += (e.key === "ArrowDown" ? 1 : -1);
+    if (T.ggChon < 0) T.ggChon = T.ggHien.length - 1;
+    if (T.ggChon >= T.ggHien.length) T.ggChon = 0;
+    el.querySelectorAll('.gg-i').forEach((d, i) => d.classList.toggle('on', i === T.ggChon));
+    const on = el.querySelector('.gg-i.on');
+    if (on) on.scrollIntoView({ block: "nearest" });
+  }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.rel')) dongGoiY();
+});
+
+/* ══════════════════════════════════════════════════
    TRA CỨU THEO LSX
 ══════════════════════════════════════════════════ */
 async function traLSX(lsxTruyen){
   const lsx = String(lsxTruyen || document.getElementById('inLsx').value || "").trim().toUpperCase();
   if (!lsx){ baoLoi("Chưa nhập mã LSX"); return; }
   document.getElementById('inLsx').value = lsx;
+  dongGoiY();
   baoLoi(""); loading(true);
   document.getElementById('kqLSX').innerHTML = "";
   try {
@@ -310,6 +469,7 @@ function veLSX(r){
 
   let h = '<div class="hero">' +
     '<div class="h-lsx">' + esc(t.lsx) + '</div>' +
+    (t.kh ? '<div class="h-kh">' + esc(t.kh) + '</div>' : '') +
     '<div class="h-sub">' + esc(t.ten_cd) + ' · ' + esc(t.may || "chưa rõ máy") + ' · ' +
       tagTT(t.trang_thai) + '</div>' +
     '<div class="h-num">' + so(t.kl_sx) + ' <small>/ ' + so(t.kl_yc) + ' kg</small></div>' +
@@ -318,6 +478,21 @@ function veLSX(r){
       '<span>còn ' + so(t.con_lai) + ' kg</span>' +
       '<span>' + t.so_cuon + ' cuộn</span></div>' +
   '</div>';
+
+  /* Thông tin đơn hàng — lấy từ Order List */
+  if (t.kh || t.masp || t.mota || t.sl_yc){
+    h += '<div class="card dh">' +
+      dong("Khách hàng", esc(t.kh)) +
+      dong("Mã hàng", esc(t.masp)) +
+      dong("Mô tả sản phẩm", esc(t.mota)) +
+      dong("SL yêu cầu", t.sl_yc ? so(t.sl_yc, 0) + " " + esc(t.dvt) : "") +
+      dong("KL yêu cầu (đơn)", t.kl_yc_dh ? so(t.kl_yc_dh) + " kg" : "") +
+      dong("Ngày giao", esc(t.ngay_giao)) +
+    '</div>';
+  } else {
+    h += '<div class="hint">Không tra được lệnh này trong Order List — thiếu khách hàng, ' +
+         'mã hàng và mô tả sản phẩm. Các số sản xuất bên dưới vẫn đúng.</div>';
+  }
 
   h += '<div class="stats">' +
     st("Đã SX", so(t.kl_sx) + " kg", "teal") +
@@ -401,6 +576,12 @@ function veLSX(r){
     'không tính vào lệnh này.</div>';
 
   document.getElementById('kqLSX').innerHTML = h;
+}
+
+/** 1 dòng nhãn – giá trị trong thẻ thông tin đơn hàng; giá trị rỗng thì bỏ hẳn dòng */
+function dong(lbl, val){
+  if (!val) return "";
+  return '<div class="dh-r"><span class="dh-l">' + lbl + '</span><span class="dh-v">' + val + '</span></div>';
 }
 
 function st(lbl, num, cls){
@@ -532,6 +713,7 @@ function dongScan(){
 ══════════════════════════════════════════════════ */
 (function init(){
   document.getElementById('inNgay').value = iso(ngaySXHomNay());
+  napIdx();
   const q = new URLSearchParams(location.search);
   const cd = q.get('cd');
   if (cd === 'thoi' || cd === 'in'){
