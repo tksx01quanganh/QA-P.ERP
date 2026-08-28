@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0f766e" />
+<title>Báo cáo SX Thổi/In — QA-P.ERP</title>
+<style>
+:root{
+  --teal:#0f766e; --teal-d:#0b5b54; --teal-l:#ccfbf1;
+  --green:#16a34a; --green-l:#f0fdf4;
+  --red:#dc2626; --red-l:#fef2f2;
+  --amber:#d97706; --amber-l:#fffbeb;
+  --blue:#2563eb; --blue-l:#eff6ff;
+  --purple:#7c3aed; --purple-l:#f5f3ff;
+  --gray:#64748b; --gray-l:#f1f5f9;
+  --bg:#f1f5f9; --card:#fff;
+  --txt:#0f172a; --muted:#64748b; --border:#e2e8f0;
+  /* 2 màu chuẩn dùng xuyên suốt: chung máy vs thuộc lệnh (đã kiểm CVD) */
+  --c-may:#d97706; --c-lsx:#2563eb;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--txt);font-size:15px;line-height:1.45;}
+
+/* ── topbar ─────────────────────────────── */
+.topbar{background:var(--teal);color:#fff;padding:10px 14px;display:flex;align-items:center;
+  justify-content:space-between;gap:10px;position:sticky;top:0;z-index:20;flex-wrap:wrap;}
+.topbar .ttl{font-weight:700;font-size:16px;display:flex;align-items:center;gap:7px;}
+.topbar .rt{display:flex;gap:8px;align-items:center;}
+.icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:9px;
+  padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.icon-btn:hover{background:rgba(255,255,255,.32);}
+
+.wrap{max-width:1220px;margin:0 auto;padding:14px;}
+
+/* ── thanh lọc ──────────────────────────── */
+.bar{background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:12px;margin-bottom:14px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+.bar-grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.bar-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.6px;margin-right:2px;}
+.chip{background:#fff;border:2px solid var(--border);border-radius:999px;padding:6px 14px;
+  font-size:13px;font-weight:600;cursor:pointer;color:var(--txt);}
+.chip:hover{border-color:#cbd5e1;}
+.chip.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+.dt-in{padding:6px 9px;font-size:13px;border:2px solid var(--border);border-radius:9px;background:#fff;}
+
+/* ── dải trạng thái máy ─────────────────── */
+.mstat{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:14px;align-items:start;}
+.mbox{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;}
+.mbox.dung{border-color:#fecaca;background:var(--red-l);}
+.mbox.chay{border-color:#bbf7d0;background:var(--green-l);}
+.mbox-h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:8px;}
+.mbox-h .n{margin-left:auto;font-size:22px;font-weight:800;}
+.mlist{display:flex;flex-direction:column;gap:6px;max-height:190px;overflow:auto;}
+.mrow{background:#fff;border:1px solid var(--border);border-radius:10px;padding:7px 10px;
+  font-size:13px;cursor:pointer;display:flex;gap:8px;align-items:baseline;}
+.mrow:hover{border-color:var(--teal);}
+.mrow b{font-weight:700;}
+.mrow .sub{color:var(--muted);font-size:12px;}
+.mrow .rt{margin-left:auto;font-weight:700;white-space:nowrap;}
+.empty{color:var(--muted);font-size:13px;font-style:italic;padding:4px 2px;}
+
+/* ── KPI ────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:12px;margin-bottom:14px;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;
+  cursor:pointer;transition:border-color .12s;}
+.kpi:hover{border-color:var(--teal);}
+.kpi .k-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+.kpi .k-num{font-size:29px;font-weight:800;line-height:1.15;margin:3px 0 1px;font-variant-numeric:tabular-nums;}
+.kpi .k-unit{font-size:14px;font-weight:600;color:var(--muted);margin-left:3px;}
+.kpi .k-sub{font-size:12px;color:var(--muted);}
+.kpi.acc-red .k-num{color:var(--red);}
+.kpi.acc-amber .k-num{color:var(--amber);}
+.kpi.acc-teal .k-num{color:var(--teal);}
+
+/* ── section ────────────────────────────── */
+.sec{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden;}
+.sec-h{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+  gap:10px;flex-wrap:wrap;}
+.sec-h h3{margin:0;font-size:14px;color:var(--teal-d);}
+.sec-h .note{font-size:12px;color:var(--muted);}
+.legend{display:flex;gap:12px;margin-left:auto;font-size:12px;color:var(--muted);align-items:center;}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+.i-may{background:var(--c-may);} .i-lsx{background:var(--c-lsx);}
+
+/* ── bảng ───────────────────────────────── */
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+th{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+  background:#f8fafc;position:sticky;top:0;}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+tbody tr{cursor:pointer;}
+tbody tr:hover{background:var(--teal-l);}
+tr.zero td{color:var(--muted);}
+.tag{display:inline-block;padding:2px 8px;border-radius:7px;font-size:11px;font-weight:700;}
+.tag.chay{background:var(--green-l);color:#15803d;}
+.tag.dung{background:var(--red-l);color:#b91c1c;}
+.tag.xong{background:var(--blue-l);color:#1d4ed8;}
+.tag.tam{background:var(--amber-l);color:#b45309;}
+.tag.gray{background:var(--gray-l);color:var(--gray);}
+.tag.may{background:#fef3c7;color:#92400e;}
+.tag.lsx{background:#dbeafe;color:#1e40af;}
+
+/* thanh trong ô — 2 màu, cách nhau 2px */
+.bar2{display:flex;gap:2px;height:9px;min-width:90px;align-items:stretch;}
+.bar2 span{border-radius:2px;}
+.bar2 span:first-child{border-top-left-radius:4px;border-bottom-left-radius:4px;}
+.bar2 span:last-child{border-top-right-radius:4px;border-bottom-right-radius:4px;}
+.b-may{background:var(--c-may);} .b-lsx{background:var(--c-lsx);}
+.b-empty{background:#e2e8f0;flex:1;border-radius:4px;}
+
+.linkish{color:var(--teal);font-weight:700;text-decoration:underline dotted;}
+
+/* ── modal ──────────────────────────────── */
+.mask{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:40;display:flex;
+  align-items:flex-start;justify-content:center;padding:26px 12px;overflow:auto;}
+.mask.hidden{display:none;}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:1000px;overflow:hidden;}
+.modal-h{padding:13px 16px;background:var(--teal);color:#fff;display:flex;align-items:center;gap:10px;}
+.modal-h h3{margin:0;font-size:15px;flex:1;}
+.modal-b{padding:14px 16px;max-height:72vh;overflow:auto;}
+.x{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:8px;padding:5px 11px;
+  cursor:pointer;font-size:15px;font-weight:700;}
+
+.tl{display:flex;flex-direction:column;gap:0;}
+.tl-i{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
+.tl-t{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted);font-size:12.5px;
+  min-width:96px;padding-top:1px;}
+.tl-ic{font-size:17px;line-height:1.2;}
+.tl-c{flex:1;min-width:0;}
+.tl-c .h{font-weight:700;}
+.tl-c .s{font-size:12.5px;color:var(--muted);}
+
+.hint{background:var(--amber-l);border:1px solid #fde68a;border-radius:11px;padding:10px 12px;
+  font-size:12.5px;color:#78350f;margin:10px 0 0;}
+.err{background:var(--red-l);border:1px solid #fecaca;color:#991b1b;border-radius:11px;
+  padding:11px 13px;font-size:13.5px;margin-bottom:14px;}
+
+.load{position:fixed;inset:0;background:rgba(241,245,249,.75);z-index:60;display:flex;
+  align-items:center;justify-content:center;}
+.load.hidden{display:none;}
+.spin{width:38px;height:38px;border:4px solid var(--teal-l);border-top-color:var(--teal);
+  border-radius:50%;animation:sp .8s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.foot{text-align:center;color:var(--muted);font-size:11.5px;padding:8px 0 22px;}
+
+@media (max-width:640px){
+  .wrap{padding:10px;}
+  .kpi .k-num{font-size:25px;}
+  th,td{padding:8px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="ttl">📊 Báo cáo SX Thổi/In</div>
+  <div class="rt">
+    <span id="verBadge" style="font-size:11px;opacity:.8"></span>
+    <button class="icon-btn" onclick="taiLai(true)">🔄 Làm mới</button>
+    <button class="icon-btn" onclick="location.href='tra-cuu-sx.html'">🔍 Tra cứu</button>
+    <button class="icon-btn" onclick="location.href='index.html'">🏠</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="bar">
+    <div class="bar-grp">
+      <span class="bar-lbl">Công đoạn</span>
+      <button class="chip on" data-cd="ca"   onclick="chonCD('ca')">Cả hai</button>
+      <button class="chip"    data-cd="thoi" onclick="chonCD('thoi')">Thổi</button>
+      <button class="chip"    data-cd="in"   onclick="chonCD('in')">In</button>
+    </div>
+    <div class="bar-grp">
+      <span class="bar-lbl">Kỳ</span>
+      <button class="chip on" data-ky="homnay" onclick="chonKy('homnay')">Hôm nay</button>
+      <button class="chip" data-ky="homqua"    onclick="chonKy('homqua')">Hôm qua</button>
+      <button class="chip" data-ky="tuan"      onclick="chonKy('tuan')">Tuần này</button>
+      <button class="chip" data-ky="thang"     onclick="chonKy('thang')">Tháng này</button>
+      <button class="chip" data-ky="tuychon"   onclick="chonKy('tuychon')">Tuỳ chọn</button>
+    </div>
+    <div class="bar-grp" id="grpNgay" style="display:none">
+      <input type="date" id="inTu"  class="dt-in" onchange="doiNgay()" />
+      <span style="color:var(--muted)">→</span>
+      <input type="date" id="inDen" class="dt-in" onchange="doiNgay()" />
+    </div>
+    <div class="bar-grp" style="margin-left:auto">
+      <span class="bar-lbl" id="lblKy"></span>
+    </div>
+  </div>
+
+  <div id="loi"></div>
+
+  <!-- Trạng thái máy NGAY LÚC NÀY -->
+  <div class="mstat">
+    <div class="mbox dung">
+      <div class="mbox-h">🔴 Máy đang dừng <span class="n" id="nDung">–</span></div>
+      <div class="mlist" id="lsDung"></div>
+    </div>
+    <div class="mbox chay">
+      <div class="mbox-h">🟢 Máy đang chạy <span class="n" id="nChay">–</span></div>
+      <div class="mlist" id="lsChay"></div>
+    </div>
+    <div class="mbox">
+      <div class="mbox-h">⚪ Máy trống <span class="n" id="nTrong">–</span></div>
+      <div class="mlist" id="lsTrong"></div>
+    </div>
+  </div>
+
+  <!-- KPI của kỳ -->
+  <div class="kpis" id="kpis"></div>
+
+  <!-- Bảng theo máy -->
+  <div class="sec">
+    <div class="sec-h">
+      <h3>🏭 Theo máy</h3>
+      <span class="note">Bấm một dòng để xem mọi việc đã xảy ra trên máy đó</span>
+      <span class="legend"><span><i class="i-may"></i>Chung máy</span><span><i class="i-lsx"></i>Thuộc lệnh</span></span>
+    </div>
+    <div class="tw"><table id="tbMay"></table></div>
+  </div>
+
+  <!-- Bảng theo LSX -->
+  <div class="sec">
+    <div class="sec-h">
+      <h3>📋 Theo lệnh sản xuất</h3>
+      <span class="note" id="noteLSX"></span>
+    </div>
+    <div class="tw"><table id="tbLSX"></table></div>
+  </div>
+
+  <!-- Pareto dừng máy -->
+  <div class="sec">
+    <div class="sec-h">
+      <h3>⏸ Nguyên nhân dừng máy</h3>
+      <span class="note">Xếp theo tổng số phút</span>
+      <span class="legend"><span><i class="i-may"></i>Chung máy</span><span><i class="i-lsx"></i>Thuộc lệnh</span></span>
+    </div>
+    <div class="tw"><table id="tbDT"></table></div>
+  </div>
+
+  <!-- Pareto phế -->
+  <div class="sec">
+    <div class="sec-h">
+      <h3>🗑 Nguyên nhân phế</h3>
+      <span class="note">Xếp theo kg</span>
+      <span class="legend"><span><i class="i-may"></i>Chung máy</span><span><i class="i-lsx"></i>Thuộc lệnh</span></span>
+    </div>
+    <div class="tw"><table id="tbPhe"></table></div>
+  </div>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<!-- Modal chi tiết -->
+<div class="mask hidden" id="mask" onclick="if(event.target===this)dongModal()">
+  <div class="modal">
+    <div class="modal-h"><h3 id="mTitle">Chi tiết</h3><button class="x" onclick="dongModal()">✕</button></div>
+    <div class="modal-b" id="mBody"></div>
+  </div>
+</div>
+
+<div class="load hidden" id="load"><div class="spin"></div></div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   CẤU HÌNH
+══════════════════════════════════════════════════ */
+const CONFIG = {
+  API_URL: "https://script.google.com/macros/s/AKfycbweJ234d0G0CTZfSwd21tX-EzWq29K-XHELqBh0ho0MQv2YMJ1-9nv0ZHz_Mv9_V_Ns/exec",
+  APP_VERSION: "bcsx_v1_28aug"
+};
+
+const S = { cd: "ca", ky: "homnay", tu: "", den: "", data: null, dangTai: false };
+
+/* ══════════════════════════════════════════════════
+   API — JSONP (giống các module khác)
+══════════════════════════════════════════════════ */
+let _seq = 0;
+function api(action, params, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const cb = "__bcsx_" + (++_seq);
+    const s = document.createElement("script");
+    const timer = setTimeout(() => { done(); reject(new Error("Hết thời gian chờ máy chủ")); },
+                              timeoutMs || 45000);
+    function done(){ clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = d => { done(); resolve(d); };
+    s.onerror = () => { done(); reject(new Error("Không gọi được máy chủ")); };
+    let url = CONFIG.API_URL + "?action=" + action + "&callback=" + cb;
+    if (params) for (const k in params) {
+      if (params[k] !== undefined && params[k] !== null && params[k] !== "")
+        url += "&" + k + "=" + encodeURIComponent(params[k]);
+    }
+    url += "&t=" + Date.now();
+    s.src = url; document.body.appendChild(s);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   NGÀY THÁNG — theo NGÀY SX (mốc ca 7h/19h)
+══════════════════════════════════════════════════ */
+function p2(n){ return String(n).padStart(2,"0"); }
+function dmy(d){ return p2(d.getDate()) + "/" + p2(d.getMonth()+1) + "/" + d.getFullYear(); }
+function iso(d){ return d.getFullYear() + "-" + p2(d.getMonth()+1) + "-" + p2(d.getDate()); }
+function tuIso(s){ const a=String(s).split("-"); return new Date(+a[0], +a[1]-1, +a[2]); }
+function tuDmy(s){ const a=String(s).split("/"); return new Date(+a[2], +a[1]-1, +a[0]); }
+
+/** Ngày SX hôm nay: trước 7h sáng vẫn thuộc ngày SX hôm qua (ca đêm) */
+function ngaySXHomNay(){
+  const n = new Date();
+  if (n.getHours() < 7) n.setDate(n.getDate() - 1);
+  n.setHours(0,0,0,0);
+  return n;
+}
+
+/** Tuần tính từ CHỦ NHẬT đến THỨ 7 (anh Hải chốt 28/08/2026) */
+function dauTuan(d){
+  const x = new Date(d); x.setDate(x.getDate() - x.getDay()); return x;
+}
+
+function tinhKy(ky){
+  const n = ngaySXHomNay();
+  if (ky === "homnay") return [n, n];
+  if (ky === "homqua"){ const q = new Date(n); q.setDate(q.getDate()-1); return [q, q]; }
+  if (ky === "tuan")   return [dauTuan(n), n];
+  if (ky === "thang")  return [new Date(n.getFullYear(), n.getMonth(), 1), n];
+  return [n, n];
+}
+
+/* ══════════════════════════════════════════════════
+   ĐỊNH DẠNG
+══════════════════════════════════════════════════ */
+function so(n, le){
+  const v = Number(n) || 0;
+  return v.toLocaleString("vi-VN", { minimumFractionDigits: 0, maximumFractionDigits: le === undefined ? 1 : le });
+}
+function phut(m){
+  const v = Math.round(Number(m) || 0);
+  if (v < 60) return v + " phút";
+  return Math.floor(v/60) + "g " + p2(v%60) + "p";
+}
+function esc(s){
+  return String(s === null || s === undefined ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function tagTT(tt){
+  const t = String(tt||"").toUpperCase();
+  if (t === "DANG_CHAY")  return '<span class="tag chay">Đang chạy</span>';
+  if (t === "TAM_DUNG")   return '<span class="tag tam">Tạm dừng</span>';
+  if (t === "HOAN_THANH") return '<span class="tag xong">Hoàn thành</span>';
+  if (t === "DONG")       return '<span class="tag gray">Đóng</span>';
+  if (!t) return '<span class="tag gray">–</span>';
+  return '<span class="tag gray">' + esc(t) + '</span>';
+}
+function tagPV(pv){
+  const t = String(pv||"").toUpperCase();
+  if (t === "MAY") return '<span class="tag may">Chung máy</span>';
+  if (t === "LSX") return '<span class="tag lsx">Thuộc lệnh</span>';
+  return '<span class="tag gray">–</span>';
+}
+/** Thanh 2 phần: chung máy (cam) + thuộc lệnh (xanh), cách nhau 2px */
+function bar2(vMay, vLsx, max){
+  const m = Number(max) || 0;
+  if (m <= 0) return '<div class="bar2"><span class="b-empty"></span></div>';
+  const a = Math.max(0, Number(vMay)||0) / m * 100;
+  const b = Math.max(0, Number(vLsx)||0) / m * 100;
+  let h = '<div class="bar2" title="Chung máy ' + so(vMay) + ' · Thuộc lệnh ' + so(vLsx) + '">';
+  if (a > 0) h += '<span class="b-may" style="width:' + a.toFixed(2) + '%"></span>';
+  if (b > 0) h += '<span class="b-lsx" style="width:' + b.toFixed(2) + '%"></span>';
+  if (a + b <= 0) h += '<span class="b-empty"></span>';
+  h += '</div>';
+  return h;
+}
+
+/* ══════════════════════════════════════════════════
+   ĐIỀU KHIỂN THANH LỌC
+══════════════════════════════════════════════════ */
+function chonCD(cd){
+  S.cd = cd;
+  document.querySelectorAll('[data-cd]').forEach(b => b.classList.toggle('on', b.dataset.cd === cd));
+  taiLai();
+}
+function chonKy(ky){
+  S.ky = ky;
+  document.querySelectorAll('[data-ky]').forEach(b => b.classList.toggle('on', b.dataset.ky === ky));
+  document.getElementById('grpNgay').style.display = (ky === 'tuychon') ? 'flex' : 'none';
+  if (ky !== 'tuychon'){
+    const [a, b] = tinhKy(ky);
+    S.tu = dmy(a); S.den = dmy(b);
+    document.getElementById('inTu').value  = iso(a);
+    document.getElementById('inDen').value = iso(b);
+    taiLai();
+  } else {
+    doiNgay();
+  }
+}
+function doiNgay(){
+  const a = document.getElementById('inTu').value, b = document.getElementById('inDen').value;
+  if (!a || !b) return;
+  S.tu = dmy(tuIso(a)); S.den = dmy(tuIso(b));
+  taiLai();
+}
+
+/* ══════════════════════════════════════════════════
+   TẢI & VẼ
+══════════════════════════════════════════════════ */
+function loading(v){ document.getElementById('load').classList.toggle('hidden', !v); }
+function baoLoi(msg){
+  document.getElementById('loi').innerHTML = msg
+    ? '<div class="err">⚠️ ' + esc(msg) + '</div>' : '';
+}
+
+async function taiLai(boCache){
+  if (S.dangTai) return;
+  S.dangTai = true; loading(true); baoLoi("");
+  document.getElementById('lblKy').textContent = S.tu === S.den ? S.tu : (S.tu + " → " + S.den);
+  try {
+    const r = await api("pdtRpDash", { cd: S.cd, tu: S.tu, den: S.den, nocache: boCache ? 1 : "" });
+    if (!r || r.result !== "ok") throw new Error((r && r.error) || "Máy chủ không trả dữ liệu");
+    S.data = r;
+    document.getElementById('verBadge').textContent = r._v || "";
+    if (r._v && r._v !== CONFIG.APP_VERSION){
+      baoLoi("Phiên bản máy chủ (" + r._v + ") khác phiên bản trang (" + CONFIG.APP_VERSION +
+             "). Kiểm tra lại bước Triển khai → Quản lý triển khai → Phiên bản mới.");
+    }
+    ve(r);
+  } catch (e){
+    baoLoi(e.message + " — nếu vừa cập nhật code, hãy Triển khai lại (Quản lý triển khai → Phiên bản mới).");
+  } finally {
+    S.dangTai = false; loading(false);
+  }
+}
+
+function ve(r){
+  veMayNow(r.mayNow || {});
+  veKPI(r.kpi || {});
+  veMay(r.theoMay || []);
+  veLSX(r.theoLSX || []);
+  veParetoDT(r.paretoDT || []);
+  veParetoPhe(r.paretoPhe || []);
+  document.getElementById('noteLSX').textContent =
+    "Phế và thời gian dừng ở bảng này CHỈ là phần thuộc lệnh. Chi phí chung của máy nằm ở bảng trên.";
+  document.getElementById('foot').textContent =
+    (r.so_su_kien || 0) + " sự kiện trong kỳ · " + (r.so_ngay || 0) + " ngày · cập nhật "
+    + new Date().toLocaleTimeString("vi-VN");
+}
+
+/* ── Trạng thái máy ─────────────────────── */
+function veMayNow(m){
+  document.getElementById('nDung').textContent  = m.so_dung  || 0;
+  document.getElementById('nChay').textContent  = m.so_chay  || 0;
+  document.getElementById('nTrong').textContent = m.so_trong || 0;
+
+  document.getElementById('lsDung').innerHTML = (m.dung || []).length
+    ? m.dung.map(x =>
+        '<div class="mrow" onclick="moMay(' + JSON.stringify(x.ma_may).replace(/"/g,'&quot;') + ')">' +
+          '<b>' + esc(x.may || x.ma_may) + '</b>' +
+          '<span class="sub">' + esc(x.ten_dt || x.ma_dt) + ' · từ ' + esc(x.gio) + '</span>' +
+          '<span class="rt" style="color:var(--red)">' + phut(x.phut) + '</span>' +
+        '</div>').join("")
+    : '<div class="empty">Không có máy nào đang dừng</div>';
+
+  document.getElementById('lsChay').innerHTML = (m.chay || []).length
+    ? m.chay.map(x =>
+        '<div class="mrow" onclick="moMay(' + JSON.stringify(x.ma_may).replace(/"/g,'&quot;') + ')">' +
+          '<b>' + esc(x.may || x.ma_may) + '</b>' +
+          '<span class="sub">' + esc((x.ds_lsx || []).join(", ")) + '</span>' +
+          '<span class="rt">' + esc(x.gio) + '</span>' +
+        '</div>').join("")
+    : '<div class="empty">Không có cuộn nào đang mở</div>';
+
+  document.getElementById('lsTrong').innerHTML = (m.trong || []).length
+    ? m.trong.map(x =>
+        '<div class="mrow" onclick="moMay(' + JSON.stringify(x.ma_may).replace(/"/g,'&quot;') + ')">' +
+          '<b>' + esc(x.may || x.ma_may) + '</b></div>').join("")
+    : '<div class="empty">Máy nào cũng đang có việc</div>';
+}
+
+/* ── KPI ────────────────────────────────── */
+function veKPI(k){
+  const o = [
+    { lbl: "LSX đã thực hiện", num: k.so_lsx || 0, unit: "",
+      sub: (k.lsx_hoan_thanh||0) + " xong · " + (k.lsx_dang_chay||0) + " đang chạy · "
+         + (k.lsx_tam_dung||0) + " tạm dừng",
+      act: "kpiLSX" },
+    { lbl: "Cuộn hoàn thành", num: k.so_cuon || 0, unit: "cuộn",
+      sub: "trung bình " + so(k.kl_tb_cuon) + " kg/cuộn", act: "kpiCuon" },
+    { lbl: "Sản lượng", num: so(k.kl_sx), unit: "kg", cls: "acc-teal",
+      sub: (k.so_cuon||0) + " cuộn đã cân", act: "kpiCuon" },
+    { lbl: "Phế", num: so(k.phe_kg), unit: "kg", cls: "acc-red",
+      sub: so(k.phe_pct) + "% · chung máy " + so(k.phe_may_kg) + " / lệnh " + so(k.phe_lsx_kg),
+      act: "kpiPhe" },
+    { lbl: "Dừng máy", num: phut(k.dt_phut), unit: "", cls: "acc-amber",
+      sub: (k.dt_lan||0) + " lần · chung máy " + so(k.dt_may_phut,0) + "p / lệnh "
+         + so(k.dt_lsx_phut,0) + "p", act: "kpiDT" },
+    { lbl: "Kiểm tra", num: k.check_lan || 0, unit: "lần",
+      sub: (k.check_ng||0) + " lần NG (" + so(k.check_ng_pct) + "%)", act: "kpiCheck" }
+  ];
+  document.getElementById('kpis').innerHTML = o.map(x =>
+    '<div class="kpi ' + (x.cls||"") + '" onclick="' + x.act + '()">' +
+      '<div class="k-lbl">' + x.lbl + '</div>' +
+      '<div class="k-num">' + x.num + (x.unit ? '<span class="k-unit">' + x.unit + '</span>' : '') + '</div>' +
+      '<div class="k-sub">' + esc(x.sub) + '</div>' +
+    '</div>').join("");
+}
+
+/* ── Bảng theo máy ──────────────────────── */
+function veMay(ds){
+  const maxDT  = Math.max(1, ...ds.map(x => x.dt_phut || 0));
+  const maxPhe = Math.max(1, ...ds.map(x => x.phe_kg  || 0));
+  let h = '<thead><tr><th>Máy</th><th class="num">Cuộn</th><th class="num">Sản lượng (kg)</th>' +
+          '<th class="num">Phế (kg)</th><th style="width:110px">Phế: máy / lệnh</th><th class="num">% phế</th>' +
+          '<th class="num">Dừng</th><th style="width:110px">Dừng: máy / lệnh</th><th class="num">Lần</th>' +
+          '<th class="num">Check NG</th></tr></thead><tbody>';
+  if (!ds.length) h += '<tr><td colspan="10" class="empty">Kỳ này chưa có ghi nhận nào</td></tr>';
+  ds.forEach(m => {
+    h += '<tr onclick="moMay(' + JSON.stringify(m.ma_may).replace(/"/g,'&quot;') + ')">' +
+      '<td><b>' + esc(m.may || m.ma_may) + '</b> <span class="tag gray">' +
+        (m.cd === "thoi" ? "Thổi" : "In") + '</span></td>' +
+      '<td class="num">' + (m.so_cuon||0) + '</td>' +
+      '<td class="num">' + so(m.kl_sx) + '</td>' +
+      '<td class="num">' + so(m.phe_kg) + '</td>' +
+      '<td>' + bar2(m.phe_may_kg, m.phe_lsx_kg, maxPhe) + '</td>' +
+      '<td class="num">' + so(m.phe_pct) + '%</td>' +
+      '<td class="num">' + phut(m.dt_phut) + '</td>' +
+      '<td>' + bar2(m.dt_may_phut, m.dt_lsx_phut, maxDT) + '</td>' +
+      '<td class="num">' + (m.dt_lan||0) + '</td>' +
+      '<td class="num">' + (m.check_ng||0) + "/" + (m.check_lan||0) + '</td>' +
+    '</tr>';
+  });
+  document.getElementById('tbMay').innerHTML = h + '</tbody>';
+}
+
+/* ── Bảng theo LSX ──────────────────────── */
+function veLSX(ds){
+  let h = '<thead><tr><th>LSX</th><th>Máy</th><th class="num">KL yêu cầu</th>' +
+          '<th class="num">Đã SX (kg)</th><th class="num">%</th><th class="num">Cuộn</th>' +
+          '<th class="num">Phế thuộc lệnh</th><th class="num">Dừng thuộc lệnh</th>' +
+          '<th>Trạng thái</th><th>Công nhân</th></tr></thead><tbody>';
+  if (!ds.length) h += '<tr><td colspan="10" class="empty">Kỳ này chưa có LSX nào chạy</td></tr>';
+  ds.forEach(x => {
+    h += '<tr class="' + ((x.kl_sx||0) === 0 ? 'zero' : '') + '" onclick="moLSX(' +
+        JSON.stringify(x.lsx).replace(/"/g,'&quot;') + ')">' +
+      '<td><span class="linkish">' + esc(x.lsx) + '</span></td>' +
+      '<td>' + esc(x.may) + '</td>' +
+      '<td class="num">' + so(x.kl_yc) + '</td>' +
+      '<td class="num">' + so(x.kl_sx) + '</td>' +
+      '<td class="num">' + so(x.pct) + '%</td>' +
+      '<td class="num">' + (x.so_cuon||0) + '</td>' +
+      '<td class="num">' + so(x.phe_kg) + '</td>' +
+      '<td class="num">' + phut(x.dt_phut) + '</td>' +
+      '<td>' + tagTT(x.trang_thai) + '</td>' +
+      '<td>' + esc(x.cn) + '</td>' +
+    '</tr>';
+  });
+  document.getElementById('tbLSX').innerHTML = h + '</tbody>';
+}
+
+/* ── Pareto ─────────────────────────────── */
+function vePareto(elId, ds, dv, hanhDong){
+  const max = Math.max(1, ...ds.map(x => x.tong || 0));
+  let h = '<thead><tr><th>Mã</th><th>Nguyên nhân</th><th>Nhóm</th>' +
+          '<th class="num">Lần</th><th class="num">' + dv + '</th>' +
+          '<th style="width:150px">Chung máy / thuộc lệnh</th>' +
+          '<th class="num">%</th><th class="num">% dồn</th></tr></thead><tbody>';
+  if (!ds.length) h += '<tr><td colspan="8" class="empty">Kỳ này chưa ghi nhận</td></tr>';
+  ds.forEach(x => {
+    h += '<tr onclick="' + hanhDong + '(' + JSON.stringify(x.ma).replace(/"/g,'&quot;') + ')">' +
+      '<td><b>' + esc(x.ma) + '</b></td>' +
+      '<td>' + esc(x.ten) + '</td>' +
+      '<td>' + esc(x.nhom) + '</td>' +
+      '<td class="num">' + (x.lan||0) + '</td>' +
+      '<td class="num"><b>' + (dv === "Phút" ? phut(x.tong) : so(x.tong)) + '</b></td>' +
+      '<td>' + bar2(x.phan_may, x.phan_lsx, max) + '</td>' +
+      '<td class="num">' + so(x.pct) + '%</td>' +
+      '<td class="num">' + so(x.cong_don) + '%</td>' +
+    '</tr>';
+  });
+  document.getElementById(elId).innerHTML = h + '</tbody>';
+}
+function veParetoDT(ds){  vePareto('tbDT',  ds, "Phút", "moMaDT"); }
+function veParetoPhe(ds){ vePareto('tbPhe', ds, "Kg",   "moMaPhe"); }
+
+/* ══════════════════════════════════════════════════
+   DRILL — lấy sự kiện thô
+══════════════════════════════════════════════════ */
+function locCucBo(fn){
+  const sk = (S.data && S.data.suKien) || [];
+  return sk.filter(fn);
+}
+
+async function laySuKien(loc, locFn){
+  // Kỳ ngắn: dashboard đã kèm sẵn sự kiện → lọc ngay trên máy người dùng.
+  if (S.data && !S.data.con_nua && (S.data.suKien || []).length) return locCucBo(locFn);
+  // Kỳ dài: hỏi riêng máy chủ đúng phần cần.
+  const p = Object.assign({ cd: S.cd, tu: S.tu, den: S.den }, loc);
+  const r = await api("pdtRpSuKien", p);
+  if (!r || r.result !== "ok") throw new Error((r && r.error) || "Không lấy được chi tiết");
+  return r.items || [];
+}
+
+function moModal(tieuDe, html){
+  document.getElementById('mTitle').textContent = tieuDe;
+  document.getElementById('mBody').innerHTML = html;
+  document.getElementById('mask').classList.remove('hidden');
+}
+function dongModal(){ document.getElementById('mask').classList.add('hidden'); }
+
+/* ── Bảng sự kiện thô ───────────────────── */
+function bangSuKien(items){
+  if (!items.length) return '<div class="empty">Không có sự kiện nào</div>';
+  const ic = { CUON: "📦", PHE: "🗑", DT: "⏸", CHECK: "✅" };
+  let h = '<div class="tw"><table><thead><tr><th>Ngày</th><th>Giờ</th><th>Việc</th><th>Máy</th>' +
+          '<th>Cuộn</th><th>LSX</th><th class="num">Số lượng</th><th>Nguyên nhân</th>' +
+          '<th>Phạm vi</th><th>Người ghi</th><th>Ghi chú</th></tr></thead><tbody>';
+  items.forEach(x => {
+    const gio = x.gio2 ? (x.gio + "–" + x.gio2) : (x.gio || "");
+    let sl = "";
+    if (x.loai === "DT")    sl = x.kq === "ĐANG DỪNG" ? "đang dừng" : phut(x.so);
+    else if (x.loai === "CHECK") sl = "lần " + (x.so || 1);
+    else if (x.so)          sl = so(x.so) + " kg";
+    h += '<tr onclick="moCuon(' + JSON.stringify(x.cuon_id||"").replace(/"/g,'&quot;') + ')">' +
+      '<td>' + esc(x.ngay) + '</td>' +
+      '<td>' + esc(gio) + '</td>' +
+      '<td>' + (ic[x.loai]||"") + " " + esc(x.loai === "CUON" ? "Cuộn" :
+                x.loai === "PHE" ? "Phế" : x.loai === "DT" ? "Dừng" : "Kiểm tra") + '</td>' +
+      '<td>' + esc(x.may || x.ma_may) + '</td>' +
+      '<td>' + (x.cuon_id ? '<span class="linkish">' + esc(x.cuon_id) + '</span>' : "–") + '</td>' +
+      '<td>' + esc(x.lsx || "–") + '</td>' +
+      '<td class="num">' + esc(sl) + '</td>' +
+      '<td>' + esc(x.ten || "") + (x.ma ? " (" + esc(x.ma) + ")" : "") +
+              (x.kq === "NG" ? ' <span class="tag dung">NG ' + esc(x.ds_ng||"") + '</span>' : "") +
+              (x.kq === "ĐANG DỪNG" ? ' <span class="tag dung">chưa đóng</span>' : "") + '</td>' +
+      '<td>' + (x.loai === "DT" || x.loai === "PHE" ? tagPV(x.pham_vi) : "") + '</td>' +
+      '<td>' + esc(x.cn) + '</td>' +
+      '<td>' + esc(x.ghi_chu || (x.phan_bo ? "chia: " + x.phan_bo : "")) + '</td>' +
+    '</tr>';
+  });
+  return h + '</tbody></table></div>';
+}
+
+/* ── Các đường vào chi tiết ─────────────── */
+async function moMay(maMay){
+  if (!maMay) return;
+  loading(true);
+  try {
+    const items = await laySuKien({ ma_may: maMay },
+                    x => String(x.ma_may).toUpperCase() === String(maMay).toUpperCase());
+    const t = tomTat(items);
+    moModal("🏭 Máy " + maMay + " · " + S.tu + (S.tu === S.den ? "" : " → " + S.den),
+      t + bangSuKien(items) +
+      '<div class="hint">Thời gian dừng của máy = cộng các dòng “Dừng” ở đây. ' +
+      'Đừng cộng cột dừng ở bảng theo LSX — một lần dừng của cuộn nhiều LSX sẽ bị đếm lặp.</div>');
+  } catch(e){ baoLoi(e.message); } finally { loading(false); }
+}
+
+async function moMaDT(ma){ await moMaChung(ma, "DT", "⏸ Nguyên nhân dừng: "); }
+async function moMaPhe(ma){ await moMaChung(ma, "PHE", "🗑 Nguyên nhân phế: "); }
+async function moMaChung(ma, loai, tieuDe){
+  loading(true);
+  try {
+    const items = await laySuKien({ ma: ma, loai: loai },
+                    x => x.loai === loai && String(x.ma).toUpperCase() === String(ma).toUpperCase());
+    moModal(tieuDe + ma, tomTat(items) + bangSuKien(items));
+  } catch(e){ baoLoi(e.message); } finally { loading(false); }
+}
+
+function kpiLSX(){ document.getElementById('tbLSX').scrollIntoView({behavior:"smooth", block:"start"}); }
+function kpiCuon(){ moLoai("CUON", "📦 Các cuộn trong kỳ"); }
+function kpiPhe(){  moLoai("PHE",  "🗑 Các lần ghi phế trong kỳ"); }
+function kpiDT(){   moLoai("DT",   "⏸ Các lần dừng máy trong kỳ"); }
+function kpiCheck(){ moLoai("CHECK","✅ Các lần kiểm tra trong kỳ"); }
+
+async function moLoai(loai, tieuDe){
+  loading(true);
+  try {
+    const items = await laySuKien({ loai: loai }, x => x.loai === loai);
+    moModal(tieuDe, tomTat(items) + bangSuKien(items));
+  } catch(e){ baoLoi(e.message); } finally { loading(false); }
+}
+
+function tomTat(items){
+  let kg = 0, ph = 0, nCuon = 0, ng = 0;
+  items.forEach(x => {
+    if (x.loai === "PHE")  kg += Number(x.so)||0;
+    if (x.loai === "DT")   ph += Number(x.so)||0;
+    if (x.loai === "CUON" && x.kq === "HOAN_THANH") { nCuon++; kg += 0; }
+    if (x.loai === "CHECK" && x.kq === "NG") ng++;
+  });
+  let sl = 0;
+  items.forEach(x => { if (x.loai === "CUON" && x.kq === "HOAN_THANH") sl += Number(x.so)||0; });
+  return '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;font-size:13px">' +
+    '<span><b>' + items.length + '</b> sự kiện</span>' +
+    (nCuon ? '<span>Cuộn: <b>' + nCuon + '</b> · ' + so(sl) + ' kg</span>' : '') +
+    (kg ? '<span>Phế: <b>' + so(kg) + '</b> kg</span>' : '') +
+    (ph ? '<span>Dừng: <b>' + phut(ph) + '</b></span>' : '') +
+    (ng ? '<span>NG: <b>' + ng + '</b> lần</span>' : '') +
+  '</div>';
+}
+
+/* ── Hồ sơ 1 cuộn ───────────────────────── */
+async function moCuon(cuonId){
+  if (!cuonId) return;
+  event && event.stopPropagation && event.stopPropagation();
+  loading(true);
+  try {
+    const r = await api("pdtRpCuon", { cd: S.cd, cuon_id: cuonId });
+    if (!r || r.result !== "ok" || r.co_du_lieu === false)
+      throw new Error((r && (r.error || r.msg)) || "Không tìm thấy cuộn");
+    const c = r.cuon;
+    const ic = { CUON: "📦", PHE: "🗑", DT: "⏸", CHECK: "✅" };
+    let h = '<div style="margin-bottom:12px;font-size:13.5px">' +
+      '<b>' + esc(c.may) + '</b> · ' + esc(c.cn) + ' · ' + esc(c.ngay_sx) + ' ca ' + esc(c.ca_sx) +
+      ' · ' + tagTT(c.trang_thai) + '<br>' +
+      (c.ds_lsx||[]).map(x => esc(x.lsx) + " (" + so(x.kl_yc) + " kg YC)").join(" · ") +
+      (c.kl_tong ? ' → <b>' + so(c.kl_tong) + ' kg</b>' : '') +
+      '</div><div class="tl">';
+    (r.items||[]).forEach(x => {
+      let mo = "";
+      if (x.loai === "CUON") mo = (x.kq === "HOAN_THANH" ? "Hoàn thành cuộn — " + so(x.so) + " kg" : "Cuộn " + x.kq);
+      else if (x.loai === "PHE") mo = "Phế " + so(x.so) + " kg — " + esc(x.ten) +
+              (x.phan_bo ? " → " + esc(x.phan_bo) : "");
+      else if (x.loai === "DT") mo = "Dừng " + (x.kq === "ĐANG DỪNG" ? "(chưa đóng)" : phut(x.so)) +
+              " — " + esc(x.ten);
+      else if (x.loai === "CHECK") mo = "Kiểm tra lần " + x.so + " — " + esc(x.kq) +
+              (x.ds_ng ? " (" + esc(x.ds_ng) + ")" : "");
+      const gio = x.gio2 ? (x.gio + "–" + x.gio2) : x.gio;
+      h += '<div class="tl-i"><div class="tl-t">' + esc(gio) + '</div>' +
+           '<div class="tl-ic">' + (ic[x.loai]||"") + '</div>' +
+           '<div class="tl-c"><div class="h">' + mo + '</div>' +
+           '<div class="s">' + esc(x.cn) + (x.pham_vi ? " · " : "") +
+           (x.pham_vi ? tagPV(x.pham_vi) : "") + (x.ghi_chu ? " · " + esc(x.ghi_chu) : "") +
+           '</div></div></div>';
+    });
+    moModal("📦 Cuộn " + cuonId, h + '</div>');
+  } catch(e){ baoLoi(e.message); } finally { loading(false); }
+}
+
+/* ── Mở màn tra cứu LSX ─────────────────── */
+function moLSX(lsx){
+  window.location.href = "tra-cuu-sx.html?lsx=" + encodeURIComponent(lsx) + "&cd=" + encodeURIComponent(S.cd);
+}
+
+/* ══════════════════════════════════════════════════
+   KHỞI ĐỘNG
+══════════════════════════════════════════════════ */
+(function init(){
+  const q = new URLSearchParams(location.search);
+  const cd = q.get('cd');
+  if (cd === 'thoi' || cd === 'in'){
+    S.cd = cd;
+    document.querySelectorAll('[data-cd]').forEach(b => b.classList.toggle('on', b.dataset.cd === cd));
+  }
+  const [a, b] = tinhKy('homnay');
+  S.tu = dmy(a); S.den = dmy(b);
+  document.getElementById('inTu').value  = iso(a);
+  document.getElementById('inDen').value = iso(b);
+  taiLai();
+})();
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') dongModal(); });
+</script>
+</body>
+</html>
