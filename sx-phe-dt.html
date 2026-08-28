@@ -174,7 +174,8 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 .alloc-pct{font-size:11px;color:var(--muted);width:40px;text-align:right;}
 
 /* toast / loading */
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:99;opacity:0;transition:opacity .3s;max-width:90vw;text-align:center;}
+/* pointer-events:none — toast KHÔNG được chặn thao tác bấm bên dưới nó */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:99;opacity:0;transition:opacity .3s;max-width:90vw;text-align:center;pointer-events:none;}
 .toast.show{opacity:1;}
 .loading{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100;}
 .loading.hidden{display:none;}
@@ -1447,7 +1448,7 @@ function openMayPicker(mode) {
     const ten = m.may || m.ten || maMay;
     const stop = openDTOfMachine(maMay);
     const roll = rollOnMachine(maMay);
-    html += '<button class="pick-btn" onclick="pickMay(\'' + esc(maMay) + '\',\'' + esc(ten) + '\')">'
+    html += '<button class="pick-btn" onclick="pickMayGhi(\'' + esc(maMay) + '\',\'' + esc(ten) + '\')">'
          + '<div class="pb-name">' + esc(ten)
          + (stop ? ' <span class="pv-tag HOI">⏸ đang dừng</span>' : '') + '</div>'
          + '<div class="pb-sub">' + esc(maMay)
@@ -1458,12 +1459,20 @@ function openMayPicker(mode) {
   document.getElementById('modalMay').classList.remove('hidden');
 }
 
-function pickMay(maMay, ten) {
+/**
+ * Chọn máy TRONG MODAL GHI THEO MÁY (v6).
+ * Tên phải khác `pickMay` của màn hình Tạo cuộn — trùng tên sẽ đè lên nhau
+ * và bấm chọn máy lúc tạo cuộn lại nhảy sang màn ghi phế.
+ */
+function pickMayGhi(maMay, ten) {
   closeModal('modalMay');
   const roll = rollOnMachine(maMay);
   const ctx = { ma_may: maMay, may: ten, cuon_id: roll ? roll.cuon_id : '',
                 ds_lsx: roll ? (roll.ds_lsx || []).map(l => l.lsx) : [] };
-  if (S.mayPickMode === 'dt') openDT(ctx); else openPhe(ctx);
+  if (S.mayPickMode === 'phe') openPhe(ctx);
+  else if (S.mayPickMode === 'dt') openDT(ctx);
+  else toast("Chưa rõ thao tác — chọn lại Dừng máy hoặc Ghi phế");
+  S.mayPickMode = null;
 }
 
 /* ══════════════════════════════════════════════════
