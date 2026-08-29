@@ -28,6 +28,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .topbar{background:var(--teal);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:5;}
 .topbar .ttl{font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+/* Nút lùi luôn nằm bên TRÁI, mũi tên to, vùng bấm rộng cho ngón tay đeo găng */
+.icon-btn.back{font-size:20px;line-height:1;padding:6px 14px;font-weight:800;}
+.topbar .ttl{flex:1;}
+
+/* Thanh "tự về màn hình công đoạn" — công nhân ngại đăng nhập lại, nên khi
+   không còn thao tác, app tự đưa về dashboard công đoạn CHỨ KHÔNG để trôi ra
+   màn hình chính. Luôn báo trước và luôn huỷ được. */
+.av{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:95;
+  background:#1e293b;color:#fff;border-radius:999px;padding:9px 9px 9px 16px;
+  display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600;
+  box-shadow:0 8px 24px rgba(15,23,42,.28);max-width:92vw;}
+.av.hidden{display:none;}
+.av-b{background:#fff;color:#0f172a;border:0;border-radius:999px;padding:7px 15px;
+  font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;}
 
 /* buttons */
 .btn{border:0;border-radius:12px;font-size:17px;font-weight:700;padding:14px 16px;cursor:pointer;width:100%;color:#fff;background:var(--teal);display:flex;align-items:center;justify-content:center;gap:8px;}
@@ -230,6 +244,7 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 <!-- ═══════ MÀN HÌNH 1: CHỌN CÔNG ĐOẠN ═══════ -->
 <div id="scrCD" class="screen active">
   <div class="topbar">
+    <button class="icon-btn back" onclick="goHome()">←</button>
     <span class="ttl">🏭 Ghi nhận SX Real-time</span>
     <button class="icon-btn" onclick="goHome()">🏠</button>
   </div>
@@ -245,10 +260,10 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 <!-- ═══════ MÀN HÌNH 2: DASHBOARD — CUỘN ĐANG CHẠY ═══════ -->
 <div id="scrDash" class="screen">
   <div class="topbar">
+    <button class="icon-btn back" onclick="showScreen('scrCD')">←</button>
     <span class="ttl" id="dashTitle">Dashboard</span>
     <div style="display:flex;gap:6px;">
       <button class="icon-btn" onclick="openNewRoll()">➕ Tạo cuộn</button>
-      <button class="icon-btn" onclick="showScreen('scrCD')">← CĐ</button>
     </div>
   </div>
   <div class="status-bar">
@@ -288,8 +303,8 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 <!-- ═══════ MÀN HÌNH 3: TẠO CUỘN MỚI (scan/nhập LSX → chọn máy → tạo) ═══════ -->
 <div id="scrNewRoll" class="screen">
   <div class="topbar">
+    <button class="icon-btn back" onclick="showScreen('scrDash')">←</button>
     <span class="ttl">🎬 Tạo cuộn mới</span>
-    <button class="icon-btn" onclick="showScreen('scrDash')">← Quay lại</button>
   </div>
   <div class="content">
     <!-- Bước 1: Thêm LSX vào danh sách -->
@@ -318,8 +333,8 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 <!-- ═══════ MÀN HÌNH 4: SẢN XUẤT CHÍNH (per cuộn) ═══════ -->
 <div id="scrSX" class="screen">
   <div class="topbar">
+    <button class="icon-btn back" onclick="backToDash()">←</button>
     <span class="ttl" id="sxTitle">Cuộn SX</span>
-    <button class="icon-btn" onclick="backToDash()">← Dashboard</button>
   </div>
   <div class="status-bar">
     <span class="dot" id="sxDot"></span>
@@ -567,6 +582,10 @@ select.fm-input{appearance:none;background:#fff url("data:image/svg+xml,%3Csvg x
 <div id="loadingOverlay" class="loading hidden"><div class="spinner"></div></div>
 <!-- Toast -->
 <div id="toast" class="toast"></div>
+<div id="avBar" class="av hidden">
+  <span class="av-t">Tự về…</span>
+  <button class="av-b" onclick="avOLai()">Ở lại</button>
+</div>
 
 <script>
 /* ══════════════════════════════════════════════════
@@ -719,6 +738,72 @@ function backToDash() {
 }
 
 /* ══════════════════════════════════════════════════
+   TỰ VỀ DASHBOARD CÔNG ĐOẠN
+
+   Công nhân ngại nhất là phải đăng nhập lại. Nên khi ghi xong mà không còn
+   thao tác gì nữa, app tự đưa về Dashboard của ĐÚNG công đoạn đang làm —
+   KHÔNG đăng xuất, KHÔNG về màn hình chính.
+
+   Đồng hồ đếm từ lần chạm màn hình CUỐI CÙNG, nên đang đọc / đang gõ thì
+   không bị giật mất màn hình. Thanh đếm hiện ở AV_CANH_BAO giây cuối để
+   không có gì xảy ra bất ngờ, và bấm "Ở lại" là hoãn hẳn 3 phút.
+══════════════════════════════════════════════════ */
+// ?av=<giây> để rút ngắn khi test (giống ?nocache=1 của các module khác).
+const AV_TONG = Math.max(2, Number(new URLSearchParams(location.search).get("av")) || 10);
+const AV_CANH_BAO = Math.min(6, AV_TONG - 1), AV_HOAN_MS = 180000;
+let avLanCuoi = Date.now(), avTatDen = 0;
+
+function avCham(e) {
+  // Thao tác NGAY TRÊN thanh đếm (bấm "Ở lại") không tính là hoạt động —
+  // nếu tính, con trỏ vừa chạm tới là thanh biến mất, không ai bấm nổi nút.
+  if (e && e.target && e.target.closest && e.target.closest('#avBar')) return;
+  avLanCuoi = Date.now();
+  // Ẩn ngay, không đợi nhịp giây kế tiếp — phản hồi phải tức thì.
+  const el = document.getElementById('avBar');
+  if (el && !el.classList.contains('hidden')) el.classList.add('hidden');
+}
+function avOLai() {
+  avTatDen = Date.now() + AV_HOAN_MS;
+  avCham();
+  const el = document.getElementById('avBar');
+  if (el) el.classList.add('hidden');
+  toast("Đã tắt tự chuyển màn hình trong 3 phút", 2500);
+}
+
+/** Màn hình nào cần tự về? Chỉ những màn ĐANG THAO TÁC, không phải đích đến. */
+function avNenChay() {
+  const sc = document.querySelector('.screen.active');
+  return !!sc && (sc.id === 'scrSX' || sc.id === 'scrNewRoll');
+}
+
+/** Đang mở hộp thoại hoặc đang gõ thì hoãn — chưa xong việc thì đừng kéo đi. */
+function avHoan() {
+  if (document.querySelector('.modal-overlay:not(.hidden)')) return true;
+  const a = document.activeElement;
+  return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+}
+
+function avNhip() {
+  const el = document.getElementById('avBar');
+  if (!el) return;
+  if (Date.now() < avTatDen || !avNenChay() || avHoan()) {
+    avCham(); el.classList.add('hidden'); return;
+  }
+  const conLai = AV_TONG - Math.floor((Date.now() - avLanCuoi) / 1000);
+  if (conLai <= 0) { el.classList.add('hidden'); backToDash(); avCham(); return; }
+  const hien = conLai <= AV_CANH_BAO;
+  el.classList.toggle('hidden', !hien);
+  if (hien) el.querySelector('.av-t').textContent =
+    "Tự về Dashboard " + (S.cdLabel || "") + " sau " + conLai + "s";
+}
+
+// CỐ Ý không nghe "mousemove": trên máy tính, con trỏ rê tới nút "Ở lại" sẽ
+// làm thanh đếm biến mất trước khi kịp bấm. Chỉ tính THAO TÁC THẬT.
+["pointerdown", "keydown", "wheel", "touchstart", "scroll"].forEach(ev =>
+  document.addEventListener(ev, avCham, { passive: true, capture: true }));
+setInterval(avNhip, 1000);
+
+/* ══════════════════════════════════════════════════
    API
 ══════════════════════════════════════════════════ */
 let _jSeq = 0;
@@ -795,6 +880,9 @@ function calcShift() {
 async function chonCD(cd) {
   S.cd = cd;
   S.cdLabel = cd === "thoi" ? "Thổi" : "In";
+  // Ghi nhớ công đoạn đang làm — bao-cao-sx.html / tra-cuu-sx.html đọc lại
+  // để biết tự đưa người dùng về ĐÚNG dashboard công đoạn đó.
+  try { localStorage.setItem("pdt_cd_cuoi", cd); } catch (e) {}
 
   loading(true);
   try {
