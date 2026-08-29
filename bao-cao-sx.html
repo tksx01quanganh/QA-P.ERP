@@ -114,6 +114,18 @@ tr.zero td{color:var(--muted);}
 .b-empty{background:#e2e8f0;flex:1;border-radius:4px;}
 
 .linkish{color:var(--teal);font-weight:700;text-decoration:underline dotted;}
+/* Thanh "tự về màn hình công đoạn" — công nhân ngại đăng nhập lại, nên khi
+   không còn thao tác, app tự đưa về dashboard công đoạn CHỨ KHÔNG để trôi ra
+   màn hình chính. Luôn báo trước và luôn huỷ được. */
+.av{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:95;
+  background:#1e293b;color:#fff;border-radius:999px;padding:9px 9px 9px 16px;
+  display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600;
+  box-shadow:0 8px 24px rgba(15,23,42,.28);max-width:92vw;}
+.av.hidden{display:none;}
+.av-b{background:#fff;color:#0f172a;border:0;border-radius:999px;padding:7px 15px;
+  font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;}
+/* Nút lùi luôn nằm bên TRÁI, mũi tên to, vùng bấm rộng */
+.icon-btn.back{font-size:20px;line-height:1;padding:6px 14px;font-weight:800;}
 /* Mô tả sản phẩm là ô duy nhất được xuống dòng — các ô còn lại giữ nowrap để bảng đọc theo cột */
 td.wrap-mota{white-space:normal;min-width:190px;max-width:290px;}
 /* Bảng LSX rộng hơn màn hình — ghim cột mã LSX lại để kéo ngang vẫn biết đang xem lệnh nào */
@@ -166,6 +178,7 @@ td.wrap-mota{white-space:normal;min-width:190px;max-width:290px;}
 <body>
 
 <div class="topbar">
+  <button class="icon-btn back" onclick="quayLai()">←</button>
   <div class="ttl">📊 Báo cáo SX Thổi/In</div>
   <div class="rt">
     <span id="verBadge" style="font-size:11px;opacity:.8"></span>
@@ -274,6 +287,10 @@ td.wrap-mota{white-space:normal;min-width:190px;max-width:290px;}
 </div>
 
 <div class="load hidden" id="load"><div class="spin"></div></div>
+<div id="avBar" class="av hidden">
+  <span class="av-t">Tự về…</span>
+  <button class="av-b" onclick="avOLai()">Ở lại</button>
+</div>
 
 <script>
 /* ══════════════════════════════════════════════════
@@ -762,6 +779,96 @@ async function moCuon(cuonId){
 /* ── Mở màn tra cứu LSX ─────────────────── */
 function moLSX(lsx){
   window.location.href = "tra-cuu-sx.html?lsx=" + encodeURIComponent(lsx) + "&cd=" + encodeURIComponent(S.cd);
+}
+
+
+/* ══════════════════════════════════════════════════
+   NÚT LÙI + TỰ VỀ MÀN HÌNH CÔNG ĐOẠN
+
+   Công nhân ngại nhất là phải đăng nhập lại. Nên khi không còn thao tác gì
+   nữa, app tự đưa về Dashboard ghi nhận SX của ĐÚNG công đoạn đang xem —
+   KHÔNG đăng xuất, KHÔNG về màn hình chính.
+
+   Đồng hồ đếm từ lần chạm màn hình CUỐI CÙNG, nên đang đọc / đang gõ thì
+   không bị giật mất màn hình. Thanh đếm hiện ở AV_CANH_BAO giây cuối để
+   không có gì xảy ra bất ngờ, và bấm "Ở lại" là hoãn hẳn 3 phút.
+══════════════════════════════════════════════════ */
+// ?av=<giây> để rút ngắn khi test (giống ?nocache=1 của các module khác).
+const AV_TONG = Math.max(2, Number(new URLSearchParams(location.search).get("av")) || 10);
+const AV_CANH_BAO = Math.min(6, AV_TONG - 1), AV_HOAN_MS = 180000;
+let avLanCuoi = Date.now(), avTatDen = 0;
+
+function avCham(e){
+  // Thao tác NGAY TRÊN thanh đếm (bấm "Ở lại") không tính là hoạt động —
+  // nếu tính, con trỏ vừa chạm tới là thanh biến mất, không ai bấm nổi nút.
+  if (e && e.target && e.target.closest && e.target.closest('#avBar')) return;
+  avLanCuoi = Date.now();
+  // Ẩn ngay, không đợi nhịp giây kế tiếp — phản hồi phải tức thì.
+  const el = document.getElementById('avBar');
+  if (el && !el.classList.contains('hidden')) el.classList.add('hidden');
+}
+
+function avOLai(){
+  avTatDen = Date.now() + AV_HOAN_MS;
+  avCham();
+  const el = document.getElementById('avBar');
+  if (el) el.classList.add('hidden');
+}
+
+/** Công đoạn để quay về. Màn hình đang xem "cả hai" thì lấy công đoạn
+ *  người dùng vừa làm ở màn ghi (sx-phe-dt.html có ghi lại). */
+function avCD(){
+  const c = S.cd;
+  if (c === "thoi" || c === "in") return c;
+  try {
+    const l = localStorage.getItem("pdt_cd_cuoi");
+    if (l === "thoi" || l === "in") return l;
+  } catch(e){}
+  return "";
+}
+function avTenCD(){
+  const c = avCD();
+  return c === "thoi" ? "màn ghi SX Thổi" : c === "in" ? "màn ghi SX In" : "màn ghi SX";
+}
+
+/** Đang mở hộp thoại hoặc đang gõ thì hoãn — chưa xong việc thì đừng kéo đi. */
+function avHoan(){
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+  if (!document.getElementById('mask').classList.contains('hidden')) return true;  // đang mở chi tiết
+  return false;
+}
+
+function avNhip(){
+  const el = document.getElementById('avBar');
+  if (!el) return;
+  if (Date.now() < avTatDen || avHoan()){ avCham(); el.classList.add('hidden'); return; }
+  const conLai = AV_TONG - Math.floor((Date.now() - avLanCuoi) / 1000);
+  if (conLai <= 0){
+    el.classList.add('hidden');
+    const c = avCD();
+    window.location.href = "sx-phe-dt.html" + (c ? "?cd=" + c : "");
+    return;
+  }
+  const hien = conLai <= AV_CANH_BAO;
+  el.classList.toggle('hidden', !hien);
+  if (hien) el.querySelector('.av-t').textContent = "Tự về " + avTenCD() + " sau " + conLai + "s";
+}
+
+// CỐ Ý không nghe "mousemove": trên máy tính, con trỏ rê tới nút "Ở lại" sẽ
+// làm thanh đếm biến mất trước khi kịp bấm. Chỉ tính THAO TÁC THẬT.
+["pointerdown","keydown","wheel","touchstart","scroll"].forEach(ev =>
+  document.addEventListener(ev, avCham, { passive: true, capture: true }));
+setInterval(avNhip, 1000);
+
+/** Nút ← : lùi về trang trước nếu đến từ cùng hệ thống, không thì về menu. */
+function quayLai(){
+  try {
+    if (document.referrer && new URL(document.referrer).origin === location.origin) {
+      history.back(); return;
+    }
+  } catch(e){}
+  window.location.href = "index.html";
 }
 
 /* ══════════════════════════════════════════════════
