@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0f766e" />
 <title>Tra cứu kết quả SX thành phẩm — QA-P.ERP</title>
+<!-- v5.3 — 03/09/2026
+     1. Nút ⚡ "Làm mới dữ liệu" (gửi nocache=kq) — xem lamMoiDuLieu()
+     2. Modal chi tiết hỏi đúng khoá máy chủ đã dùng (lsxKQ) — xem renderCards()
+     Đi kèm Code.gs cùng ngày (kiemXoaDongKetQua_, tgSapXep_, xoaCacheKetQua_).
+     Đổi file này thì nhớ bump CACHE trong sw.js. -->
 <style>
 :root{
   --teal:#0f766e; --teal-d:#0b5b54; --green:#16a34a; --red:#dc2626;
@@ -23,6 +28,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .topbar h1{margin:0;font-size:16px;font-weight:700;}
 .topbar .info{flex:1;min-width:0;}
 .icon-btn{background:rgba(255,255,255,.2);border:0;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+/* 03/09/2026 — topbar nay có 3 nút (←, ⚡, 🏠). Trên máy hẹp thì thu gọn
+   đệm và cỡ chữ tiêu đề để tiêu đề không bị vắt xuống hai dòng.
+   Đệm ngang giảm nhưng đệm dọc GIỮ NGUYÊN 8px: nút vẫn cao ~35px, đủ to
+   để bấm bằng ngón tay (phép kiểm A trong test-tien-do-v53.e2e.js). */
+@media (max-width:430px){
+  .topbar{padding:12px 10px;gap:6px;}
+  .topbar h1{font-size:14px;}
+  .icon-btn{padding:8px 9px;}
+}
 
 /* ── login ──────────────────────────────── */
 .login-scroll{flex:1;overflow:auto;}
@@ -336,6 +350,11 @@ details.top-block[open] > summary .caret{transform:rotate(90deg);}
   <div class="topbar">
     <button class="icon-btn" onclick="showScreen('screenChoose')">←</button>
     <div class="info"><h1>📊 Tra cứu KQSX thành phẩm</h1></div>
+    <!-- 03/09/2026 — nút làm mới. Máy chủ cache số liệu 5 giờ; xoá/sửa dòng
+         thẳng trên Google Sheet thì cache KHÔNG tự biết. Nút này ép dựng lại.
+         Xem ghi chú kiemXoaDongKetQua_ trong Code.gs. -->
+    <button class="icon-btn" id="btnLamMoi" onclick="lamMoiDuLieu()"
+            title="Làm mới dữ liệu — đọc lại từ Google Sheet, bỏ qua cache">⚡</button>
     <button class="icon-btn" onclick="goHome()">🏠</button>
   </div>
 
@@ -524,6 +543,10 @@ function chooseOption(t){
 ══════════════════════════════════════════════ */
 let abortCtrl = null; // để hủy request cũ nếu bấm tìm lại
 
+// 03/09/2026 — cờ "lần gọi tới thì bỏ qua cache máy chủ". Nút ⚡ bật lên,
+// apiFetchRieng tiêu thụ ngay ở request đầu tiên rồi tự tắt.
+let boQuaCacheLanToi = false;
+
 async function apiFetch(action, params){
   // Hủy request trước nếu đang chạy
   if(abortCtrl) try{ abortCtrl.abort(); }catch(e){}
@@ -546,6 +569,11 @@ async function apiFetchRieng(action, params, signal){
   if(params){
     Object.keys(params).forEach(k=>{ url += "&" + k + "=" + encodeURIComponent(params[k]||""); });
   }
+  // 03/09/2026 — cờ dùng MỘT LẦN, do nút ⚡ bật lên.
+  // TIÊU THỤ NGAY tại request đầu tiên: nếu để cờ sống tới cuối lượt làm mới
+  // thì việc nền nạp mô tả (napMoTaDangHien) cũng mang theo nocache và ép máy
+  // chủ dựng lại cache lần nữa — chậm gấp đôi mà chẳng thêm gì.
+  if(boQuaCacheLanToi){ url += "&nocache=kq"; boQuaCacheLanToi = false; }
   const opt = { method:"GET", redirect:"follow" };
   if(signal) opt.signal = signal;
   const res = await fetch(url, opt);
@@ -689,7 +717,11 @@ function renderCards(rows){
     const pctBar  = Math.min(pct, 100);
     const cls     = progressClass(pct);
     const color   = progressColor(pct);
-    const lsxId   = esc(r.lsxct || r.lsx);
+    // 03/09/2026 — hỏi chi tiết ĐÚNG bằng khoá mà máy chủ đã dùng để lấy số
+    // (`lsxKQ`). Trước đây luôn hỏi theo lsxct, nên đơn nào ghi nhận dưới LSX
+    // cha thì thẻ hiện số mà modal báo "chưa có dữ liệu scan".
+    // `|| r.lsxct || r.lsx` là đường lùi cho bản máy chủ cũ chưa trả lsxKQ.
+    const lsxId   = esc(r.lsxKQ || r.lsxct || r.lsx);
 
     parts.push(
       '<div class="order-card">'+
@@ -760,8 +792,12 @@ function clearSearch(){
 ══════════════════════════════════════════════ */
 const WS_LABEL = { CAT:"Tổ Cắt", TCO:"Tổ Thủ công", GTB:"Tổ Giấy/Thùng/Bìa", KHAC:"Khác (máy ngoài danh mục)" };
 
+// 03/09/2026 — tab đang mở, để nút ⚡ biết phải chạy lại truy vấn nào.
+let tabHienTai = "order";
+
 function switchTab(t){
   const isOrder = t === "order";
+  tabHienTai = isOrder ? "order" : "team";
   document.getElementById("tabOrder").style.display = isOrder ? "flex" : "none";
   document.getElementById("tabTeam").style.display  = isOrder ? "none" : "flex";
   document.getElementById("tabBtnOrder").classList.toggle("active", isOrder);
@@ -1273,6 +1309,58 @@ function renderLsxDetail(el, data){
   }
   html += '</table></div>';
   el.innerHTML = html;
+}
+
+/* ══════════════════════════════════════════════
+   NÚT ⚡ LÀM MỚI DỮ LIỆU — 03/09/2026
+
+   VÌ SAO CẦN: máy chủ cache số liệu 5 giờ và KHÔNG có cách nào biết khi có
+   người sửa/xoá dòng thẳng trên Google Sheet. Ngày 03/09/2026 Hải xoá 1 dòng
+   của LSX 26082540002; thẻ đơn hàng vẫn hiện 7.500 / 3 lượt trong khi số thật
+   là 5.000 / 2 lượt. Trigger onChange nay đã tự dọn cache khi có dòng bị XOÁ
+   (xem kiemXoaDongKetQua_ trong Code.gs), nhưng SỬA GIÁ TRỊ một ô thì số dòng
+   không đổi nên không bắt được — nút này là đường thoát cho mọi trường hợp
+   còn lại.
+
+   BA ĐIỀU PHẢI GIỮ KHI SỬA HÀM NÀY:
+   1. Xoá CẢ cache phía trình duyệt (lsxDetailCache, motaCache, customerCache).
+      Bỏ sót thì máy chủ trả số mới mà màn hình vẫn vẽ số cũ — còn khó hiểu hơn.
+   2. Chỉ gửi nocache=kq (dọn cache KetQua), KHÔNG gửi nocache=1 — cái sau xoá
+      luôn Order List, dựng lại tới ~58 giây.
+   3. Không dùng lớp nổi (toast) để báo kết quả. Đã ba lần lớp nổi che mất nút
+      bấm ở các màn khác. Ở đây chỉ đổi nhãn của chính nút này.
+══════════════════════════════════════════════ */
+async function lamMoiDuLieu(){
+  const btn = document.getElementById("btnLamMoi");
+  if(btn.disabled) return;                      // đang chạy rồi, đừng chồng lệnh
+
+  // (1) dọn cache phía trình duyệt
+  Object.keys(lsxDetailCache).forEach(k => delete lsxDetailCache[k]);
+  Object.keys(motaCache).forEach(k => delete motaCache[k]);
+  customerCache = null;
+
+  const nhanCu = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "⏳";
+
+  let daGoi = false;
+  try{
+    if(tabHienTai === "order"){
+      const coDieuKien = document.getElementById("fCustomer").value.trim()
+                      || document.getElementById("fQuery").value.trim();
+      if(coDieuKien){ boQuaCacheLanToi = true; daGoi = true; await runSearch(); }
+      else setStatus("", 'Nhập Khách hàng hoặc LSX rồi bấm "Tìm kiếm"');
+    } else {
+      const coNgay = document.getElementById("tdFrom").value && document.getElementById("tdTo").value;
+      if(coNgay){ boQuaCacheLanToi = true; daGoi = true; await runTeamSearch(); }
+      else tdStatus("", 'Chọn khoảng ngày rồi bấm "Xem"');
+    }
+  } finally {
+    boQuaCacheLanToi = false;                   // không để cờ sót sang lượt sau
+    btn.disabled = false;
+    btn.textContent = daGoi ? "✓" : nhanCu;
+    if(daGoi) setTimeout(()=>{ btn.textContent = nhanCu; }, 1500);
+  }
 }
 
 /* ══════════════════════════════════════════════
