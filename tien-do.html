@@ -409,6 +409,8 @@ details.top-block[open] > summary .caret{transform:rotate(90deg);}
             <button type="button" class="wchip active" data-ws="CAT"  onclick="toggleWs(this)">Cắt</button>
             <button type="button" class="wchip active" data-ws="TCO"  onclick="toggleWs(this)">Thủ công</button>
             <button type="button" class="wchip active" data-ws="GTB"  onclick="toggleWs(this)">GTB</button>
+            <button type="button" class="wchip active" data-ws="THO"  onclick="toggleWs(this)">Thổi</button>
+            <button type="button" class="wchip active" data-ws="INT"  onclick="toggleWs(this)">In</button>
             <button type="button" class="wchip active" data-ws="KHAC" onclick="toggleWs(this)">Khác</button>
           </div>
           <button class="btn-sm" onclick="runTeamSearch()">Xem</button>
@@ -790,7 +792,7 @@ function clearSearch(){
 /* ══════════════════════════════════════════════
    TAB TỔ / NGÀY
 ══════════════════════════════════════════════ */
-const WS_LABEL = { CAT:"Tổ Cắt", TCO:"Tổ Thủ công", GTB:"Tổ Giấy/Thùng/Bìa", KHAC:"Khác (máy ngoài danh mục)" };
+const WS_LABEL = { CAT:"Tổ Cắt", TCO:"Tổ Thủ công", GTB:"Tổ Giấy/Thùng/Bìa", THO:"Tổ Thổi", INT:"Tổ In", KHAC:"Khác (máy ngoài danh mục)" };
 
 // 03/09/2026 — tab đang mở, để nút ⚡ biết phải chạy lại truy vấn nào.
 let tabHienTai = "order";
@@ -854,6 +856,7 @@ async function runTeamSearch(){
     const data = await apiFetch("teamDaily", {from, to});
     if(data.result === "ok"){
       lastTeamDays = data.days || [];
+      dongBoChipTo(lastTeamDays);   // tổ lạ cũng phải có chip, không được biến mất
       reRenderTeam();
     } else {
       tdStatus("err", "Lỗi: " + esc(data.error||"không xác định"));
@@ -905,8 +908,44 @@ function reRenderTeam(){
 }
 
 /** Lọc theo NHIỀU tổ; chọn đủ 4 tổ = xem tất cả. Tính lại tổng ngày theo các tổ được chọn */
+/* ══ 14/09/2026 — VÌ SAO BỎ CON SỐ 4 ══
+   Cũ: `wsArr.length >= 4` — hiểu ngầm "màn hình có đúng 4 chip, bật đủ 4 tức
+   là xem tất cả". Hệ quả: tổ Thổi (THO) và In (INT) KHÔNG có chip nào chọn
+   được, nên chỉ cần TẮT MỘT chip bất kỳ là mọi dòng của hai tổ đó biến mất
+   không một lời báo — đúng kiểu lỗi im lặng đã gặp ở "Avaiable".
+   Nay: đếm số chip THẬT trên màn hình, và dongBoChipTo() dưới đây tự thêm chip
+   cho bất kỳ mã tổ nào máy chủ trả về mà chưa có chip. Thêm work station mới
+   trong master MA_MAY không bao giờ làm mất dữ liệu nữa. */
+function tongSoChipTo(){
+  return document.querySelectorAll("#wsChips .wchip").length;
+}
+
+/* Nhãn NGẮN cho chip. Tên riêng, KHÔNG dùng lại WS_LABEL (nhãn dài cho cây
+   báo cáo) — khai trùng tên const trong file một-trang là hỏng cả file. */
+const WS_CHIP_LABEL = { CAT:"Cắt", TCO:"Thủ công", GTB:"GTB", THO:"Thổi", INT:"In", KHAC:"Khác" };
+
+/** Lưới an toàn: máy chủ trả về tổ nào chưa có chip thì tạo chip (bật sẵn) cho tổ đó. */
+function dongBoChipTo(days){
+  const box = document.getElementById("wsChips");
+  if(!box) return;
+  const daCo = new Set(Array.from(box.querySelectorAll(".wchip")).map(b => b.dataset.ws));
+  const thieu = [];
+  (days || []).forEach(d => (d.to || []).forEach(t => {
+    if(t && t.ws && !daCo.has(t.ws)){ daCo.add(t.ws); thieu.push(t.ws); }
+  }));
+  thieu.forEach(ws => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "wchip active";
+    b.dataset.ws = ws;
+    b.textContent = WS_CHIP_LABEL[ws] || ws;
+    b.onclick = () => toggleWs(b);
+    box.appendChild(b);
+  });
+}
+
 function filterDaysByWs(days, wsArr){
-  if(!wsArr || wsArr.length >= 4) return days;
+  if(!wsArr || wsArr.length >= tongSoChipTo()) return days;
   const r3 = x => Math.round((Number(x)||0)*1000)/1000;
   const out = [];
   for(const d of days){
