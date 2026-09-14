@@ -195,6 +195,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
 /* thanh trạng thái đồng bộ */
 .sync-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:12px;padding:8px 10px;background:#f1f5f9;border-radius:10px;}
+
+/* ── v4.5 Hàng đợi lô ──
+   Đặt TRONG luồng trang (không position:fixed) và chỉ ở màn hình chính.
+   Lớp nổi ở đáy sẽ che nút "Tiếp tục" của các bước giao dịch — bài học cũ. */
+.q-bar{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;margin-bottom:12px;padding:10px 12px;border-radius:10px;cursor:pointer;background:#fffbeb;border:1.5px solid var(--amber);color:#92400e;}
+.q-bar.qua-han{background:#fef2f2;border-color:var(--red);color:#991b1b;}
+.q-bar .q-txt{flex:1;line-height:1.45;}
+.q-bar .q-go{border:none;background:var(--amber);color:#fff;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;flex-shrink:0;}
+.q-item{border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;}
+.q-item.qua-han{border-color:var(--red);background:#fef2f2;}
+.q-it-top{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:13px;margin-bottom:3px;}
+.q-it-sub{font-size:11.5px;color:var(--muted);line-height:1.5;}
+.q-it-err{font-size:11.5px;color:var(--red);margin-top:4px;word-break:break-word;}
+.q-it-act{margin-top:8px;display:flex;gap:8px;}
+.q-it-act button{border:none;border-radius:8px;font-size:11.5px;font-weight:700;padding:6px 10px;cursor:pointer;}
 .sync-bar .sb-txt{flex:1;line-height:1.4;}
 .sync-bar button{border:none;background:var(--teal);color:#fff;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;flex-shrink:0;}
 .sync-bar button:disabled{opacity:.6;}
@@ -243,7 +258,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <section id="scrDash" class="screen active">
   <div class="topbar">
     <button class="icon-btn" onclick="goHome()">&#127968;</button>
-    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.4</span></div>
+    <div class="ttl">&#9881; Trục In <span style="font-size:10px;opacity:.6;">v4.5</span></div>
     <button class="icon-btn" id="btnRefreshTop" onclick="hardRefresh()">&#8635;</button>
   </div>
   <div class="wrap">
@@ -252,6 +267,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       <button id="btnRefreshDash" onclick="hardRefresh()">&#8635; Làm mới</button>
       <button id="btnCheckSrv" onclick="checkServer()" style="background:#475569;">&#128269; Kiểm tra server</button>
     </div>
+    <!-- v4.5 — lô chưa gửi được, đang nằm chờ trong máy -->
+    <div id="qBar" class="q-bar" style="display:none;" onclick="qMoBang()"></div>
     <div class="dash-grid">
       <div class="dash-card full" onclick="openSearch('')"><div class="dc-num" id="dcTotal">—</div><div class="dc-lbl">Tổng trục</div></div>
       <div class="dash-card green" onclick="openSearch('AVAILABLE')"><div class="dc-num" id="dcAvail">—</div><div class="dc-lbl">Trong kho</div></div>
@@ -756,6 +773,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <!-- ══════════════════════════════ -->
 <!-- OVERLAY: DANH SÁCH TRỤC NGOÀI KHO (v4.2) -->
 <!-- ══════════════════════════════ -->
+<!-- v4.5 — HÀNG ĐỢI LÔ: xem / gửi ngay / bỏ -->
+<div id="ovQueue" class="ov-full" style="display:none;">
+  <div class="topbar">
+    <div class="ttl">&#128230; Lô đang chờ gửi</div>
+    <button class="icon-btn" onclick="qDongBang()">Xong</button>
+  </div>
+  <div class="ov-scroll" id="qList" style="padding-top:12px;"></div>
+  <div class="ov-foot">
+    <button class="btn green" id="qBtnGui" onclick="qGui(true)">&#8635; Gửi lại ngay</button>
+  </div>
+</div>
+
 <div id="ovOutside" class="ov-full" style="display:none;">
   <div class="topbar">
     <div class="ttl">&#128203; Trục đang ngoài kho</div>
@@ -884,11 +913,17 @@ window.addEventListener("DOMContentLoaded", function() {
   loadFromCache();
   // 2. Refresh từ server ngầm
   loadAll();
+  // 3. v4.5 — lô còn kẹt từ phiên trước: hiện ngay rồi thử gửi sau 3 giây
+  //    (chờ loadAll xong để không bắn hai request cùng lúc lúc mở app)
+  qVe();
+  setTimeout(function() { if (qDem()) qGui(false); }, 3000);
 });
 
 // Khi mở lại app (PWA/tab nền) quá 60 giây → tự nạp lại ngầm
 document.addEventListener("visibilitychange", function() {
   if (document.visibilityState !== "visible") return;
+  qVe();
+  if (qDem()) qGui(false);          // v4.5 — mở lại app là thử gửi lô còn kẹt
   if (refreshing) return;
   if (Date.now() - lastSyncTs < 60000) return;
   loadAll();
@@ -1514,7 +1549,7 @@ function apiPost(data, cb, retries) {
   }).then(function(r) { return readJson_(r, data.action, "POST"); }).then(function(d) {
     if (d && d.result) cb(d);
     else if (retries > 0) setTimeout(function() { apiPost(data, cb, retries - 1); }, retryDelay_(API_RETRIES - retries));
-    else cb({ result: "error", error: "Không nhận được phản hồi" });
+    else cb({ result: "error", error: "Không nhận được phản hồi", haTang: true });
   }).catch(function(e) {
     var conThu = retries > 0 && (e.retryable !== false);
     if (conThu) { setTimeout(function() { apiPost(data, cb, retries - 1); }, retryDelay_(API_RETRIES - retries)); return; }
@@ -1522,15 +1557,317 @@ function apiPost(data, cb, retries) {
     // "Đang ghi..." vĩnh viễn và người dùng không biết phải làm gì.
     // Gửi lại an toàn: cùng batchId thì server không ghi lần hai.
     // v4.3 — nói rõ đây là lỗi phía server hay lỗi mạng, và chỉ chỗ xem chi tiết.
+    // v4.5 — HAI CỜ MỚI, quyết định lô có được xếp hàng đợi hay không:
+    //   haTang     = hỏng ở đường truyền / phía Google, KHÔNG phải code nghiệp vụ
+    //                → gửi lại về sau là có ích.
+    //   khongThuLai = lỗi quyền / deployment (Sign in, authorization)
+    //                → gửi lại bao nhiêu cũng thế, phải sửa cấu hình.
+    // Lỗi NGHIỆP VỤ (server trả JSON result=error, ví dụ trục sai trạng thái)
+    // không đi qua nhánh catch này, nên tự nhiên KHÔNG bao giờ bị xếp hàng đợi.
     cb({
       result: "error",
       error: e.notJson
         ? (e.message + " — dữ liệu CHƯA được ghi. Bấm \u{1F50D} Kiểm tra server ở màn hình chính.")
         : ("Lỗi kết nối: " + e.message + " — bấm lại để gửi lại (không sợ ghi trùng)"),
-      notJson: !!e.notJson
+      notJson: !!e.notJson,
+      haTang: true,
+      khongThuLai: (e.retryable === false)
     });
   });
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// HÀNG ĐỢI LÔ (v4.5 — 14/09/2026)
+//
+// ═══ VÌ SAO CÓ ═══
+// 12/09: cổng vào Apps Script trả 404 suốt một khoảng đủ dài để cả lô 13 trục
+// hỏng, rồi TỰ KHỎI mà không ai làm gì. Ba lần thử lại trong 7 giây của v4.4
+// không đủ cho một sự cố kéo dài hàng phút. Hệ quả thật ở xưởng: công nhân
+// mất công scan lại từ đầu, hoặc tệ hơn — bỏ luôn, sổ kho hụt trục.
+//
+// Lô nằm chờ trong máy rồi tự gửi khi cổng sống lại thì cái hỏng của Google
+// chỉ còn là một khoảng trễ, không còn là mất việc.
+//
+// ═══ VÌ SAO GỬI LẠI KHÔNG SỢ GHI TRÙNG ═══
+// Mỗi lô mang `batchId` cố định. Máy chủ đã ghi lô đó rồi thì trả `duplicate`
+// và KHÔNG ghi lần hai (xem tab BatchLog). Đây chính là điều kiện tiên quyết:
+// hàng đợi offline mà KHÔNG có batchId từng gây ra vụ 18 bao ghi 2 lần.
+//
+// ═══ CÁI GÌ ĐƯỢC XẾP HÀNG, CÁI GÌ KHÔNG ═══
+//   Lỗi HẠ TẦNG   (404/5xx/mất mạng, cờ `haTang`)  → XẾP HÀNG, gửi lại có ích.
+//   Lỗi QUYỀN     (cờ `khongThuLai`)               → KHÔNG xếp, phải sửa cấu hình.
+//   Lỗi NGHIỆP VỤ (máy chủ trả JSON result=error)  → KHÔNG xếp, gửi lại 100 lần
+//                  vẫn sai; phải cho người dùng sửa danh sách trục.
+// Xếp nhầm lỗi nghiệp vụ vào hàng đợi sẽ đẻ ra một vòng lặp gửi–hỏng vĩnh viễn
+// mà không ai nhìn thấy. Đó là lý do ba nhánh này phải tách bạch.
+//
+// ═══ KHÔNG BAO GIỜ TỰ VỨT DỮ LIỆU ═══
+// Lô quá hạn KHÔNG bị xoá âm thầm. Nó đổi sang màu đỏ và đòi người xử lý tay.
+// Dữ liệu sản xuất biến mất lặng lẽ là thứ đắt nhất trong cả hệ thống này.
+// ═══════════════════════════════════════════════════════════
+
+var QUEUE_KEY     = "cylQueue_v1";
+var QUEUE_MAX     = 50;        // trần số lô giữ trong máy
+var QUEUE_HAN_GIO = 72;        // quá 72 giờ thì bôi đỏ, KHÔNG xoá
+var QUEUE_CHU_KY  = 45000;     // 45 giây tự thử lại một lần khi còn hàng đợi
+var qDangGui = false;          // chống hai vòng gửi chồng lên nhau
+
+function qDoc() {
+  try {
+    var raw = localStorage.getItem(QUEUE_KEY);
+    if (!raw) return [];
+    var ds = JSON.parse(raw);
+    return Array.isArray(ds) ? ds : [];
+  } catch (e) { return []; }
+}
+
+function qGhi(ds) {
+  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(ds)); return true; }
+  catch (e) { return false; }   // hết chỗ lưu / chế độ riêng tư
+}
+
+function qDem() { return qDoc().length; }
+
+/** Lô đã nằm chờ quá lâu — cần người xử lý tay, không tự xoá */
+function qQuaHan(it) {
+  return (Date.now() - (it.luc || 0)) > QUEUE_HAN_GIO * 3600 * 1000;
+}
+
+/**
+ * Xếp một lô vào hàng đợi. Trả true nếu lưu được.
+ * batchId của lô được dùng làm khoá — xếp lại cùng lô thì GHI ĐÈ, không nhân bản.
+ */
+function qThem(payload, lyDo) {
+  if (!payload || !payload.batchId) return false;
+  var ds = qDoc();
+  for (var i = 0; i < ds.length; i++) {
+    if (ds[i].id === payload.batchId) {   // đã có rồi — chỉ cập nhật lý do
+      ds[i].loiCuoi = lyDo || "";
+      ds[i].lanCuoi = Date.now();
+      return qGhi(ds);
+    }
+  }
+  if (ds.length >= QUEUE_MAX) return false;
+  ds.push({
+    id: payload.batchId,
+    luc: Date.now(),
+    lanCuoi: Date.now(),
+    thu: 0,
+    loiCuoi: lyDo || "",
+    data: payload
+  });
+  return qGhi(ds);
+}
+
+function qXoa(id) {
+  var ds = qDoc(), out = [];
+  for (var i = 0; i < ds.length; i++) if (ds[i].id !== id) out.push(ds[i]);
+  qGhi(out);
+  qVe();
+  if (document.getElementById("ovQueue").style.display !== "none") qVeBang();
+}
+
+function qBoLo(id) {
+  var ds = qDoc(), it = null;
+  for (var i = 0; i < ds.length; i++) if (ds[i].id === id) it = ds[i];
+  if (!it) return;
+  var n = (it.data && it.data.cylCodes ? it.data.cylCodes.length : 0);
+  if (!confirm("BỎ HẲN lô " + n + " trục này?\n\n" +
+               (it.data && it.data.cylCodes ? it.data.cylCodes.join(", ") : "") +
+               "\n\nLô sẽ KHÔNG được ghi vào sổ. Chỉ bỏ khi anh/chị đã ghi tay " +
+               "hoặc chắc chắn không cần nữa.")) return;
+  qXoa(id);
+  toast("Đã bỏ lô " + n + " trục khỏi hàng đợi", 1);
+}
+
+/** Vẽ thanh nhắc ở màn hình chính */
+function qVe() {
+  var bar = document.getElementById("qBar");
+  if (!bar) return;
+  var ds = qDoc();
+  if (!ds.length) { bar.style.display = "none"; return; }
+
+  var coQuaHan = false, soTruc = 0;
+  for (var i = 0; i < ds.length; i++) {
+    if (qQuaHan(ds[i])) coQuaHan = true;
+    soTruc += (ds[i].data && ds[i].data.cylCodes ? ds[i].data.cylCodes.length : 0);
+  }
+  bar.className = "q-bar" + (coQuaHan ? " qua-han" : "");
+  bar.style.display = "";
+  bar.innerHTML =
+    '<span class="q-txt">' +
+      (coQuaHan ? "&#9888; " : "&#128230; ") +
+      ds.length + " lô (" + soTruc + " trục) chưa gửi được" +
+      (coQuaHan ? " — có lô đã chờ quá " + QUEUE_HAN_GIO + " giờ, cần xử lý"
+                : " — sẽ tự gửi khi máy chủ trở lại") +
+    '</span>' +
+    '<button class="q-go" onclick="event.stopPropagation();qGui(true);">&#8635; Gửi ngay</button>';
+}
+
+function qMoBang() { qVeBang(); document.getElementById("ovQueue").style.display = "flex"; }
+function qDongBang() { document.getElementById("ovQueue").style.display = "none"; }
+
+function qVeBang() {
+  var box = document.getElementById("qList");
+  var ds  = qDoc();
+  if (!ds.length) {
+    box.innerHTML = '<div class="empty" style="padding:24px;text-align:center;color:var(--muted);">' +
+                    'Không còn lô nào chờ gửi.</div>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < ds.length; i++) {
+    var it = ds[i], d = it.data || {}, codes = d.cylCodes || [];
+    var qh = qQuaHan(it);
+    html += '<div class="q-item' + (qh ? " qua-han" : "") + '">' +
+      '<div class="q-it-top"><span>' + esc(subTypeLabel(d.subType)) + ' — ' + codes.length + ' trục</span>' +
+        '<span style="font-weight:400;font-size:11.5px;color:var(--muted);">' + fmtClock(it.luc) + '</span></div>' +
+      '<div class="q-it-sub">' + esc(codes.slice(0, 6).join(", ")) +
+        (codes.length > 6 ? " … (+" + (codes.length - 6) + ")" : "") +
+        (d.toDept ? "<br/>Bộ phận nhận: <b>" + esc(d.toDept) + "</b>" : "") +
+        (d.toLoc  ? "<br/>Vị trí: <b>" + esc(d.toLoc) + "</b>" : "") +
+        "<br/>Đã thử gửi: <b>" + (it.thu || 0) + "</b> lần" +
+      '</div>' +
+      (it.loiCuoi ? '<div class="q-it-err">' + esc(it.loiCuoi) + '</div>' : '') +
+      (qh ? '<div class="q-it-err"><b>Lô này đã chờ quá ' + QUEUE_HAN_GIO +
+            ' giờ.</b> Kiểm tra xem đã ghi tay chưa rồi quyết định gửi lại hay bỏ.</div>' : '') +
+      '<div class="q-it-act">' +
+        '<button style="background:var(--teal);color:#fff;" onclick="qGuiMot(\'' + escAttr(it.id) + '\')">Gửi lô này</button>' +
+        '<button style="background:#e2e8f0;color:#475569;" onclick="qBoLo(\'' + escAttr(it.id) + '\')">Bỏ lô</button>' +
+      '</div></div>';
+  }
+  box.innerHTML = html;
+}
+
+/**
+ * Gửi lại TUẦN TỰ từng lô. Không gửi song song: hai lô cùng lúc vừa nặng cho
+ * Apps Script vừa khó đọc khi có lỗi.
+ * Gặp lỗi HẠ TẦNG thì DỪNG cả vòng — cổng đang chết thì các lô sau cũng chết,
+ * thử tiếp chỉ tốn pin và làm log rối.
+ *
+ * @param {boolean} tayBam  true = người dùng bấm nút (được phép báo toast)
+ */
+function qGui(tayBam) {
+  if (qDangGui) { if (tayBam) toast("Đang gửi, chờ chút..."); return; }
+  var ds = qDoc();
+  if (!ds.length) { if (tayBam) toast("Không có lô nào chờ gửi"); qVe(); return; }
+  if (navigator.onLine === false) {
+    if (tayBam) toast("Máy đang mất mạng — lô vẫn được giữ nguyên", 1);
+    return;
+  }
+
+  qDangGui = true;
+  var btn = document.getElementById("qBtnGui");
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Đang gửi...'; }
+
+  var xong = 0, trung = 0, boNghiepVu = 0, i = 0, dungVi = "";
+
+  function ketThuc() {
+    qDangGui = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = "↻ Gửi lại ngay"; }
+    qVe();
+    if (document.getElementById("ovQueue").style.display !== "none") qVeBang();
+
+    if (xong || trung) {
+      toast("Đã gửi xong " + (xong + trung) + " lô" +
+            (trung ? " (" + trung + " lô máy chủ đã có sẵn)" : "") +
+            (qDem() ? " — còn " + qDem() + " lô chờ" : ""), 0, 5000);
+      loadAll();   // sổ kho vừa đổi, nạp lại số liệu
+    } else if (boNghiepVu) {
+      // đã toast riêng cho từng lô ở dưới
+    } else if (tayBam && dungVi) {
+      toast(dungVi, 1, 5000);
+    }
+  }
+
+  function guiTiep() {
+    if (i >= ds.length) return ketThuc();
+    var it = ds[i++];
+
+    apiPost(it.data, function(d) {
+      if (d && d.result === "ok") {
+        if (d.duplicate) trung++; else xong++;
+        qXoaNgam(it.id);
+        return guiTiep();
+      }
+
+      // Lỗi HẠ TẦNG → giữ lô, dừng cả vòng
+      if (d && d.haTang) {
+        qCapNhatLoi(it.id, d.error, !d.khongThuLai);
+        dungVi = d.khongThuLai
+          ? "Chưa gửi được: " + d.error
+          : "Máy chủ vẫn chưa nhận. Lô được giữ nguyên, sẽ thử lại sau.";
+        return ketThuc();
+      }
+
+      // Lỗi NGHIỆP VỤ → gỡ khỏi hàng đợi, báo đích danh để người xử lý tay.
+      // Giữ lại chỉ tạo vòng lặp gửi–hỏng vô tận không ai thấy.
+      boNghiepVu++;
+      qXoaNgam(it.id);
+      var codes = (it.data && it.data.cylCodes) || [];
+      alert("LÔ NÀY MÁY CHỦ TỪ CHỐI, KHÔNG PHẢI LỖI MẠNG\n\n" +
+            subTypeLabel(it.data.subType) + " — " + codes.length + " trục\n" +
+            codes.join(", ") + "\n\n" +
+            "Lý do: " + ((d && d.error) || "không rõ") + "\n\n" +
+            "Lô đã được gỡ khỏi hàng đợi. Vui lòng làm lại giao dịch này để sửa.");
+      guiTiep();
+    });
+  }
+
+  guiTiep();
+}
+
+/** Gửi một lô do người dùng chỉ định */
+function qGuiMot(id) {
+  var ds = qDoc(), it = null;
+  for (var i = 0; i < ds.length; i++) if (ds[i].id === id) it = ds[i];
+  if (!it) return;
+  if (qDangGui) return toast("Đang gửi, chờ chút...");
+  qDangGui = true;
+  apiPost(it.data, function(d) {
+    qDangGui = false;
+    if (d && d.result === "ok") {
+      qXoaNgam(id);
+      toast(d.duplicate ? "Lô này máy chủ đã ghi trước đó — đã gỡ khỏi hàng đợi"
+                        : "Đã ghi " + d.count + " trục", 0, 4000);
+      loadAll();
+    } else if (d && d.haTang) {
+      qCapNhatLoi(id, d.error, true);
+      toast("Vẫn chưa gửi được — lô được giữ nguyên", 1, 4000);
+    } else {
+      qXoaNgam(id);
+      alert("Máy chủ từ chối lô này: " + ((d && d.error) || "không rõ") +
+            "\n\nLô đã gỡ khỏi hàng đợi, vui lòng làm lại giao dịch.");
+    }
+    qVe();
+    if (document.getElementById("ovQueue").style.display !== "none") qVeBang();
+  });
+}
+
+/** Xoá không vẽ lại (dùng trong vòng gửi) */
+function qXoaNgam(id) {
+  var ds = qDoc(), out = [];
+  for (var i = 0; i < ds.length; i++) if (ds[i].id !== id) out.push(ds[i]);
+  qGhi(out);
+}
+
+function qCapNhatLoi(id, loi, demThu) {
+  var ds = qDoc();
+  for (var i = 0; i < ds.length; i++) {
+    if (ds[i].id !== id) continue;
+    ds[i].loiCuoi = loi || "";
+    ds[i].lanCuoi = Date.now();
+    if (demThu) ds[i].thu = (ds[i].thu || 0) + 1;
+  }
+  qGhi(ds);
+}
+
+// ── Các mốc tự gửi lại ──
+// Không đặt chu kỳ ngắn hơn: cổng chết thường kéo dài phút chứ không phải giây,
+// hỏi dồn dập chỉ tốn pin máy công nhân và tốn quota.
+window.addEventListener("online", function() { qGui(false); });
+setInterval(function() { if (qDem()) qGui(false); }, QUEUE_CHU_KY);
 
 // ═══════════════ MASTER VỊ TRÍ DÙNG CHUNG (v2.3) ═══════════════
 // Nguồn: tab Location_MA trên Google Sheet (Code_Location.gs), đã lọc sẵn
@@ -1549,7 +1886,7 @@ var locReject = null;          // { total, byReason, badTypeValues } — vì sao
 var locError = "";
 var locTypeColsMissing = [];   // cột bắt buộc trong LocationType_MA không nhận diện được
 var badStatusValues = {};      // giá trị current_status gõ sai trong CYL_Master
-var APP_VERSION = "4.4";       // phiên bản file HTML này
+var APP_VERSION = "4.5";       // phiên bản file HTML này
 var serverVersion = "";        // phiên bản Code_CylMgmt.gs đang chạy trên Google
 var locTypeTab = "LocationType_MA";
 var txnLocCode = "";   // Location ID ĐÃ XÁC NHẬN thuộc master ("" = chưa chọn)
@@ -2397,7 +2734,8 @@ function submitBatch() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Đang ghi ' + codes.length + ' trục...';
 
-  apiPost({
+  // v4.5 — giữ nguyên payload thành biến để còn xếp vào hàng đợi khi hỏng
+  var payload = {
     action: "cylTransactionBatch",
     subType: txnSubType,
     cylCodes: codes,
@@ -2407,10 +2745,31 @@ function submitBatch() {
     user: user,
     batchId: txnBatchId,
     pickModes: pickModes
-  }, function(d) {
+  };
+
+  apiPost(payload, function(d) {
     txnBusy = false;
     if (!d || d.result !== "ok") {
       updateFoot();
+
+      // ═══ v4.5 — HỎNG Ở ĐƯỜNG TRUYỀN THÌ GIỮ LÔ LẠI, ĐỪNG BẮT SCAN LẠI ═══
+      // Chỉ nhận lỗi HẠ TẦNG còn đáng thử lại. Lỗi nghiệp vụ và lỗi quyền rơi
+      // xuống nhánh cũ bên dưới, vì gửi lại chúng là vô nghĩa.
+      if (d && d.haTang && !d.khongThuLai) {
+        if (qThem(payload, d.error)) {
+          txnBatchId = "";
+          resetTxn(txnGroup);
+          switchScreen("scrDash");
+          qVe();
+          toast("Máy chủ chưa nhận được. ĐÃ LƯU lô " + codes.length +
+                " trục trong máy — sẽ tự gửi lại, không cần scan lại.", 0, 7000);
+          return;
+        }
+        // Lưu không được (hết chỗ / quá 50 lô) — phải nói thật, không im lặng
+        return toast("Không gửi được VÀ không lưu được vào hàng đợi (" +
+                     qDem() + "/" + QUEUE_MAX + " lô). Hãy gửi bớt lô đang chờ rồi thử lại.", 1, 7000);
+      }
+
       // Server chỉ đích danh trục sai → đánh dấu lại rồi quay về bước danh sách
       if (d && d.invalid && d.invalid.length) {
         for (var k = 0; k < d.invalid.length; k++) {
@@ -2919,13 +3278,15 @@ function escAttr(s) {
   return esc(s).replace(/'/g, "&#39;");
 }
 
-function toast(msg, isErr) {
+function toast(msg, isErr, ms) {
   var el = document.getElementById("toast");
   el.textContent = msg;
   el.style.background = isErr ? "var(--red)" : "#1e293b";
   el.classList.add("show");
   clearTimeout(el._t);
-  el._t = setTimeout(function() { el.classList.remove("show"); }, 2500);
+  // v4.5 — tin quan trọng (đã lưu lô vào hàng đợi) cần đứng lâu hơn 2,5 giây:
+  // công nhân đang cầm trục trên tay, đọc lướt là trôi mất.
+  el._t = setTimeout(function() { el.classList.remove("show"); }, ms || 2500);
 }
 
 // ═══════════════ HƯỚNG DẪN SỬ DỤNG (v4.1) ═══════════════
