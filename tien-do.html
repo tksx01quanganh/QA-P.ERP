@@ -92,6 +92,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .progDetail{font-size:11px;color:var(--muted);}
 
 .empty{text-align:center;color:var(--muted);padding:40px 20px;}
+
+/* ── 14/09/2026 — thẻ kết quả SX không gắn được vào đơn nào ──
+   Màu hổ phách, KHÔNG phải đỏ: đây không phải lỗi, chỉ là dữ liệu chưa khớp
+   đơn. Dùng đỏ ở đây sẽ làm người dùng tưởng hệ thống hỏng. */
+.mocoi-card{background:#fffbeb;border:1.5px solid #f59e0b;border-radius:12px;padding:12px;margin-bottom:8px;}
+.mocoi-head{font-weight:800;color:#92400e;font-size:13.5px;margin-bottom:6px;}
+.mocoi-note{font-size:12px;color:#92400e;line-height:1.5;margin-bottom:10px;}
+.mocoi-lsx{font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.mocoi-tong{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;font-weight:700;margin-bottom:8px;}
+.mocoi-tong span{background:#fff;border:1px solid #fcd34d;border-radius:8px;padding:5px 10px;}
+.mocoi-tbl{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:8px;overflow:hidden;}
+.mocoi-tbl th{background:#fef3c7;text-align:left;padding:6px 8px;font-weight:700;color:#92400e;white-space:nowrap;}
+.mocoi-tbl td{padding:6px 8px;border-top:1px solid #fde68a;}
+.mocoi-wrap{overflow-x:auto;}
 .footer-note{text-align:center;color:var(--muted);font-size:11px;padding:12px 10px 20px;}
 .no-access{text-align:center;color:var(--red);font-weight:600;padding:40px 20px;font-size:16px;}
 
@@ -354,7 +368,14 @@ details.top-block[open] > summary .caret{transform:rotate(90deg);}
          thẳng trên Google Sheet thì cache KHÔNG tự biết. Nút này ép dựng lại.
          Xem ghi chú kiemXoaDongKetQua_ trong Code.gs. -->
     <button class="icon-btn" id="btnLamMoi" onclick="lamMoiDuLieu()"
-            title="Làm mới dữ liệu — đọc lại từ Google Sheet, bỏ qua cache">⚡</button>
+            title="Làm mới SỐ LIỆU SẢN XUẤT — đọc lại tab KetQua, bỏ qua cache">⚡</button>
+    <!-- 14/09/2026 — nút RIÊNG cho Order List. Nút ⚡ cố ý KHÔNG đụng Order List
+         (dựng lại 24.000 dòng mất ~1 phút, bắt người chỉ muốn xem số SX phải
+         trả giá đó là vô lý). Hệ quả không ai lường: từ 03/09 không còn đường
+         nào làm mới đơn hàng, đơn mới khai phải chờ hết TTL 5 giờ. Nút này là
+         đường đó — tách riêng để ai bấm thì biết mình đang trả giá gì. -->
+    <button class="icon-btn" id="btnLamMoiDon" onclick="lamMoiDonHang()"
+            title="Làm mới ĐƠN HÀNG — đọc lại Order List (DATA COMBINE), mất khoảng 1 phút">⟳</button>
     <button class="icon-btn" onclick="goHome()">🏠</button>
   </div>
 
@@ -548,6 +569,10 @@ let abortCtrl = null; // để hủy request cũ nếu bấm tìm lại
 // 03/09/2026 — cờ "lần gọi tới thì bỏ qua cache máy chủ". Nút ⚡ bật lên,
 // apiFetchRieng tiêu thụ ngay ở request đầu tiên rồi tự tắt.
 let boQuaCacheLanToi = false;
+// 14/09/2026 — cờ RIÊNG cho Order List, gửi nocache=1 (xoá cả cache đơn hàng).
+// Tách khỏi boQuaCacheLanToi vì hai cái có giá rất khác nhau: kq ~vài giây,
+// còn 1 thì dựng lại 24.000 dòng Order List, tới ~58 giây.
+let boQuaCacheDonHang = false;
 
 async function apiFetch(action, params){
   // Hủy request trước nếu đang chạy
@@ -575,7 +600,10 @@ async function apiFetchRieng(action, params, signal){
   // TIÊU THỤ NGAY tại request đầu tiên: nếu để cờ sống tới cuối lượt làm mới
   // thì việc nền nạp mô tả (napMoTaDangHien) cũng mang theo nocache và ép máy
   // chủ dựng lại cache lần nữa — chậm gấp đôi mà chẳng thêm gì.
-  if(boQuaCacheLanToi){ url += "&nocache=kq"; boQuaCacheLanToi = false; }
+  // Thứ tự quan trọng: nocache=1 bao trùm nocache=kq, nên nếu cả hai cờ cùng
+  // bật thì chỉ gửi cái mạnh hơn, đừng gửi hai lần.
+  if(boQuaCacheDonHang){ url += "&nocache=1"; boQuaCacheDonHang = false; boQuaCacheLanToi = false; }
+  else if(boQuaCacheLanToi){ url += "&nocache=kq"; boQuaCacheLanToi = false; }
   const opt = { method:"GET", redirect:"follow" };
   if(signal) opt.signal = signal;
   const res = await fetch(url, opt);
@@ -757,24 +785,155 @@ function renderCards(rows){
   document.getElementById("resultArea").scrollTop = 0;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   14/09/2026 — MÀN HÌNH NÀY TRA KẾT QUẢ SẢN XUẤT, KHÔNG TRA ĐƠN HÀNG
+
+   VẤN ĐỀ GỐC (không phải chuyện cache): tab này lấy Order List làm TRỤC CHÍNH
+   — duyệt đơn trước, rồi mới ghép số sản xuất vào. Nhưng `doPost` ghi vào tab
+   KetQua KHÔNG hề đối chiếu LSX với Order List; đó là thiết kế cố ý, ghi nhận
+   sản xuất không được phép chờ phòng kế hoạch khai đơn.
+
+   Hai điều đó cộng lại: mọi LSX đã sản xuất mà chưa có đơn trong DATA COMBINE
+   đều VÔ HÌNH ở đây, và màn hình chỉ nói "Không tìm thấy đơn hàng phù hợp" —
+   không phân biệt "chưa khai đơn" với "chưa sản xuất gì". Người dùng kết luận
+   là mất dữ liệu.
+
+   CÁCH SỬA: khi Order List không trả về gì mà người dùng có gõ mã, hỏi thẳng
+   tab KetQua bằng `lsxDetail` (endpoint đã có sẵn, có cache riêng theo mã —
+   không viết endpoint mới). Rồi trả lời TRUNG THỰC một trong ba câu:
+     1. Có đơn  → danh sách thẻ đơn hàng như cũ
+     2. Không có đơn NHƯNG có sản xuất → thẻ hổ phách, đủ số liệu và từng lần scan
+     3. Không có cả hai → nói rõ đã tra CẢ HAI nguồn
+   Chỉ hỏi KetQua khi Order List rỗng: đó là ca hiếm, nên cái giá quét tab
+   không rơi vào lượt tìm kiếm thông thường.
+══════════════════════════════════════════════════════════════ */
 async function runSearch(){
   const customer = document.getElementById("fCustomer").value.trim();
   const q = document.getElementById("fQuery").value.trim();
   setStatus("", '<span class="spin"></span> Đang tìm kiếm...');
   document.getElementById("summary").textContent = "";
+  document.getElementById("resultList").innerHTML = "";
 
   try{
     const data = await apiFetch("orderSearch", {customer, q});
-    if(data.result === "ok"){
-      lastRows   = data.rows || [];
-      statFilter = "all";        // mỗi lần tìm mới đều bỏ bộ lọc nhóm
-      renderList();
-    } else {
+    if(data.result !== "ok"){
       setStatus("err", "Lỗi: " + esc(data.error||"không xác định"));
+      return;
     }
+    lastRows   = data.rows || [];
+    statFilter = "all";        // mỗi lần tìm mới đều bỏ bộ lọc nhóm
+
+    if(lastRows.length || !q){ renderList(); return; }
+
+    // Order List không có mã này — hỏi tiếp tab KetQua trước khi kết luận
+    await traSanXuatKhongCoDon(q);
   }catch(e){
     if(e.name === "AbortError") return; // bị hủy do bấm tìm lại
     setStatus("err", "Không kết nối được. Kiểm tra mạng và thử lại.");
+  }
+}
+
+/**
+ * Order List không có mã `ma`. Hỏi tab KetQua xem có sản xuất thật không.
+ * Dùng `lsxDetail` — cùng endpoint mà modal chi tiết vẫn dùng.
+ */
+async function traSanXuatKhongCoDon(ma){
+  setStatus("", '<span class="spin"></span> Không có trong đơn hàng — đang tra tiếp tab KetQua...');
+  let d = null;
+  try { d = await apiFetch("lsxDetail", {lsx: ma}); }
+  catch(e){
+    if(e.name === "AbortError") return;
+    setStatus("err", "Không có trong Order List. Tra tiếp KetQua thì mất kết nối — thử lại.");
+    return;
+  }
+
+  if(!d || d.result !== "ok" || !d.scanCount){
+    setStatus("", '<div class="empty">Đã tra <b>CẢ HAI</b> nguồn, không thấy mã <b>'+esc(ma)+'</b>:'+
+      '<br/>• Order List (đơn hàng): không có'+
+      '<br/>• KetQua (kết quả sản xuất): không có dòng nào'+
+      '<br/><br/>Nếu mã này vừa được khai vào DATA COMBINE, bấm nút <b>⟳</b> ở trên để đọc lại đơn hàng.</div>');
+    document.getElementById("summary").textContent = "";
+    return;
+  }
+  veTheMoCoi(ma, d);
+}
+
+/** Thẻ: có kết quả sản xuất nhưng chưa gắn được vào đơn hàng nào */
+function veTheMoCoi(ma, d){
+  document.getElementById("statusBox").style.display = "none";
+  document.getElementById("summary").textContent = "1 mã có SX, chưa có đơn hàng";
+
+  const scans = d.scans || [];
+  let hang = "";
+  for(let i = 0; i < scans.length && i < 200; i++){
+    const s = scans[i];
+    hang += '<tr><td>'+esc(s.time||"")+'</td><td>'+esc(s.may||"")+'</td><td>'+
+            esc(s.cnTen||s.cn||"")+'</td><td style="text-align:right">'+
+            (Number(s.sl)||0).toLocaleString("vi-VN")+'</td><td style="text-align:right">'+
+            (Number(s.klQR)||0).toLocaleString("vi-VN")+'</td></tr>';
+  }
+
+  document.getElementById("resultList").innerHTML =
+    '<div class="mocoi-card">'+
+      '<div class="mocoi-head">&#9888; Có kết quả sản xuất, nhưng chưa có đơn hàng</div>'+
+      '<div class="mocoi-lsx">'+esc(ma)+'</div>'+
+      '<div class="mocoi-note">Mã này <b>không có trong Order List (DATA COMBINE)</b>, nên không tính được '+
+        'tiến độ so với số lượng đặt hàng. Số liệu dưới đây lấy thẳng từ tab KetQua nên vẫn đúng và đầy đủ.'+
+        '<br/>Nếu đơn vừa được khai, bấm nút <b>&#10227;</b> ở trên để đọc lại Order List.</div>'+
+      '<div class="mocoi-tong">'+
+        '<span>SL: '+(Number(d.totalSL)||0).toLocaleString("vi-VN")+'</span>'+
+        '<span>KL: '+(Number(d.totalKG)||0).toLocaleString("vi-VN")+' kg</span>'+
+        '<span>'+d.scanCount+' lượt ghi nhận</span>'+
+      '</div>'+
+      '<div class="mocoi-wrap"><table class="mocoi-tbl">'+
+        '<tr><th>Thời gian</th><th>Máy</th><th>Công nhân</th><th style="text-align:right">SL</th><th style="text-align:right">KL (kg)</th></tr>'+
+        hang+
+      '</table></div>'+
+      (scans.length > 200 ? '<div class="mocoi-note" style="margin-top:8px;">Hiện 200/'+scans.length+' lượt đầu.</div>' : '')+
+    '</div>';
+  document.getElementById("resultArea").scrollTop = 0;
+}
+
+/**
+ * Làm mới ĐƠN HÀNG (Order List / DATA COMBINE) — gửi nocache=1.
+ * Tách hẳn khỏi nút ⚡ vì cái giá khác hẳn: ~1 phút chứ không phải vài giây.
+ */
+async function lamMoiDonHang(){
+  const btn = document.getElementById("btnLamMoiDon");
+  if(btn.disabled) return;
+  if(!confirm("Đọc lại toàn bộ đơn hàng từ DATA COMBINE?\n\n" +
+              "Việc này mất khoảng 1 phút và vài lượt tra cứu ngay sau đó cũng sẽ chậm.\n" +
+              "Chỉ cần làm khi vừa khai đơn mới mà màn hình chưa thấy."))
+    return;
+
+  // Dọn luôn cache phía trình duyệt, nếu không máy chủ trả số mới mà màn hình
+  // vẫn vẽ số cũ — khó hiểu hơn cả không làm gì.
+  Object.keys(lsxDetailCache).forEach(k => delete lsxDetailCache[k]);
+  Object.keys(motaCache).forEach(k => delete motaCache[k]);
+  customerCache = null;
+
+  const nhanCu = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "⏳";
+  boQuaCacheDonHang = true;
+
+  try{
+    const coDieuKien = document.getElementById("fCustomer").value.trim()
+                    || document.getElementById("fQuery").value.trim();
+    if(coDieuKien){
+      await runSearch();
+    } else {
+      // Không có điều kiện tìm thì vẫn phải tiêu cờ, nếu không nó sống sang
+      // lượt sau và bắt người dùng khác trả giá 1 phút mà không hiểu vì sao.
+      await apiFetch("orderCustomers");
+      setStatus("", 'Đã đọc lại đơn hàng. Nhập Khách hàng hoặc LSX rồi bấm "Tìm kiếm".');
+    }
+  }catch(e){
+    if(e.name !== "AbortError") setStatus("err", "Không kết nối được khi làm mới đơn hàng.");
+  }finally{
+    boQuaCacheDonHang = false;
+    btn.disabled = false;
+    btn.textContent = nhanCu;
   }
 }
 
