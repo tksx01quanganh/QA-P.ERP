@@ -1,4 +1,4 @@
-const CACHE = 'qap-erp-v36';  // v5.6 (03/09/2026) — bump MỖI LẦN đổi index.html hoặc file trong ASSETS, để xoá bản cũ trong cache
+const CACHE = 'qap-erp-v39';  // v5.7 (08/10/2026) — thêm menu Kiểm kê BTP. Bump MỖI LẦN đổi index.html hoặc file trong ASSETS, để xoá bản cũ trong cache
 const ASSETS = [
   './',
   './index.html',
